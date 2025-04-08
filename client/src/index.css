@@ -6,81 +6,45 @@
 .qr-scanner-container {
   width: 100%;
   margin: 0 auto;
-  position: relative;
 }
 
-/* Estilo para el contenedor del scanner */
+/* Personalización de los controles del escáner */
 #qr-reader {
   width: 100% !important;
   border: none !important;
   box-shadow: none !important;
   padding: 0 !important;
+  margin: 0 !important;
 }
 
-/* Estilo para la región de escaneo */
-#qr-reader__dashboard_section_csr {
-  padding: 0 !important;
-}
-
-/* Estilo para el selector de cámaras */
-#qr-reader__dashboard_section_csr select {
-  width: 100% !important;
-  padding: 0.5rem !important;
-  border-radius: 0.375rem !important;
-  border: 1px solid theme('colors.gray.300') !important;
-  margin-bottom: 0.5rem !important;
-}
-
-/* Estilo para el div del selector de cámaras */
-#qr-reader__dashboard_section_csr div:first-child {
-  margin-bottom: 0.5rem !important;
-}
-
-/* Estilos para los botones */
-#qr-reader__dashboard_section_csr button,
-#qr-reader button {
-  background: theme('colors.primary.DEFAULT') !important;
+#qr-reader button, 
+#qr-reader select {
+  background-color: theme('colors.primary.DEFAULT') !important;
   color: white !important;
-  border: none !important;
   border-radius: 0.375rem !important;
   padding: 0.5rem 1rem !important;
-  margin: 0 0.25rem 0.5rem 0 !important;
-  cursor: pointer !important;
+  margin: 0.25rem !important;
+  border: none !important;
+  font-size: 0.875rem !important;
 }
 
-/* Estilos para los botones al hacer hover */
-#qr-reader__dashboard_section_csr button:hover,
 #qr-reader button:hover {
   opacity: 0.9 !important;
 }
 
-/* Estilo para el video */
-#qr-reader__scan_region {
-  padding: 0 !important;
-  background: black !important;
+#qr-reader video {
   border-radius: 0.5rem !important;
-  overflow: hidden !important;
+  max-height: 300px !important;
+  object-fit: cover !important;
 }
 
-#qr-reader__scan_region video {
-  border-radius: 0.5rem !important;
-  width: 100% !important;
-}
-
-/* Estilo para el recuadro del QR */
-#qr-reader__scan_region > img,
-#qr-reader canvas {
-  border-radius: 0.5rem !important;
-  display: block !important;
-  max-width: 100% !important;
-}
-
-/* Estilo para el contenedor del fileinput */
+/* Ocultar elementos de la interfaz del escáner que no necesitamos */
+#qr-reader__dashboard_section_swaplink,
 #qr-reader__dashboard_section_fsr {
-  display: none !important; /* Ocultar la opción de subir archivo */
+  display: none !important;
 }
 
-/* Estilo para mensajes de error */
+/* Mejorar visibilidad del mensaje de escaneo */
 #qr-reader__status_span {
   background-color: theme('colors.red.50') !important;
   color: theme('colors.red.600') !important;
@@ -90,7 +54,22 @@
   margin-top: 0.5rem !important;
 }
 
-/* Ajustes adicionales para compatibilidad */
+/* Ajustes para el selector de cámaras */
+#qr-reader__dashboard_section_csr select {
+  width: 100% !important;
+  padding: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+  border-radius: 0.375rem !important;
+}
+
+/* Region de escáner */
+#qr-reader__scan_region {
+  background-color: black !important;
+  border-radius: 0.5rem !important;
+  overflow: hidden !important;
+}
+
+/* Prevenir controles de video nativos */
 video::-webkit-media-controls {
   display: none !important;
 }
