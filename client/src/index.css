@@ -15,7 +15,9 @@
   padding: 0 !important;
 }
 
-#qr-reader select, #qr-reader button {
+#qr-reader select, 
+#qr-reader button,
+button.html5-qrcode-element {
   background-color: theme('colors.primary.DEFAULT') !important;
   color: white !important;
   border-radius: 0.375rem !important;
@@ -25,7 +27,8 @@
   font-size: 0.875rem !important;
 }
 
-#qr-reader button:hover {
+#qr-reader button:hover,
+button.html5-qrcode-element:hover {
   opacity: 0.9 !important;
 }
 
@@ -50,10 +53,38 @@
   margin-top: 0.5rem !important;
 }
 
-/* Ajustes para el contenedor del footer */
-#html5-qrcode-button-camera-permission {
+/* Ajustes para botones específicos */
+#html5-qrcode-button-camera-permission,
+#html5-qrcode-button-camera-start,
+#html5-qrcode-button-camera-stop {
   background-color: theme('colors.primary.DEFAULT') !important;
   color: white !important;
+  font-weight: 500 !important;
+  margin-top: 0.5rem !important;
+}
+
+/* Reducir el espacio vertical */
+#qr-reader__dashboard {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* Ocultar elementos innecesarios */
+#qr-reader__camera_selection {
+  max-width: 100% !important;
+}
+
+#qr-reader__dashboard_section_swaplink {
+  display: none !important;
+}
+
+/* Estilo para el contenedor de la cámara */
+#qr-reader__scan_region {
+  background: #000 !important;
+  position: relative !important;
+  min-height: 200px !important;
+  border-radius: 0.5rem !important;
+  overflow: hidden !important;
 }
 
 @layer base {
