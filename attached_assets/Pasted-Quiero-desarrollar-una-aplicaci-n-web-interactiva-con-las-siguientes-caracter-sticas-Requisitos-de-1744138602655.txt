@@ -1,0 +1,77 @@
+Quiero desarrollar una aplicación web interactiva con las siguientes características:
+
+Requisitos del Proyecto:
+
+1. Interfaz de Usuario:
+
+Inicio de sesión simplificado:
+
+Único campo de ingreso: Número de documento (cédula).
+
+Al ingresar el número de documento, la aplicación verificará si existe:
+
+Si no existe, solicitará nombre del participante y lo guardará asociado al número de documento.
+
+Si ya existe, cargará automáticamente su mapa de logros.
+
+Vista del Mapa:
+
+Compuesta por múltiples imágenes que representan segmentos del mapa.
+
+Cada segmento tiene dos estados visuales:
+
+Inactivo (blanco y negro).
+
+Activo (a color).
+
+Cada segmento corresponde a un código QR específico.
+
+Al escanear el código QR, el segmento correspondiente cambiará automáticamente de estado a color.
+
+Botón para escanear QR:
+
+Visible siempre en la vista del mapa.
+
+Activa la cámara del dispositivo para escanear los códigos QR.
+
+Certificado Visual de Autenticidad:
+
+Una pequeña imagen visible en la pantalla del mapa que gira continuamente.
+
+El propósito es validar visualmente la autenticidad de los logros cuando el usuario los muestra públicamente.
+
+Redención de Premios:
+
+Cuando un usuario completa todo el mapa, la aplicación generará un QR único de redención.
+
+Este QR podrá ser escaneado desde otro endpoint específico (endpoint de validación de premios).
+
+Al escanear este QR desde el endpoint de validación, el sistema verificará el estado del jugador:
+
+Indicará si ya ha reclamado su premio o si aún puede reclamarlo.
+
+2. Base de Datos:
+
+Almacenar usuarios:
+
+Número de documento (único).
+
+Nombre del usuario.
+
+Almacenar logros:
+
+Relación entre usuario (documento) y segmentos del mapa.
+
+Estado de cada segmento (activo/inactivo).
+
+Estado de premio (pendiente/reclamado).
+
+3. Funcionalidad del Código QR:
+
+Cada QR tendrá una identificación única vinculada directamente a un segmento específico del mapa.
+
+Al escanear el QR:
+
+Se actualiza la base de datos marcando el segmento como completado para ese usuario.
+
+Cambia visualmente en tiempo real en la interfaz del usuario.
