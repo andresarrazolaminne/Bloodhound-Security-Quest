@@ -53,13 +53,31 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
         // Configurar video
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
-          videoRef.current.play();
           
-          videoRef.current.onloadedmetadata = () => {
+          try {
+            // Intentar reproducir el video inmediatamente
+            videoRef.current.play()
+              .then(() => {
+                console.log("Video iniciado correctamente");
+                setLoading(false);
+                setScanning(true);
+                setStream(mediaStream);
+              })
+              .catch(err => {
+                console.error("Error al iniciar el video:", err);
+                setCameraError(true);
+                setLoading(false);
+                toast({
+                  title: "Error de reproducción",
+                  description: "No se pudo iniciar la cámara. Intenta dar permisos en la configuración del navegador.",
+                  variant: "destructive"
+                });
+              });
+          } catch (e) {
+            console.error("Error al intentar reproducir video:", e);
+            setCameraError(true);
             setLoading(false);
-            setScanning(true);
-            setStream(mediaStream);
-          };
+          }
         }
       } catch (error) {
         console.error("Error al acceder a la cámara:", error);
@@ -237,6 +255,12 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
                     className="w-full max-w-md mx-auto"
                     playsInline 
                     muted
+                    autoPlay
+                    style={{ 
+                      height: "300px", 
+                      objectFit: "cover",
+                      background: "#000"
+                    }}
                   ></video>
                   <div className="absolute inset-0 pointer-events-none border-4 border-primary/50 rounded m-8"></div>
                 </div>
