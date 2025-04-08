@@ -71,96 +71,132 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
       // Detener cualquier stream anterior
       stopCamera();
       
-      // Buscar cámara trasera si no se especificó un id
-      let constraints: MediaStreamConstraints;
-      
+      // Primero intentamos con la estrategia más agresiva para cámara trasera
       if (!cameraId) {
-        // Intentar detectar una cámara trasera
+        try {
+          console.log("Intentando obtener la cámara trasera con facingMode exact environment...");
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: { exact: "environment" }, // Forzar cámara trasera con 'exact'
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            }
+          });
+          
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            await videoRef.current.play();
+            setScanning(true);
+            scanQRCode();
+            return;
+          }
+        } catch (environmentError) {
+          console.log("No se pudo usar facingMode exact environment, intentando detectar cámara trasera por etiqueta...");
+        }
+        
+        // Si no funcionó, intentamos identificar la cámara trasera por su etiqueta
         try {
           const devices = await navigator.mediaDevices.enumerateDevices();
           const cameras = devices.filter(device => device.kind === 'videoinput');
+          console.log("Cámaras disponibles:", cameras.map(c => c.label));
           
-          // Buscar cámara que tenga "back" o "trasera" en su etiqueta
-          const backCamera = cameras.find(camera => 
-            camera.label.toLowerCase().includes('back') || 
-            camera.label.toLowerCase().includes('trasera') ||
-            camera.label.toLowerCase().includes('rear')
-          );
+          // Actualizar la lista de cámaras disponibles
+          setAvailableCameras(cameras);
+          
+          // Buscar cámara que tenga "back", "trasera", "rear", etc. en su etiqueta
+          const backCamera = cameras.find(camera => {
+            const label = camera.label.toLowerCase();
+            return label.includes('back') || 
+                   label.includes('trasera') || 
+                   label.includes('rear') ||
+                   label.includes('trás') ||
+                   label.includes('posterior') ||
+                   label.includes('atrás') ||
+                   !label.includes('front'); // Si no tiene "front" podría ser trasera
+          });
           
           if (backCamera) {
-            console.log("Cámara trasera detectada:", backCamera.label);
-            constraints = {
+            console.log("Cámara trasera encontrada por etiqueta:", backCamera.label);
+            const stream = await navigator.mediaDevices.getUserMedia({
               video: {
                 deviceId: { exact: backCamera.deviceId },
                 width: { ideal: 1280 },
                 height: { ideal: 720 }
               }
-            };
-          } else {
-            // Si no se encuentra una cámara trasera específica, usar facingMode
-            constraints = {
-              video: {
-                facingMode: { exact: "environment" }, // Forzar cámara trasera
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-              }
-            };
+            });
+            
+            if (videoRef.current) {
+              videoRef.current.srcObject = stream;
+              await videoRef.current.play();
+              setDeviceId(backCamera.deviceId);
+              setScanning(true);
+              scanQRCode();
+              return;
+            }
           }
-        } catch (e) {
-          // Si hay error al buscar cámaras, usar valores por defecto
-          constraints = {
+        } catch (labelError) {
+          console.log("Error al buscar cámara por etiqueta:", labelError);
+        }
+        
+        // Si aún no funciona, intentamos con facingMode sin exact
+        try {
+          console.log("Intentando con facingMode environment (sin exact)...");
+          const stream = await navigator.mediaDevices.getUserMedia({
             video: {
-              facingMode: "environment",
+              facingMode: "environment", // Preferir cámara trasera sin forzar
               width: { ideal: 1280 },
               height: { ideal: 720 }
             }
-          };
-        }
-      } else {
-        // Usar la cámara especificada
-        constraints = {
-          video: {
-            deviceId: { exact: cameraId },
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          }
-        };
-      }
-      
-      // Obtener stream
-      console.log("Solicitando cámara con constraints:", constraints);
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      
-      // Asignar stream al elemento de video
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play().catch(err => console.error("Error al reproducir video:", err));
-      
-      // Iniciar el escaneo
-      setScanning(true);
-      scanQRCode();
-    } catch (error) {
-      console.error("Error al iniciar la cámara:", error);
-      
-      // Intento secundario con restricciones más simples si falló
-      try {
-        if (cameraId) {
-          // Si falló con una cámara específica, intentar sin restricciones de device
-          const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: true 
           });
           
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
-            await videoRef.current.play().catch(err => console.error("Error al reproducir video en segundo intento:", err));
+            await videoRef.current.play();
             setScanning(true);
             scanQRCode();
             return;
           }
+        } catch (fallbackError) {
+          console.log("Error al intentar facingMode environment:", fallbackError);
         }
-      } catch (secondError) {
-        console.error("Error en segundo intento:", secondError);
+      } else {
+        // Usar la cámara específica seleccionada por el usuario
+        try {
+          console.log("Usando cámara seleccionada con ID:", cameraId);
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              deviceId: { exact: cameraId },
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            }
+          });
+          
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            await videoRef.current.play();
+            setScanning(true);
+            scanQRCode();
+            return;
+          }
+        } catch (deviceError) {
+          console.log("Error al usar deviceId específico:", deviceError);
+        }
       }
       
+      // Último intento: usar cualquier cámara disponible
+      console.log("Último intento: cualquier cámara disponible...");
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: true 
+      });
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+        setScanning(true);
+        scanQRCode();
+      }
+    } catch (error) {
+      console.error("Error al iniciar la cámara:", error);
       setCameraError("No se pudo iniciar la cámara. Asegúrate de dar permisos en tu navegador.");
       setHasCamera(false);
     }
@@ -307,20 +343,58 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
           </div>
         </div>
         
-        {/* Selector de cámara (solo mostrar si hay más de una) */}
-        {availableCameras.length > 1 && (
+        {/* Selector de cámara - siempre mostrar si hay cámaras disponibles */}
+        {availableCameras.length > 0 && (
           <div className="mb-3">
-            <select 
-              className="w-full p-2 text-sm border rounded-md" 
-              value={deviceId} 
-              onChange={handleCameraChange}
-            >
-              {availableCameras.map((device) => (
-                <option key={device.deviceId} value={device.deviceId}>
-                  {device.label || `Cámara ${availableCameras.indexOf(device) + 1}`}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center gap-2 mb-1.5">
+              <Camera className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">Seleccionar cámara:</span>
+            </div>
+            
+            <div className="flex flex-wrap gap-2">
+              {availableCameras.map((device, index) => {
+                // Determinar si parece ser cámara trasera o frontal
+                const label = device.label || `Cámara ${index + 1}`;
+                const isBackCamera = 
+                  label.toLowerCase().includes('back') || 
+                  label.toLowerCase().includes('trasera') || 
+                  label.toLowerCase().includes('rear') ||
+                  label.toLowerCase().includes('posterior');
+                
+                const isFrontCamera = 
+                  label.toLowerCase().includes('front') || 
+                  label.toLowerCase().includes('frontal') ||
+                  label.toLowerCase().includes('selfie');
+                
+                // Crear etiqueta amigable
+                let friendlyLabel = label;
+                if (isBackCamera) {
+                  friendlyLabel = "📷 Cámara Trasera";
+                } else if (isFrontCamera) {
+                  friendlyLabel = "🤳 Cámara Frontal";
+                } else if (index === 0) {
+                  friendlyLabel = "📷 Cámara Principal";
+                } else {
+                  friendlyLabel = `📷 Cámara ${index + 1}`;
+                }
+                
+                return (
+                  <button
+                    key={device.deviceId}
+                    className={`text-xs px-3 py-2 rounded-full flex-shrink-0 
+                               ${device.deviceId === deviceId 
+                                 ? 'bg-primary text-white font-medium' 
+                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                    onClick={() => {
+                      setDeviceId(device.deviceId);
+                      startCamera(device.deviceId);
+                    }}
+                  >
+                    {friendlyLabel}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
         
