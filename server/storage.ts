@@ -279,7 +279,7 @@ export class DatabaseStorage implements IStorage {
       .update(prizes)
       .set({ 
         redeemed: true,
-        redeemedAt: now.toISOString()
+        redeemedAt: now
       })
       .where(eq(prizes.userId, userId))
       .returning();
