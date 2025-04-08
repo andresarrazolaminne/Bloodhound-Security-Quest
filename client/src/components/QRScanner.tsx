@@ -17,7 +17,7 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
   const [error, setError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const scannerContainerRef = useRef<HTMLDivElement>(null);
+  const qrReaderRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { currentUser } = useUser();
 
@@ -38,9 +38,26 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
       setIsInitializing(true);
       setError(null);
       
-      if (!scannerRef.current) {
-        scannerRef.current = new Html5Qrcode("qr-reader");
+      // Esperar un momento para asegurar que el elemento DOM esté listo
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Usar la referencia para asegurar que el elemento existe
+      if (!qrReaderRef.current) {
+        throw new Error("Elemento QR no encontrado en el DOM");
       }
+      
+      // Si ya hay un escáner existente, deténgalo primero
+      if (scannerRef.current) {
+        try {
+          await scannerRef.current.stop();
+        } catch (e) {
+          console.log("Error al detener el escáner anterior:", e);
+        }
+        scannerRef.current = null;
+      }
+      
+      // Crear una nueva instancia
+      scannerRef.current = new Html5Qrcode("qr-reader");
       
       const devices = await Html5Qrcode.getCameras();
       if (devices && devices.length > 0) {
@@ -63,7 +80,7 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
       }
     } catch (err) {
       console.error("Error starting QR scanner:", err);
-      setError("No se pudo acceder a la cámara. Por favor verifica que has dado permiso al navegador para usar la cámara.");
+      setError(`No se pudo acceder a la cámara. Por favor verifica que has dado permiso al navegador para usar la cámara.`);
     } finally {
       setIsInitializing(false);
     }
@@ -137,16 +154,16 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
         
         <div className="p-4">
           <div className="text-center mb-4">
-            <div id="qr-reader" className="w-full max-w-xs mx-auto rounded-lg overflow-hidden" style={{ height: "300px" }}>
-              {isInitializing && (
-                <div className="h-full flex flex-col items-center justify-center bg-gray-100">
+            {isInitializing ? (
+              <div className="w-full max-w-xs mx-auto rounded-lg overflow-hidden bg-gray-100" style={{ height: "300px" }}>
+                <div className="h-full flex flex-col items-center justify-center">
                   <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
                   <p className="text-sm text-gray-600">Iniciando cámara...</p>
                 </div>
-              )}
-              
-              {!isInitializing && error && (
-                <div className="h-full flex flex-col items-center justify-center bg-gray-100 p-4">
+              </div>
+            ) : error ? (
+              <div className="w-full max-w-xs mx-auto rounded-lg overflow-hidden bg-gray-100" style={{ height: "300px" }}>
+                <div className="h-full flex flex-col items-center justify-center p-4">
                   <Camera className="h-10 w-10 text-gray-400 mb-4" />
                   <p className="text-sm text-red-500 font-medium mb-2">Error de cámara</p>
                   <p className="text-xs text-gray-600 mb-4">{error}</p>
@@ -154,8 +171,10 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
                     Reintentar
                   </Button>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div id="qr-reader" ref={qrReaderRef} className="w-full max-w-xs mx-auto rounded-lg overflow-hidden" style={{ height: "300px" }}></div>
+            )}
             
             {isScanning && (
               <div className="mt-4">
