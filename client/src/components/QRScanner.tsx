@@ -1,9 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/context/UserContext";
-import { Loader2, Camera, QrCode } from "lucide-react";
+import { Loader2, Camera, Upload, QrCode } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface QRScannerProps {
   isOpen: boolean;
@@ -12,295 +15,272 @@ interface QRScannerProps {
 }
 
 const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
-  const [isInitializing, setIsInitializing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [segmentId, setSegmentId] = useState<string>("");
+  const [tab, setTab] = useState<string>("file"); // "file" | "input"
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { toast } = useToast();
   const { currentUser } = useUser();
-  
-  // Scanner interval ref to clear it later
-  const scanIntervalRef = useRef<number | null>(null);
 
-  // Start camera when modal opens
+  // Reset state when dialog opens
   useEffect(() => {
     if (isOpen) {
-      startCamera();
+      setError(null);
+      setSegmentId("");
+      setSelectedFile(null);
+      setIsLoading(false);
     }
-    
-    return () => {
-      stopCamera();
-    };
   }, [isOpen]);
 
-  // Start camera and QR scanner
-  const startCamera = async () => {
-    try {
-      setIsInitializing(true);
+  // Handle file selection
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        setError("Por favor selecciona una imagen válida");
+        return;
+      }
+      
+      setSelectedFile(file);
       setError(null);
-      
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error("Tu navegador no soporta acceso a la cámara");
-      }
-      
-      // Stop any existing stream
-      if (stream) {
-        stopCamera();
-      }
-      
-      console.log("Solicitando acceso a la cámara...");
-      
-      // Try to get the back camera first on mobile devices
-      let mediaStream;
-      
-      try {
-        // First try with environment camera (back camera)
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { 
-            facingMode: {exact: 'environment'}, 
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          }
-        });
-        console.log("Usando cámara trasera");
-      } catch (err) {
-        console.log("No se pudo acceder a la cámara trasera, intentando con cualquier cámara disponible");
-        
-        // If that fails, try any camera
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: true
-        });
-        console.log("Usando cámara predeterminada");
-      }
-      
-      console.log("Cámara accedida correctamente");
-      setStream(mediaStream);
-      
-      // Set video source
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        console.log("Video fuente configurado");
-        
-        // Configurar evento de carga
-        videoRef.current.onloadeddata = () => {
-          console.log("Video listo para reproducir");
-          
-          if (videoRef.current) {
-            // Establecer dimensiones del video
-            console.log(`Dimensiones del video: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`);
-            
-            // Iniciar el escaneo
-            setIsInitializing(false);
-            
-            // Dar un poco de tiempo para que se estabilice el flujo de video
-            setTimeout(() => {
-              startQrScanner();
-            }, 1000);
-          }
-        };
-      }
-    } catch (err) {
-      console.error("Error accessing camera:", err);
-      setError("No se pudo acceder a la cámara. Verifica que has dado permiso al navegador.");
-      setIsInitializing(false);
+      processQRCodeFromImage(file);
     }
   };
 
-  // Stop camera and clear scanner
-  const stopCamera = () => {
-    // Clear scanning interval
-    if (scanIntervalRef.current !== null) {
-      window.clearInterval(scanIntervalRef.current);
-      scanIntervalRef.current = null;
-    }
+  // Process QR code from image file
+  const processQRCodeFromImage = async (file: File) => {
+    setIsLoading(true);
+    setError(null);
     
-    // Stop media stream
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-    }
-    
-    // Clear video source
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-  };
-
-  // Start QR scanner by checking video frames periodically
-  const startQrScanner = () => {
-    if (scanIntervalRef.current !== null) {
-      window.clearInterval(scanIntervalRef.current);
-    }
-    
-    scanIntervalRef.current = window.setInterval(() => {
-      scanQRCode();
-    }, 200); // Check for QR codes every 200ms
-  };
-  
-  // Process video frame to detect QR code
-  const scanQRCode = () => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    
-    if (!video || !canvas || video.paused || video.ended || !video.videoWidth) {
-      return;
-    }
-    
-    // Set canvas dimensions to match video
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    
-    // Draw current video frame to canvas
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    // Get image data for processing
     try {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      // Convert file to image
+      const imageUrl = URL.createObjectURL(file);
+      const img = new Image();
       
-      // Process with jsQR (dynamically imported)
-      import('jsqr').then(module => {
-        const jsQR = module.default;
+      img.onload = async () => {
+        // Create canvas and draw image
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          throw new Error("No se pudo crear el contexto del canvas");
+        }
+        
+        // Set canvas size to match image
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        
+        // Get image data
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        
+        // Process with jsQR
+        const jsQR = (await import('jsqr')).default;
         const code = jsQR(imageData.data, imageData.width, imageData.height, {
           inversionAttempts: "dontInvert",
         });
         
         if (code) {
           handleQRCodeDetected(code.data);
+        } else {
+          setError("No se detectó ningún código QR en la imagen");
+          setIsLoading(false);
         }
-      }).catch(err => {
-        console.error("Error loading jsQR:", err);
-      });
+        
+        // Clean up
+        URL.revokeObjectURL(imageUrl);
+      };
+      
+      img.onerror = () => {
+        setError("No se pudo cargar la imagen");
+        setIsLoading(false);
+        URL.revokeObjectURL(imageUrl);
+      };
+      
+      img.src = imageUrl;
     } catch (err) {
-      console.error("Error processing image data:", err);
+      console.error("Error processing QR code:", err);
+      setError("Error al procesar la imagen. Por favor intenta con otra.");
+      setIsLoading(false);
     }
   };
-  
-  // Handle successful QR code scanning
-  const handleQRCodeDetected = (decodedText: string) => {
-    console.log("QR code detected:", decodedText);
-    
-    // Stop scanning while processing
-    if (scanIntervalRef.current !== null) {
-      window.clearInterval(scanIntervalRef.current);
-      scanIntervalRef.current = null;
+
+  // Handle manual input submission
+  const handleManualSubmit = () => {
+    const id = parseInt(segmentId);
+    if (isNaN(id) || id < 1 || id > 9) {
+      setError("Por favor ingresa un número válido entre 1 y 9");
+      return;
     }
     
+    handleSegmentId(id);
+  };
+
+  // Handle detected QR code
+  const handleQRCodeDetected = (decodedText: string) => {
     try {
       // Try to parse as JSON first (from our generator)
-      let segmentId;
+      let id;
       try {
         const data = JSON.parse(decodedText);
-        segmentId = data.segmentId;
+        id = data.segmentId;
       } catch {
         // If not valid JSON, try direct parsing
-        segmentId = parseInt(decodedText);
+        id = parseInt(decodedText);
       }
       
-      if (!isNaN(segmentId) && segmentId >= 1 && segmentId <= 9) {
-        toast({
-          title: "¡Código detectado!",
-          description: `Desbloqueando segmento ${segmentId}...`,
-        });
-        
-        stopCamera();
-        onSuccess(segmentId);
+      if (!isNaN(id) && id >= 1 && id <= 9) {
+        handleSegmentId(id);
       } else {
-        toast({
-          title: "Código inválido",
-          description: "El código QR escaneado no corresponde a un segmento del mapa",
-          variant: "destructive"
-        });
-        
-        // Resume scanning
-        startQrScanner();
+        setError("El código QR no contiene un ID de segmento válido (1-9)");
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Error processing QR code:", error);
-      toast({
-        title: "Error",
-        description: "El código QR no tiene el formato esperado",
-        variant: "destructive"
-      });
-      
-      // Resume scanning
-      startQrScanner();
+    } catch (err) {
+      console.error("Error processing QR code:", err);
+      setError("El código QR no tiene el formato esperado");
+      setIsLoading(false);
     }
+  };
+
+  // Process valid segment ID
+  const handleSegmentId = (id: number) => {
+    toast({
+      title: "Procesando",
+      description: `Desbloqueando segmento ${id}...`,
+    });
+    
+    onSuccess(id);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Escanear Código QR</DialogTitle>
+          <DialogTitle>Desbloquear Segmento</DialogTitle>
           <DialogDescription>
-            Escanea el código QR ubicado en las locaciones de la búsqueda
+            Escanea un código QR o sube una imagen que contenga el QR para desbloquear un segmento
           </DialogDescription>
         </DialogHeader>
         
-        <div className="p-4">
-          <div className="text-center mb-4">
-            <div className="relative w-full max-w-xs mx-auto rounded-lg overflow-hidden bg-gray-900" style={{ height: "300px" }}>
-              {isInitializing ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100">
-                  <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-                  <p className="text-sm text-gray-600">Iniciando cámara...</p>
-                </div>
-              ) : error ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100 p-4">
-                  <Camera className="h-10 w-10 text-gray-400 mb-4" />
-                  <p className="text-sm text-red-500 font-medium mb-2">Error de cámara</p>
-                  <p className="text-xs text-gray-600 mb-4">{error}</p>
-                  <Button onClick={startCamera} size="sm">
-                    Reintentar con cámara
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <video 
-                    ref={videoRef}
-                    className="absolute inset-0 w-full h-full object-cover z-10"
-                    playsInline
-                    muted
-                    autoPlay
-                    style={{ 
-                      transform: 'scaleX(1)',  // Flip horizontally if needed
-                      backgroundColor: 'black'
-                    }}
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="border-2 border-white w-2/3 h-2/3 rounded flex items-center justify-center">
-                      <div className="w-full h-px bg-white/60 absolute"></div>
-                      <div className="h-full w-px bg-white/60 absolute"></div>
-                    </div>
+        <Tabs defaultValue="file" value={tab} onValueChange={setTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="file">Subir QR</TabsTrigger>
+            <TabsTrigger value="input">Entrada Manual</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="file" className="p-4">
+            <div className="text-center space-y-4">
+              <div className="w-full max-w-xs mx-auto bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 p-6">
+                {isLoading ? (
+                  <div className="flex flex-col items-center justify-center h-32">
+                    <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+                    <p className="text-sm text-gray-600">Procesando imagen...</p>
                   </div>
-                </>
+                ) : selectedFile ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-center">
+                      <img 
+                        src={URL.createObjectURL(selectedFile)} 
+                        alt="Vista previa" 
+                        className="max-h-32 max-w-full rounded"
+                      />
+                    </div>
+                    <p className="text-sm text-gray-600 truncate">
+                      {selectedFile.name}
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setSelectedFile(null);
+                        setError(null);
+                      }}
+                    >
+                      Cambiar imagen
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-32">
+                    <Upload className="h-10 w-10 text-gray-400 mb-2" />
+                    <Label 
+                      htmlFor="qr-file" 
+                      className="text-sm text-gray-600 cursor-pointer hover:text-primary"
+                    >
+                      Haz clic para seleccionar una imagen
+                    </Label>
+                    <Input
+                      id="qr-file"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <p className="text-xs text-gray-500 mt-2">
+                      Soporta JPG, PNG, etc.
+                    </p>
+                  </div>
+                )}
+              </div>
+              
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
               )}
               
-              {/* Hidden canvas for image processing */}
-              <canvas 
-                ref={canvasRef}
-                className="hidden"
-              />
+              <div className="flex items-center justify-center text-sm text-gray-500 mt-2">
+                <QrCode className="h-4 w-4 mr-1" />
+                <span>Fotografía los códigos QR de las ubicaciones físicas</span>
+              </div>
             </div>
-            
-            {!isInitializing && !error && (
-              <div className="mt-4">
-                <p className="text-sm text-gray-600 mb-2">
-                  Posiciona el código QR dentro del recuadro para escanearlo
-                </p>
-                <div className="flex items-center justify-center text-sm text-gray-500">
-                  <QrCode className="h-4 w-4 mr-1" />
-                  <span>Los QR se encuentran en las ubicaciones físicas</span>
+          </TabsContent>
+          
+          <TabsContent value="input" className="p-4">
+            <div className="text-center space-y-4">
+              <div className="w-full max-w-xs mx-auto p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="segment-id">Número de Segmento (1-9)</Label>
+                    <Input
+                      id="segment-id"
+                      type="number"
+                      min={1}
+                      max={9}
+                      placeholder="Ingresa un número"
+                      value={segmentId}
+                      onChange={(e) => setSegmentId(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  <Button 
+                    onClick={handleManualSubmit}
+                    className="w-full"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Procesando...
+                      </>
+                    ) : "Verificar Segmento"}
+                  </Button>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
+              
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
+              
+              <div className="flex items-center justify-center text-sm text-gray-500 mt-2">
+                <Camera className="h-4 w-4 mr-1" />
+                <span>Sólo los organizadores tienen acceso a los códigos</span>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
         
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
