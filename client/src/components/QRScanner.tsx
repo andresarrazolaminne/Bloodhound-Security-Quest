@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/context/UserContext";
-import { Loader2, Camera, Upload, QrCode } from "lucide-react";
+import { Loader2, Camera, RotateCcw, QrCode } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Html5Qrcode } from "html5-qrcode";
 
 interface QRScannerProps {
   isOpen: boolean;
@@ -15,97 +16,91 @@ interface QRScannerProps {
 }
 
 const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
+  // State
+  const [tab, setTab] = useState<"camera" | "manual">("camera");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [segmentId, setSegmentId] = useState<string>("");
-  const [tab, setTab] = useState<string>("file"); // "file" | "input"
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  
+  // Refs
+  const scannerContainerRef = useRef<HTMLDivElement>(null);
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+  
+  // Hooks
   const { toast } = useToast();
-  const { currentUser } = useUser();
 
-  // Reset state when dialog opens
+  // Initialize/cleanup QR scanner when dialog opens/closes
   useEffect(() => {
-    if (isOpen) {
-      setError(null);
-      setSegmentId("");
-      setSelectedFile(null);
-      setIsLoading(false);
+    if (isOpen && tab === "camera") {
+      startScanner();
     }
-  }, [isOpen]);
+    
+    return () => {
+      stopScanner();
+    };
+  }, [isOpen, tab]);
 
-  // Handle file selection
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        setError("Por favor selecciona una imagen válida");
-        return;
-      }
-      
-      setSelectedFile(file);
-      setError(null);
-      processQRCodeFromImage(file);
-    }
-  };
-
-  // Process QR code from image file
-  const processQRCodeFromImage = async (file: File) => {
+  // Start HTML5 QR scanner
+  const startScanner = async () => {
     setIsLoading(true);
     setError(null);
     
     try {
-      // Convert file to image
-      const imageUrl = URL.createObjectURL(file);
-      const img = new Image();
+      if (!scannerContainerRef.current) {
+        throw new Error("Elemento de escaneo no encontrado");
+      }
       
-      img.onload = async () => {
-        // Create canvas and draw image
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          throw new Error("No se pudo crear el contexto del canvas");
-        }
-        
-        // Set canvas size to match image
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
-        
-        // Get image data
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        
-        // Process with jsQR
-        const jsQR = (await import('jsqr')).default;
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: "dontInvert",
-        });
-        
-        if (code) {
-          handleQRCodeDetected(code.data);
-        } else {
-          setError("No se detectó ningún código QR en la imagen");
-          setIsLoading(false);
-        }
-        
-        // Clean up
-        URL.revokeObjectURL(imageUrl);
+      console.log("Iniciando escáner HTML5 QR...");
+      
+      // Create scanner instance if it doesn't exist
+      if (!html5QrCodeRef.current) {
+        html5QrCodeRef.current = new Html5Qrcode("qr-reader");
+      }
+      
+      const qrCodeSuccessCallback = (decodedText: string) => {
+        console.log("QR code detected:", decodedText);
+        handleQRCodeDetected(decodedText);
       };
       
-      img.onerror = () => {
-        setError("No se pudo cargar la imagen");
-        setIsLoading(false);
-        URL.revokeObjectURL(imageUrl);
+      const config = { 
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0,
+        formatsToSupport: [0] // QR_CODE only
       };
       
-      img.src = imageUrl;
+      await html5QrCodeRef.current.start(
+        { facingMode: "environment" },
+        config,
+        qrCodeSuccessCallback,
+        (errorMessage) => {
+          // This is a verbose callback - we don't need to show every frame error
+          console.debug("QR scan error:", errorMessage);
+        }
+      );
+      
+      setIsLoading(false);
+      console.log("Escáner QR iniciado correctamente");
     } catch (err) {
-      console.error("Error processing QR code:", err);
-      setError("Error al procesar la imagen. Por favor intenta con otra.");
+      console.error("Error al iniciar el escáner:", err);
+      setError("No se pudo iniciar el escáner de QR. Verifica los permisos de cámara.");
       setIsLoading(false);
     }
   };
 
-  // Handle manual input submission
+  // Stop HTML5 QR scanner
+  const stopScanner = async () => {
+    if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+      try {
+        await html5QrCodeRef.current.stop();
+        console.log("Escáner detenido");
+      } catch (error) {
+        console.error("Error al detener el escáner:", error);
+      }
+    }
+  };
+
+  // Handle manual input
   const handleManualSubmit = () => {
     const id = parseInt(segmentId);
     if (isNaN(id) || id < 1 || id > 9) {
@@ -113,10 +108,16 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
       return;
     }
     
-    handleSegmentId(id);
+    toast({
+      title: "Procesando",
+      description: `Desbloqueando segmento ${id}...`,
+    });
+    
+    stopScanner();
+    onSuccess(id);
   };
 
-  // Handle detected QR code
+  // Process detected QR code
   const handleQRCodeDetected = (decodedText: string) => {
     try {
       // Try to parse as JSON first (from our generator)
@@ -130,114 +131,85 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
       }
       
       if (!isNaN(id) && id >= 1 && id <= 9) {
-        handleSegmentId(id);
+        toast({
+          title: "¡Código detectado!",
+          description: `Desbloqueando segmento ${id}...`,
+        });
+        
+        stopScanner();
+        onSuccess(id);
       } else {
-        setError("El código QR no contiene un ID de segmento válido (1-9)");
-        setIsLoading(false);
+        toast({
+          title: "Código inválido",
+          description: "El código QR no contiene un ID de segmento válido",
+          variant: "destructive"
+        });
       }
     } catch (err) {
       console.error("Error processing QR code:", err);
-      setError("El código QR no tiene el formato esperado");
-      setIsLoading(false);
+      toast({
+        title: "Error",
+        description: "El código QR no tiene el formato esperado",
+        variant: "destructive"
+      });
     }
-  };
-
-  // Process valid segment ID
-  const handleSegmentId = (id: number) => {
-    toast({
-      title: "Procesando",
-      description: `Desbloqueando segmento ${id}...`,
-    });
-    
-    onSuccess(id);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Desbloquear Segmento</DialogTitle>
+          <DialogTitle>Escanear Código QR</DialogTitle>
           <DialogDescription>
-            Escanea un código QR o sube una imagen que contenga el QR para desbloquear un segmento
+            Escanea el código QR ubicado en las locaciones físicas
           </DialogDescription>
         </DialogHeader>
         
-        <Tabs defaultValue="file" value={tab} onValueChange={setTab} className="w-full">
+        <Tabs defaultValue="camera" value={tab} onValueChange={(value) => setTab(value as "camera" | "manual")} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="file">Subir QR</TabsTrigger>
-            <TabsTrigger value="input">Entrada Manual</TabsTrigger>
+            <TabsTrigger value="camera">Cámara</TabsTrigger>
+            <TabsTrigger value="manual">Manual</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="file" className="p-4">
-            <div className="text-center space-y-4">
-              <div className="w-full max-w-xs mx-auto bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 p-6">
+          <TabsContent value="camera" className="p-4">
+            <div className="flex flex-col items-center">
+              <div className="w-full max-w-xs rounded-lg overflow-hidden">
                 {isLoading ? (
-                  <div className="flex flex-col items-center justify-center h-32">
+                  <div className="h-64 flex flex-col items-center justify-center bg-gray-100 rounded-lg">
                     <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-                    <p className="text-sm text-gray-600">Procesando imagen...</p>
+                    <p className="text-sm text-gray-600">Activando cámara...</p>
                   </div>
-                ) : selectedFile ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-center">
-                      <img 
-                        src={URL.createObjectURL(selectedFile)} 
-                        alt="Vista previa" 
-                        className="max-h-32 max-w-full rounded"
-                      />
-                    </div>
-                    <p className="text-sm text-gray-600 truncate">
-                      {selectedFile.name}
-                    </p>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        setSelectedFile(null);
-                        setError(null);
-                      }}
-                    >
-                      Cambiar imagen
+                ) : error ? (
+                  <div className="h-64 flex flex-col items-center justify-center bg-gray-100 p-4 rounded-lg">
+                    <Camera className="h-10 w-10 text-gray-400 mb-4" />
+                    <p className="text-sm text-red-500 font-medium mb-2 text-center">Error de cámara</p>
+                    <p className="text-xs text-gray-600 mb-4 text-center">{error}</p>
+                    <Button onClick={startScanner} size="sm" variant="outline" className="flex items-center gap-2">
+                      <RotateCcw className="h-4 w-4" />
+                      Reintentar
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-32">
-                    <Upload className="h-10 w-10 text-gray-400 mb-2" />
-                    <Label 
-                      htmlFor="qr-file" 
-                      className="text-sm text-gray-600 cursor-pointer hover:text-primary"
-                    >
-                      Haz clic para seleccionar una imagen
-                    </Label>
-                    <Input
-                      id="qr-file"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                    <p className="text-xs text-gray-500 mt-2">
-                      Soporta JPG, PNG, etc.
-                    </p>
-                  </div>
+                  <div id="qr-reader" ref={scannerContainerRef} className="w-full"></div>
                 )}
               </div>
               
-              {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                  <p className="text-sm text-red-600">{error}</p>
-                </div>
+              {!isLoading && !error && (
+                <p className="text-sm text-gray-600 mt-4 text-center">
+                  Posiciona el código QR dentro del recuadro para escanearlo
+                </p>
               )}
               
-              <div className="flex items-center justify-center text-sm text-gray-500 mt-2">
+              <div className="flex items-center justify-center mt-2 text-sm text-gray-500">
                 <QrCode className="h-4 w-4 mr-1" />
-                <span>Fotografía los códigos QR de las ubicaciones físicas</span>
+                <span>Los QR se encuentran en las ubicaciones físicas</span>
               </div>
             </div>
           </TabsContent>
           
-          <TabsContent value="input" className="p-4">
-            <div className="text-center space-y-4">
-              <div className="w-full max-w-xs mx-auto p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <TabsContent value="manual" className="p-4">
+            <div className="flex flex-col items-center space-y-4">
+              <div className="w-full max-w-xs p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="segment-id">Número de Segmento (1-9)</Label>
@@ -256,28 +228,21 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
                   <Button 
                     onClick={handleManualSubmit}
                     className="w-full"
-                    disabled={isLoading}
                   >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Procesando...
-                      </>
-                    ) : "Verificar Segmento"}
+                    Desbloquear Segmento
                   </Button>
                 </div>
               </div>
               
               {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                <div className="p-3 bg-red-50 border border-red-200 rounded-md w-full max-w-xs">
                   <p className="text-sm text-red-600">{error}</p>
                 </div>
               )}
               
-              <div className="flex items-center justify-center text-sm text-gray-500 mt-2">
-                <Camera className="h-4 w-4 mr-1" />
-                <span>Sólo los organizadores tienen acceso a los códigos</span>
-              </div>
+              <p className="text-sm text-gray-500 mt-2 text-center">
+                Solo utiliza este método si el escáner de QR no funciona correctamente
+              </p>
             </div>
           </TabsContent>
         </Tabs>
