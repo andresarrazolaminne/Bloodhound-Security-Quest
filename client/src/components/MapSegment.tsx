@@ -18,12 +18,10 @@ const MapSegment = ({ id, imageUrl, altText, unlocked, className }: MapSegmentPr
   const [asset, setAsset] = useState<MapSegmentAsset | null>(null);
   const [loading, setLoading] = useState(false);
   
-  // Cargar el asset del segmento si está desbloqueado
+  // Cargar el asset del segmento independientemente de si está desbloqueado o no
   useEffect(() => {
-    if (unlocked) {
-      loadSegmentAsset();
-    }
-  }, [unlocked, id]);
+    loadSegmentAsset();
+  }, [id]);
   
   const loadSegmentAsset = async () => {
     try {
