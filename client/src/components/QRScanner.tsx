@@ -50,33 +50,54 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
         stopCamera();
       }
       
-      // Get camera stream with explicit constraints
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: 'environment', // Use back camera on mobile
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      });
+      console.log("Solicitando acceso a la cámara...");
       
+      // Try to get the back camera first on mobile devices
+      let mediaStream;
+      
+      try {
+        // First try with environment camera (back camera)
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { 
+            facingMode: {exact: 'environment'}, 
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        });
+        console.log("Usando cámara trasera");
+      } catch (err) {
+        console.log("No se pudo acceder a la cámara trasera, intentando con cualquier cámara disponible");
+        
+        // If that fails, try any camera
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: true
+        });
+        console.log("Usando cámara predeterminada");
+      }
+      
+      console.log("Cámara accedida correctamente");
       setStream(mediaStream);
       
+      // Set video source
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        console.log("Video fuente configurado");
         
-        // Wait for video to be ready
-        videoRef.current.onloadedmetadata = () => {
+        // Configurar evento de carga
+        videoRef.current.onloadeddata = () => {
+          console.log("Video listo para reproducir");
+          
           if (videoRef.current) {
-            videoRef.current.play()
-              .then(() => {
-                setIsInitializing(false);
-                startQrScanner();
-              })
-              .catch(err => {
-                console.error("Error playing video:", err);
-                setError("No se pudo iniciar el video. Verifica los permisos de cámara.");
-                setIsInitializing(false);
-              });
+            // Establecer dimensiones del video
+            console.log(`Dimensiones del video: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`);
+            
+            // Iniciar el escaneo
+            setIsInitializing(false);
+            
+            // Dar un poco de tiempo para que se estabilice el flujo de video
+            setTimeout(() => {
+              startQrScanner();
+            }, 1000);
           }
         };
       }
@@ -242,9 +263,14 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
                 <>
                   <video 
                     ref={videoRef}
-                    className="absolute inset-0 w-full h-full object-cover"
+                    className="absolute inset-0 w-full h-full object-cover z-10"
                     playsInline
                     muted
+                    autoPlay
+                    style={{ 
+                      transform: 'scaleX(1)',  // Flip horizontally if needed
+                      backgroundColor: 'black'
+                    }}
                   />
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="border-2 border-white w-2/3 h-2/3 rounded flex items-center justify-center">
