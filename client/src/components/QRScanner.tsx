@@ -37,17 +37,19 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
         scannerContainerRef.current.appendChild(container);
       }
 
-      // Configurar el escáner
+      // Configurar el escáner con opciones específicas para mayor compatibilidad
       const qrScanner = new Html5QrcodeScanner(
         "qr-reader",
         {
           fps: 10,
-          qrbox: 250,
-          formatsToSupport: [0], // Solo formato QR Code
+          qrbox: { width: 250, height: 250 },
           rememberLastUsedCamera: true,
           showTorchButtonIfSupported: true,
+          // Para Replit es importante mostrar estos botones
+          showZoomSliderIfSupported: true,
+          supportedScanTypes: [0], // Solo escanear QR
         },
-        false
+        true // render inmediato
       );
 
       // Función de éxito para procesar el código QR
