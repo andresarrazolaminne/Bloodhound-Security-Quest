@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { QrCode, Camera, InfoIcon } from "lucide-react";
+import { Html5QrcodeScanner } from "html5-qrcode";
 
 interface QRScannerProps {
   isOpen: boolean;
@@ -20,11 +21,123 @@ interface QRScannerProps {
 const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
   const [activeTab, setActiveTab] = useState<string>("manual");
   const [manualSegmentId, setManualSegmentId] = useState<string>("");
+  const [scanner, setScanner] = useState<any>(null);
   const scannerContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { currentUser } = useUser();
 
-  // Manejar entrada manual directamente
+  // Inicializar el escáner QR
+  useEffect(() => {
+    // Solo intentar inicializar el escáner cuando el diálogo esté abierto, estemos en la tab de scanner
+    if (isOpen && activeTab === "scanner" && scannerContainerRef.current) {
+      // Limpiar el escáner anterior primero si existe
+      if (scanner) {
+        try {
+          scanner.clear();
+        } catch (e) {
+          console.warn("Error al limpiar scanner:", e);
+        }
+        setScanner(null);
+      }
+      
+      // Crear un nuevo contenedor para el escáner cada vez
+      const oldContainer = document.getElementById('qr-reader');
+      if (oldContainer) {
+        oldContainer.remove();
+      }
+      
+      // Crear un nuevo contenedor fresco
+      const container = document.createElement('div');
+      container.id = 'qr-reader';
+      scannerContainerRef.current.innerHTML = '';
+      scannerContainerRef.current.appendChild(container);
+
+      // Configurar el escáner con opciones específicas para mayor compatibilidad
+      const qrScanner = new Html5QrcodeScanner(
+        "qr-reader",
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          rememberLastUsedCamera: true,
+          showTorchButtonIfSupported: true,
+          // Para Replit es importante mostrar estos botones
+          showZoomSliderIfSupported: true,
+          supportedScanTypes: [0], // Solo escanear QR
+        },
+        true // render inmediato
+      );
+
+      // Función de éxito para procesar el código QR
+      const onScanSuccess = (decodedText: string) => {
+        console.log("QR escaneado:", decodedText);
+        try {
+          // Intentar procesar el contenido como JSON
+          let segmentId: number;
+          try {
+            const data = JSON.parse(decodedText);
+            if (data && typeof data.segmentId === 'number') {
+              segmentId = data.segmentId;
+            } else {
+              throw new Error("Formato JSON inválido");
+            }
+          } catch (error) {
+            // Si no es JSON, intentar directamente como número
+            segmentId = parseInt(decodedText);
+            if (isNaN(segmentId)) {
+              throw new Error("No es un número válido");
+            }
+          }
+
+          // Verificar el rango válido
+          if (segmentId >= 1 && segmentId <= 9) {
+            // Detener el escáner y notificar éxito
+            if (qrScanner) {
+              qrScanner.clear();
+            }
+            onSuccess(segmentId);
+          } else {
+            throw new Error("Segmento fuera de rango (1-9)");
+          }
+        } catch (error) {
+          console.error("Error procesando QR:", error);
+          toast({
+            title: "Código QR no válido",
+            description: "El código escaneado no corresponde a un segmento del mapa",
+            variant: "destructive"
+          });
+        }
+      };
+
+      // Registrar el escáner
+      qrScanner.render(onScanSuccess, (error: any) => {
+        // Ignorar errores comunes del escáner que no afectan el funcionamiento
+        if (!error.includes("No MultiFormat Readers") && !error.includes("No barcode found")) {
+          console.warn("Error del escáner:", error);
+        }
+      });
+
+      setScanner(qrScanner);
+
+      return () => {
+        if (qrScanner) {
+          qrScanner.clear();
+        }
+      };
+    }
+  }, [isOpen, activeTab, onSuccess, toast]);
+
+  // Manejar cambio de tab
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    
+    // Limpiar el escáner si se cambia a manual
+    if (value === "manual" && scanner) {
+      scanner.clear();
+      setScanner(null);
+    }
+  };
+
+  // Manejar envío manual
   const handleManualSubmit = () => {
     const id = parseInt(manualSegmentId);
     if (!isNaN(id) && id >= 1 && id <= 9) {
@@ -39,20 +152,33 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
     }
   };
 
-  // Manejar cambio de tab
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-  };
-
-  // Limpiar cuando se cierra el diálogo y resetear el estado
+  // Limpiar el escáner cuando se cierra el diálogo y resetear el estado
   const handleDialogChange = (open: boolean) => {
     if (!open) {
-      // Reset al estado inicial cuando se cierra
-      setActiveTab("manual");
-      setManualSegmentId("");
-      
-      // Notificar al componente padre
-      onClose();
+      try {
+        if (scanner) {
+          try {
+            scanner.clear();
+          } catch (e) {
+            console.warn("Error al limpiar scanner en dialog:", e);
+          }
+          setScanner(null);
+        }
+        
+        // Asegurar que el contenedor del escáner esté vacío
+        if (scannerContainerRef.current) {
+          scannerContainerRef.current.innerHTML = '';
+        }
+        
+        // Reset al estado inicial cuando se cierra
+        setActiveTab("manual");
+        setManualSegmentId("");
+        
+        // Notificar al componente padre
+        onClose();
+      } catch (e) {
+        console.error("Error al cerrar diálogo:", e);
+      }
     }
   };
 
@@ -125,26 +251,24 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
                     Escaneo de Código QR
                   </p>
                   <p className="text-blue-700 text-sm">
-                    Debido a restricciones técnicas en Replit, el escáner QR no está disponible en este momento.
-                    Por favor utiliza la opción manual en su lugar.
+                    Apunta con la cámara al código QR para escanear automáticamente.
+                    Si hay problemas, usa la opción de ingreso manual.
                   </p>
                 </div>
               </div>
             </div>
             
-            <div className="border border-blue-200 rounded-lg p-8 text-center">
-              <Camera className="h-16 w-16 mx-auto mb-4 text-blue-400" />
-              <h3 className="text-lg font-medium text-blue-800 mb-2">Función no disponible</h3>
-              <p className="text-sm text-blue-700 mb-6">
-                El escáner de QR no está disponible en este entorno.
-                Por favor, usa la entrada manual en la pestaña anterior.
-              </p>
-              <Button 
-                onClick={() => setActiveTab("manual")}
-                className="mx-auto"
-              >
-                Ir a entrada manual
-              </Button>
+            <div 
+              ref={scannerContainerRef} 
+              className="qr-scanner-container"
+              style={{
+                minHeight: "300px",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center"
+              }}
+            >
+              {/* El scanner se renderizará aquí */}
             </div>
           </TabsContent>
         </Tabs>
