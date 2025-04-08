@@ -2,6 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Estilos para el escáner QR */
+.qr-scanner-container {
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Personalización de los controles del escáner */
+#qr-scanner-container button, 
+#qr-scanner-container select {
+  background-color: theme('colors.primary.DEFAULT');
+  color: white;
+  border-radius: 0.375rem;
+  padding: 0.5rem 1rem;
+  margin: 0.25rem;
+  border: none;
+  font-size: 0.875rem;
+}
+
+#qr-scanner-container button:hover {
+  opacity: 0.9;
+}
+
+#qr-scanner-container video {
+  border-radius: 0.5rem;
+  max-height: 300px;
+  object-fit: cover;
+}
+
+/* Ocultar elementos innecesarios de la interfaz del escáner */
+#qr-scanner-container section:nth-child(2) span {
+  display: none;
+}
+
+/* Mejorar visibilidad del mensaje de escaneo */
+#qr-scanner-container section div:nth-child(2) {
+  font-size: 0.875rem;
+  color: theme('colors.gray.600');
+  padding: 0.5rem;
+}
+
 @layer base {
   * {
     @apply border-border;
