@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface MapSegmentProps {
@@ -10,6 +10,17 @@ interface MapSegmentProps {
 }
 
 const MapSegment = ({ id, imageUrl, altText, unlocked, className }: MapSegmentProps) => {
+  // Estado para manejar errores de carga de imágenes
+  const [imageError, setImageError] = useState(false);
+  
+  const handleImageError = () => {
+    console.log(`Imagen segmento ${id} falló al cargar: ${imageUrl}`);
+    setImageError(true);
+  };
+
+  // Imagen de respaldo por si falla la carga
+  const fallbackImageUrl = "https://images.unsplash.com/photo-1509773896068-7fd415d91e2e?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80";
+  
   return (
     <div 
       className={cn(
@@ -18,10 +29,11 @@ const MapSegment = ({ id, imageUrl, altText, unlocked, className }: MapSegmentPr
       )} 
       data-segment-id={id}
     >
-      <div className="relative aspect-square">
+      <div className="relative aspect-square bg-gray-100">
         <img 
-          src={imageUrl}
+          src={imageError ? fallbackImageUrl : imageUrl}
           alt={altText}
+          onError={handleImageError}
           className={cn(
             "w-full h-full object-cover", 
             !unlocked && "grayscale"

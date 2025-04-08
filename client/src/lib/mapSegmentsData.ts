@@ -37,7 +37,7 @@ export const MAP_SEGMENTS: MapSegmentData[] = [
   },
   {
     id: 7,
-    imageUrl: "https://images.unsplash.com/photo-1602532305019-3dbbd482c74d?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1535639818669-c059d2f038e6?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80",
     altText: "Segmento del mapa 7"
   },
   {
