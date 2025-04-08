@@ -27,19 +27,31 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
 
   // Load jsQR dynamically
   useEffect(() => {
+    let libraryLoaded = false;
+
     if (isOpen && !jsQR) {
       import('jsqr').then(module => {
         jsQR = module.default;
+        libraryLoaded = true;
+        console.log("jsQR library loaded successfully");
         startScanner();
       }).catch(error => {
         console.error("Error loading jsQR:", error);
+        setCameraError(true);
         toast({
           title: "Error",
-          description: "No se pudo cargar el escáner de QR.",
+          description: "No se pudo cargar el escáner de QR. Por favor usa el modo manual.",
           variant: "destructive"
         });
       });
     }
+
+    return () => {
+      // Prevent starting scanner after component unmounted
+      if (!libraryLoaded) {
+        jsQR = null;
+      }
+    };
   }, [isOpen]);
 
   // Start camera when modal is opened
@@ -118,47 +130,91 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
   };
 
   const scanQRCode = () => {
-    if (!scanning || !jsQR) return;
+    if (!scanning || !jsQR) {
+      console.log("Scanning stopped or jsQR not loaded");
+      return;
+    }
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
 
-    if (video && canvas && video.readyState === video.HAVE_ENOUGH_DATA) {
-      const context = canvas.getContext('2d');
-      if (!context) return;
+    if (!video || !canvas) {
+      console.log("Video or canvas ref not available");
+      requestAnimationFrame(scanQRCode);
+      return;
+    }
 
-      canvas.height = video.videoHeight;
-      canvas.width = video.videoWidth;
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    try {
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        const context = canvas.getContext('2d');
+        if (!context) {
+          console.log("Could not get canvas context");
+          requestAnimationFrame(scanQRCode);
+          return;
+        }
 
-      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: "dontInvert",
-      });
+        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      if (code) {
+        console.log("Processing frame for QR code detection");
+        
         try {
-          // We expect QR content to be a number (segment ID)
-          const segmentId = parseInt(code.data);
-          
-          if (!isNaN(segmentId) && segmentId >= 1 && segmentId <= 9) {
-            // Stop scanning and close modal
-            stopScanner();
-            onSuccess(segmentId);
+          const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: "dontInvert",
+          });
+
+          if (code) {
+            console.log("QR code detected:", code.data);
+            try {
+              // Try to parse as JSON first (from our generator)
+              let segmentId;
+              try {
+                const data = JSON.parse(code.data);
+                segmentId = data.segmentId;
+              } catch {
+                // If not valid JSON, try direct parsing
+                segmentId = parseInt(code.data);
+              }
+              
+              console.log("Parsed segmentId:", segmentId);
+              
+              if (!isNaN(segmentId) && segmentId >= 1 && segmentId <= 9) {
+                console.log("Valid segment ID, processing success");
+                // Show feedback toast
+                toast({
+                  title: "¡Código detectado!",
+                  description: `Desbloqueando segmento ${segmentId}...`,
+                });
+                
+                // Stop scanning and close modal
+                stopScanner();
+                onSuccess(segmentId);
+              } else {
+                console.log("Invalid segment ID, continuing scan");
+                // Continue scanning for valid QR codes
+                requestAnimationFrame(scanQRCode);
+              }
+            } catch (error) {
+              console.error("Error parsing QR code data:", error);
+              // If parsing fails, just continue scanning
+              requestAnimationFrame(scanQRCode);
+            }
           } else {
-            // Continue scanning for valid QR codes
+            // No QR code found, continue scanning
             requestAnimationFrame(scanQRCode);
           }
         } catch (error) {
-          // If parsing fails, just continue scanning
+          console.error("Error processing image data:", error);
           requestAnimationFrame(scanQRCode);
         }
       } else {
-        // No QR code found, continue scanning
+        // Video not ready yet, keep trying
         requestAnimationFrame(scanQRCode);
       }
-    } else {
-      // Video not ready yet, keep trying
+    } catch (error) {
+      console.error("Error in QR scanning process:", error);
       requestAnimationFrame(scanQRCode);
     }
   };
