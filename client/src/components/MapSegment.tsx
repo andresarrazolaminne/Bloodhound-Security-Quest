@@ -30,9 +30,16 @@ const MapSegment = ({ id, imageUrl, altText, unlocked, className }: MapSegmentPr
       setLoading(true);
       const response = await apiRequest("GET", `/api/admin/map-assets/${id}`);
       const data = await response.json();
-      setAsset(data.asset);
+      
+      // Si el asset es null, significa que no hay configuración para este segmento
+      if (data.asset) {
+        setAsset(data.asset);
+      } else {
+        console.log(`No hay configuración para el segmento ${id}`);
+      }
     } catch (error) {
-      console.error(`Error al cargar el asset del segmento ${id}:`, error);
+      // Error silencioso - simplemente usará la imagen por defecto
+      console.log(`Error al cargar el asset del segmento ${id}`);
     } finally {
       setLoading(false);
     }

@@ -193,10 +193,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   apiRouter.get("/admin/map-assets/:segmentId", async (req, res) => {
     try {
       const segmentId = parseInt(req.params.segmentId);
+      
+      // Validar que el ID de segmento sea válido
+      if (isNaN(segmentId) || segmentId < 1 || segmentId > 9) {
+        return res.status(400).json({ 
+          message: "ID de segmento inválido, debe estar entre 1 y 9"
+        });
+      }
+      
       const asset = await storage.getMapSegmentAsset(segmentId);
       
       if (!asset) {
-        return res.status(404).json({ message: "Asset no encontrado" });
+        // Es una respuesta 200 vacía en lugar de 404 para evitar errores en consola
+        // cuando un segmento simplemente no tiene configuración todavía
+        return res.status(200).json({ asset: null });
       }
       
       return res.status(200).json({ asset });

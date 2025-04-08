@@ -449,27 +449,44 @@ const AdminPage = () => {
               <label htmlFor="imageUrl" className="text-right">
                 URL Imagen
               </label>
-              <Input
-                id="imageUrl"
-                value={formData.imageUrl}
-                onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
-                className="col-span-3"
-                placeholder="https://ejemplo.com/imagen.jpg"
-                required
-              />
+              <div className="col-span-3 space-y-2">
+                <Input
+                  id="imageUrl"
+                  value={formData.imageUrl}
+                  onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
+                  className="w-full"
+                  placeholder="https://ejemplo.com/imagen.jpg"
+                  required
+                />
+                <p className="text-xs text-gray-500">
+                  Ingresa una URL completa a una imagen existente en internet. No es posible subir archivos directamente.
+                </p>
+                <p className="text-xs text-gray-500">
+                  Ejemplos de URLs de imágenes: 
+                  <br/>
+                  https://images.unsplash.com/photo-1579546929518-9e396f3cc809
+                  <br/>
+                  https://placehold.co/400x400/3b82f6/ffffff?text=Segmento+{formData.segmentId}
+                </p>
+              </div>
             </div>
             
             <div className="grid grid-cols-4 items-center gap-4">
               <label htmlFor="redirectUrl" className="text-right">
                 URL Redirección
               </label>
-              <Input
-                id="redirectUrl"
-                value={formData.redirectUrl}
-                onChange={(e) => setFormData({...formData, redirectUrl: e.target.value})}
-                className="col-span-3"
-                placeholder="https://ejemplo.com"
-              />
+              <div className="col-span-3 space-y-2">
+                <Input
+                  id="redirectUrl"
+                  value={formData.redirectUrl}
+                  onChange={(e) => setFormData({...formData, redirectUrl: e.target.value})}
+                  className="w-full"
+                  placeholder="https://ejemplo.com"
+                />
+                <p className="text-xs text-gray-500">
+                  URL a la que se redirigirá cuando un usuario haga clic en el segmento desbloqueado (opcional)
+                </p>
+              </div>
             </div>
             
             <div className="grid grid-cols-4 items-start gap-4">
