@@ -12,7 +12,7 @@ import {
   TabsList, 
   TabsTrigger 
 } from "@/components/ui/tabs";
-import { Loader2, PlusCircle, Pencil, Trash2, ExternalLink } from "lucide-react";
+import { Loader2, PlusCircle, Pencil, Trash2, ExternalLink, Download } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { MapSegmentAsset } from "@shared/schema";
 import {
@@ -46,6 +46,7 @@ const AdminPage = () => {
   // Gestión de segmentos del mapa
   const [mapAssets, setMapAssets] = useState<MapSegmentAsset[]>([]);
   const [loadingAssets, setLoadingAssets] = useState(false);
+  const [seedingData, setSeedingData] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<MapSegmentAsset | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
@@ -327,7 +328,48 @@ const AdminPage = () => {
             </CardHeader>
             
             <CardContent className="pt-6">
-              <div className="flex justify-end mb-6">
+              <div className="flex justify-between mb-6">
+                <Button 
+                  onClick={async () => {
+                    try {
+                      setSeedingData(true);
+                      
+                      const response = await apiRequest("POST", "/api/admin/seed-map-assets");
+                      const data = await response.json();
+                      
+                      if (data.success) {
+                        toast({
+                          title: "Éxito",
+                          description: "Segmentos predeterminados cargados correctamente",
+                        });
+                        fetchMapAssets();
+                      }
+                    } catch (error) {
+                      toast({
+                        title: "Error",
+                        description: "Error al cargar los segmentos predeterminados",
+                        variant: "destructive"
+                      });
+                    } finally {
+                      setSeedingData(false);
+                    }
+                  }}
+                  variant="outline"
+                  disabled={seedingData}
+                >
+                  {seedingData ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Cargando...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="mr-2 h-4 w-4" />
+                      Cargar Ejemplos
+                    </>
+                  )}
+                </Button>
+                
                 <Button onClick={handleCreateAsset}>
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Nuevo Segmento
