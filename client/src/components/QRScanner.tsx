@@ -3,9 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/context/UserContext";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Loader2, Camera, QrCode } from "lucide-react";
+import { Html5Qrcode } from "html5-qrcode";
 
 interface QRScannerProps {
   isOpen: boolean;
@@ -14,92 +13,78 @@ interface QRScannerProps {
 }
 
 const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
-  // Iniciamos directamente en modo manual para evitar problemas con la cámara
-  const [useManualMode, setUseManualMode] = useState(true);
-  const [manualSegmentId, setManualSegmentId] = useState<string>("");
+  const [isInitializing, setIsInitializing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
   const scannerContainerRef = useRef<HTMLDivElement>(null);
-  const scannerInstanceRef = useRef<Html5QrcodeScanner | null>(null);
   const { toast } = useToast();
   const { currentUser } = useUser();
 
-  // Initialize QR Scanner when modal is opened
+  // Initialize scanner when dialog opens
   useEffect(() => {
-    if (isOpen && !useManualMode) {
-      initializeScanner();
+    if (isOpen) {
+      startScanner();
     }
-
-    return () => {
-      cleanupScanner();
-    };
-  }, [isOpen, useManualMode]);
-
-  // Initialize the HTML5 QR Scanner
-  const initializeScanner = () => {
-    if (!scannerContainerRef.current) return;
     
+    return () => {
+      stopScanner();
+    };
+  }, [isOpen]);
+
+  // Start QR Scanner
+  const startScanner = async () => {
     try {
-      // Clean up previous instance if exists
-      cleanupScanner();
+      setIsInitializing(true);
+      setError(null);
       
-      // Clear the container
-      scannerContainerRef.current.innerHTML = '';
+      if (!scannerRef.current) {
+        scannerRef.current = new Html5Qrcode("qr-reader");
+      }
       
-      // Create a new scanner instance
-      const scannerId = 'html5-qr-scanner';
-      const scannerElement = document.createElement('div');
-      scannerElement.id = scannerId;
-      scannerContainerRef.current.appendChild(scannerElement);
-
-      // Configure scanner options
-      const config = {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        rememberLastUsedCamera: true,
-        aspectRatio: 1,
-        showTorchButtonIfSupported: true,
-      };
-
-      // Create scanner instance
-      scannerInstanceRef.current = new Html5QrcodeScanner(
-        scannerId,
-        config,
-        /* verbose= */ false
-      );
-
-      // Initialize scanner with success/error callbacks
-      scannerInstanceRef.current.render(onScanSuccess, onScanFailure);
-      setIsScanning(true);
-
-      console.log("QR Scanner initialized successfully");
-    } catch (error) {
-      console.error("Error initializing QR scanner:", error);
-      setUseManualMode(true);
-      toast({
-        title: "Error",
-        description: "No se pudo iniciar el escáner de QR. Ingresa el código manualmente.",
-        variant: "destructive"
-      });
+      const devices = await Html5Qrcode.getCameras();
+      if (devices && devices.length > 0) {
+        const cameraId = devices[0].id;
+        
+        await scannerRef.current.start(
+          cameraId,
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+          },
+          handleScanSuccess,
+          handleScanFailure
+        );
+        
+        setIsScanning(true);
+        console.log("QR scanner started successfully");
+      } else {
+        throw new Error("No se detectaron cámaras disponibles");
+      }
+    } catch (err) {
+      console.error("Error starting QR scanner:", err);
+      setError("No se pudo acceder a la cámara. Por favor verifica que has dado permiso al navegador para usar la cámara.");
+    } finally {
+      setIsInitializing(false);
     }
   };
 
-  // Clean up QR scanner resources
-  const cleanupScanner = () => {
-    if (scannerInstanceRef.current && isScanning) {
+  // Stop QR Scanner
+  const stopScanner = () => {
+    if (scannerRef.current && isScanning) {
       try {
-        scannerInstanceRef.current.clear();
-        console.log("QR Scanner stopped and cleaned up");
-      } catch (error) {
-        console.error("Error cleaning up scanner:", error);
+        scannerRef.current.stop();
+        console.log("QR scanner stopped");
+      } catch (err) {
+        console.error("Error stopping scanner:", err);
       }
-      scannerInstanceRef.current = null;
       setIsScanning(false);
     }
   };
 
   // Handle successful QR scan
-  const onScanSuccess = (decodedText: string) => {
-    console.log("QR Code detected:", decodedText);
+  const handleScanSuccess = (decodedText: string) => {
+    console.log("QR code detected:", decodedText);
     
     try {
       // Try to parse as JSON first (from our generator)
@@ -112,27 +97,23 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
         segmentId = parseInt(decodedText);
       }
       
-      console.log("Parsed segmentId:", segmentId);
-      
       if (!isNaN(segmentId) && segmentId >= 1 && segmentId <= 9) {
-        // Show success feedback
         toast({
           title: "¡Código detectado!",
           description: `Desbloqueando segmento ${segmentId}...`,
         });
         
-        // Stop scanner and process success
-        cleanupScanner();
+        stopScanner();
         onSuccess(segmentId);
       } else {
         toast({
           title: "Código inválido",
-          description: "El código escaneado no corresponde a un segmento válido (1-9)",
+          description: "El código QR escaneado no corresponde a un segmento del mapa",
           variant: "destructive"
         });
       }
     } catch (error) {
-      console.error("Error processing QR code data:", error);
+      console.error("Error processing QR code:", error);
       toast({
         title: "Error",
         description: "El código QR no tiene el formato esperado",
@@ -141,69 +122,52 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
     }
   };
 
-  // Handle scan failures/errors
-  const onScanFailure = (error: string) => {
-    // We don't need to show errors for each frame that doesn't contain a QR code
-    // Only log for debugging purposes
-    console.debug("QR scan error:", error);
-  };
-
-  // Handle manual submission
-  const handleManualSubmit = () => {
-    const id = parseInt(manualSegmentId);
-    if (!isNaN(id) && id >= 1 && id <= 9) {
-      toast({
-        title: "Procesando",
-        description: `Desbloqueando segmento ${id}...`,
-      });
-      onSuccess(id);
-    } else {
-      toast({
-        title: "Error",
-        description: "Por favor ingresa un número válido entre 1 y 9",
-        variant: "destructive"
-      });
-    }
+  // Handle QR scan failures (silent for most cases)
+  const handleScanFailure = (errorMessage: string) => {
+    // Solo registramos para depuración, no mostramos errores al usuario por cada frame sin QR
+    console.debug("QR scan error:", errorMessage);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Desbloquear Segmento de Mapa</DialogTitle>
+          <DialogTitle>Escanear Código QR</DialogTitle>
         </DialogHeader>
         
         <div className="p-4">
           <div className="text-center mb-4">
-            <p className="text-amber-600 font-medium mb-2">
-              Ingreso manual de segmento
-            </p>
-            <p className="text-gray-600 text-sm mb-6">
-              Ingresa el número del segmento que deseas desbloquear (1-9)
-            </p>
-            
-            <div className="max-w-xs mx-auto space-y-2">
-              <Label htmlFor="segment-id-manual">Número de Segmento</Label>
-              <Input
-                id="segment-id-manual"
-                type="number"
-                min={1}
-                max={9}
-                placeholder="Ingresa un número del 1 al 9"
-                value={manualSegmentId}
-                onChange={(e) => setManualSegmentId(e.target.value)}
-              />
-              <Button 
-                className="w-full mt-4" 
-                onClick={handleManualSubmit}
-              >
-                Desbloquear Segmento
-              </Button>
+            <div id="qr-reader" className="w-full max-w-xs mx-auto rounded-lg overflow-hidden" style={{ height: "300px" }}>
+              {isInitializing && (
+                <div className="h-full flex flex-col items-center justify-center bg-gray-100">
+                  <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+                  <p className="text-sm text-gray-600">Iniciando cámara...</p>
+                </div>
+              )}
+              
+              {!isInitializing && error && (
+                <div className="h-full flex flex-col items-center justify-center bg-gray-100 p-4">
+                  <Camera className="h-10 w-10 text-gray-400 mb-4" />
+                  <p className="text-sm text-red-500 font-medium mb-2">Error de cámara</p>
+                  <p className="text-xs text-gray-600 mb-4">{error}</p>
+                  <Button onClick={startScanner} size="sm">
+                    Reintentar
+                  </Button>
+                </div>
+              )}
             </div>
             
-            <p className="text-sm text-gray-500 mt-4">
-              Puedes encontrar los códigos de segmentos en la sección <strong>"/qr-generator"</strong>
-            </p>
+            {isScanning && (
+              <div className="mt-4">
+                <p className="text-sm text-gray-600 mb-2">
+                  Posiciona el código QR dentro del recuadro para escanearlo
+                </p>
+                <div className="flex items-center justify-center text-sm text-gray-500">
+                  <QrCode className="h-4 w-4 mr-1" />
+                  <span>Los QR se generan en ubicaciones físicas de la búsqueda del tesoro</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         
