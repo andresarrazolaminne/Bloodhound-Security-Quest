@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { apiRequest } from "@/lib/queryClient";
+import { ExternalLink } from "lucide-react";
+import { MapSegmentAsset } from "@shared/schema";
 
 interface MapSegmentProps {
   id: number;
@@ -12,10 +15,38 @@ interface MapSegmentProps {
 const MapSegment = ({ id, imageUrl, altText, unlocked, className }: MapSegmentProps) => {
   // Estado para manejar errores de carga de imágenes
   const [imageError, setImageError] = useState(false);
+  const [asset, setAsset] = useState<MapSegmentAsset | null>(null);
+  const [loading, setLoading] = useState(false);
+  
+  // Cargar el asset del segmento si está desbloqueado
+  useEffect(() => {
+    if (unlocked) {
+      loadSegmentAsset();
+    }
+  }, [unlocked, id]);
+  
+  const loadSegmentAsset = async () => {
+    try {
+      setLoading(true);
+      const response = await apiRequest("GET", `/api/admin/map-assets/${id}`);
+      const data = await response.json();
+      setAsset(data.asset);
+    } catch (error) {
+      console.error(`Error al cargar el asset del segmento ${id}:`, error);
+    } finally {
+      setLoading(false);
+    }
+  };
   
   const handleImageError = () => {
     console.log(`Imagen segmento ${id} falló al cargar: ${imageUrl}`);
     setImageError(true);
+  };
+  
+  const handleSegmentClick = () => {
+    if (unlocked && asset?.redirectUrl) {
+      window.open(asset.redirectUrl, "_blank", "noopener,noreferrer");
+    }
   };
 
   // Imagen de respaldo por si falla la carga
@@ -25,21 +56,23 @@ const MapSegment = ({ id, imageUrl, altText, unlocked, className }: MapSegmentPr
     <div 
       className={cn(
         "segment rounded-lg overflow-hidden cursor-pointer transition-all duration-300 transform hover:scale-105", 
+        unlocked && asset?.redirectUrl && "hover:shadow-lg",
         className
       )} 
       data-segment-id={id}
+      onClick={handleSegmentClick}
     >
       <div className="relative aspect-square bg-gray-100">
         <img 
-          src={imageError ? fallbackImageUrl : imageUrl}
-          alt={altText}
+          src={imageError ? fallbackImageUrl : (asset?.imageUrl || imageUrl)}
+          alt={asset?.title || altText}
           onError={handleImageError}
           className={cn(
             "w-full h-full object-cover", 
             !unlocked && "grayscale"
           )}
         />
-        {!unlocked && (
+        {!unlocked ? (
           <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 transition-opacity">
             <svg 
               xmlns="http://www.w3.org/2000/svg" 
@@ -55,6 +88,10 @@ const MapSegment = ({ id, imageUrl, altText, unlocked, className }: MapSegmentPr
                 d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" 
               />
             </svg>
+          </div>
+        ) : asset?.redirectUrl && (
+          <div className="absolute top-2 right-2 bg-black/60 text-white p-1 rounded-full">
+            <ExternalLink className="h-4 w-4" />
           </div>
         )}
       </div>

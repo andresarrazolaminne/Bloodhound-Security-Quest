@@ -2,12 +2,15 @@ import {
   users, 
   mapSegments, 
   prizes,
+  mapSegmentAssets,
   type User, 
   type InsertUser, 
   type MapSegment, 
   type InsertMapSegment,
   type Prize,
-  type InsertPrize
+  type InsertPrize,
+  type MapSegmentAsset,
+  type InsertMapSegmentAsset
 } from "@shared/schema";
 import { nanoid } from "nanoid";
 
@@ -25,6 +28,13 @@ export interface IStorage {
   createRedemptionCode(userId: number): Promise<string>;
   redeemPrize(userId: number): Promise<Prize>;
   getPrizeByRedemptionCode(code: string): Promise<Prize | undefined>;
+  
+  // Map segment assets operations (for admin dashboard)
+  getAllMapSegmentAssets(): Promise<MapSegmentAsset[]>;
+  getMapSegmentAsset(segmentId: number): Promise<MapSegmentAsset | undefined>;
+  createMapSegmentAsset(asset: InsertMapSegmentAsset): Promise<MapSegmentAsset>;
+  updateMapSegmentAsset(segmentId: number, asset: Partial<InsertMapSegmentAsset>): Promise<MapSegmentAsset>;
+  deleteMapSegmentAsset(segmentId: number): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -32,18 +42,22 @@ export class MemStorage implements IStorage {
   private segments: Map<number, MapSegment[]>;
   private prizes: Map<number, Prize>;
   private redemptionCodes: Map<string, number>; // redemptionCode -> userId
+  private mapAssets: Map<number, MapSegmentAsset>; // segmentId -> asset
   private currentUserId: number;
   private currentSegmentId: number;
   private currentPrizeId: number;
+  private currentAssetId: number;
 
   constructor() {
     this.users = new Map();
     this.segments = new Map();
     this.prizes = new Map();
     this.redemptionCodes = new Map();
+    this.mapAssets = new Map();
     this.currentUserId = 1;
     this.currentSegmentId = 1;
     this.currentPrizeId = 1;
+    this.currentAssetId = 1;
   }
 
   // User operations
@@ -148,6 +162,47 @@ export class MemStorage implements IStorage {
     
     return this.prizes.get(userId);
   }
+
+  // Map segment assets operations (for admin dashboard)
+  async getAllMapSegmentAssets(): Promise<MapSegmentAsset[]> {
+    return Array.from(this.mapAssets.values());
+  }
+
+  async getMapSegmentAsset(segmentId: number): Promise<MapSegmentAsset | undefined> {
+    return this.mapAssets.get(segmentId);
+  }
+
+  async createMapSegmentAsset(asset: InsertMapSegmentAsset): Promise<MapSegmentAsset> {
+    const id = this.currentAssetId++;
+    const newAsset: MapSegmentAsset = {
+      id,
+      ...asset,
+      updatedAt: new Date()
+    };
+    
+    this.mapAssets.set(asset.segmentId, newAsset);
+    return newAsset;
+  }
+
+  async updateMapSegmentAsset(segmentId: number, asset: Partial<InsertMapSegmentAsset>): Promise<MapSegmentAsset> {
+    const existingAsset = this.mapAssets.get(segmentId);
+    if (!existingAsset) {
+      throw new Error("Map segment asset not found");
+    }
+    
+    const updatedAsset: MapSegmentAsset = {
+      ...existingAsset,
+      ...asset,
+      updatedAt: new Date()
+    };
+    
+    this.mapAssets.set(segmentId, updatedAsset);
+    return updatedAsset;
+  }
+
+  async deleteMapSegmentAsset(segmentId: number): Promise<void> {
+    this.mapAssets.delete(segmentId);
+  }
 }
 
 // Database storage implementation
@@ -239,6 +294,54 @@ export class DatabaseStorage implements IStorage {
       .where(eq(prizes.redemptionCode, code));
     
     return prize || undefined;
+  }
+
+  // Map segment assets operations (for admin dashboard)
+  async getAllMapSegmentAssets(): Promise<MapSegmentAsset[]> {
+    return await db
+      .select()
+      .from(mapSegmentAssets)
+      .orderBy(mapSegmentAssets.segmentId);
+  }
+
+  async getMapSegmentAsset(segmentId: number): Promise<MapSegmentAsset | undefined> {
+    const [asset] = await db
+      .select()
+      .from(mapSegmentAssets)
+      .where(eq(mapSegmentAssets.segmentId, segmentId));
+    
+    return asset || undefined;
+  }
+
+  async createMapSegmentAsset(asset: InsertMapSegmentAsset): Promise<MapSegmentAsset> {
+    const [newAsset] = await db
+      .insert(mapSegmentAssets)
+      .values({
+        ...asset,
+        updatedAt: new Date()
+      })
+      .returning();
+    
+    return newAsset;
+  }
+
+  async updateMapSegmentAsset(segmentId: number, asset: Partial<InsertMapSegmentAsset>): Promise<MapSegmentAsset> {
+    const [updatedAsset] = await db
+      .update(mapSegmentAssets)
+      .set({
+        ...asset,
+        updatedAt: new Date()
+      })
+      .where(eq(mapSegmentAssets.segmentId, segmentId))
+      .returning();
+    
+    return updatedAsset;
+  }
+
+  async deleteMapSegmentAsset(segmentId: number): Promise<void> {
+    await db
+      .delete(mapSegmentAssets)
+      .where(eq(mapSegmentAssets.segmentId, segmentId));
   }
 }
 

@@ -23,6 +23,17 @@ export const prizes = pgTable("prizes", {
   redeemedAt: timestamp("redeemed_at"),
 });
 
+// Tabla para gestionar las configuraciones de los segmentos del mapa
+export const mapSegmentAssets = pgTable("map_segment_assets", {
+  id: serial("id").primaryKey(),
+  segmentId: integer("segment_id").notNull().unique(),
+  imageUrl: text("image_url").notNull(),
+  redirectUrl: text("redirect_url"),
+  title: text("title").notNull().default(""),
+  description: text("description"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   documentNumber: true,
   name: true,
@@ -41,6 +52,14 @@ export const insertPrizeSchema = createInsertSchema(prizes).pick({
   redeemedAt: true,
 });
 
+export const insertMapSegmentAssetsSchema = createInsertSchema(mapSegmentAssets).pick({
+  segmentId: true,
+  imageUrl: true,
+  redirectUrl: true,
+  title: true,
+  description: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
@@ -49,3 +68,6 @@ export type MapSegment = typeof mapSegments.$inferSelect;
 
 export type InsertPrize = z.infer<typeof insertPrizeSchema>;
 export type Prize = typeof prizes.$inferSelect;
+
+export type InsertMapSegmentAsset = z.infer<typeof insertMapSegmentAssetsSchema>;
+export type MapSegmentAsset = typeof mapSegmentAssets.$inferSelect;

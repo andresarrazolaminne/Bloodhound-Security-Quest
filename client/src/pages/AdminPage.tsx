@@ -1,12 +1,40 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { redeemPrize } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
+import { 
+  Tabs, 
+  TabsContent, 
+  TabsList, 
+  TabsTrigger 
+} from "@/components/ui/tabs";
+import { Loader2, PlusCircle, Pencil, Trash2, ExternalLink } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { MapSegmentAsset } from "@shared/schema";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+
+interface MapAssetFormData {
+  segmentId: number;
+  imageUrl: string;
+  redirectUrl: string;
+  title: string;
+  description: string;
+}
 
 const AdminPage = () => {
+  // Redención de premios
   const [redemptionCode, setRedemptionCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<{
@@ -14,7 +42,141 @@ const AdminPage = () => {
     message: string;
     redeemedAt?: string;
   } | null>(null);
+  
+  // Gestión de segmentos del mapa
+  const [mapAssets, setMapAssets] = useState<MapSegmentAsset[]>([]);
+  const [loadingAssets, setLoadingAssets] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState<MapSegmentAsset | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [formData, setFormData] = useState<MapAssetFormData>({
+    segmentId: 1,
+    imageUrl: "",
+    redirectUrl: "",
+    title: "",
+    description: ""
+  });
+  
   const { toast } = useToast();
+  
+  // Cargar assets de segmentos del mapa al iniciar
+  useEffect(() => {
+    fetchMapAssets();
+  }, []);
+  
+  // Función para cargar los assets de segmentos del mapa
+  const fetchMapAssets = async () => {
+    try {
+      setLoadingAssets(true);
+      const response = await apiRequest("GET", "/api/admin/map-assets");
+      const data = await response.json();
+      setMapAssets(data.assets);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Error al cargar los segmentos del mapa",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingAssets(false);
+    }
+  };
+  
+  // Función para abrir el diálogo de crear asset
+  const handleCreateAsset = () => {
+    setDialogMode("create");
+    setFormData({
+      segmentId: 1,
+      imageUrl: "",
+      redirectUrl: "",
+      title: "",
+      description: ""
+    });
+    setDialogOpen(true);
+  };
+  
+  // Función para abrir el diálogo de editar asset
+  const handleEditAsset = (asset: MapSegmentAsset) => {
+    setDialogMode("edit");
+    setSelectedAsset(asset);
+    setFormData({
+      segmentId: asset.segmentId,
+      imageUrl: asset.imageUrl,
+      redirectUrl: asset.redirectUrl || "",
+      title: asset.title,
+      description: asset.description || ""
+    });
+    setDialogOpen(true);
+  };
+  
+  // Función para guardar un asset (crear o actualizar)
+  const handleSaveAsset = async () => {
+    try {
+      setLoadingAssets(true);
+      
+      const payload = {
+        ...formData,
+        redirectUrl: formData.redirectUrl || null,
+        description: formData.description || null
+      };
+      
+      if (dialogMode === "create") {
+        // Crear nuevo asset
+        await apiRequest("POST", "/api/admin/map-assets", payload);
+        toast({
+          title: "Éxito",
+          description: "Segmento creado correctamente"
+        });
+      } else {
+        // Actualizar asset existente
+        await apiRequest("PUT", `/api/admin/map-assets/${formData.segmentId}`, payload);
+        toast({
+          title: "Éxito",
+          description: "Segmento actualizado correctamente"
+        });
+      }
+      
+      // Recargar la lista de assets
+      fetchMapAssets();
+      setDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Error al guardar el segmento",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingAssets(false);
+    }
+  };
+  
+  // Función para eliminar un asset
+  const handleDeleteAsset = async (segmentId: number) => {
+    if (!confirm("¿Estás seguro de eliminar este segmento?")) {
+      return;
+    }
+    
+    try {
+      setLoadingAssets(true);
+      await apiRequest("DELETE", `/api/admin/map-assets/${segmentId}`);
+      
+      toast({
+        title: "Éxito",
+        description: "Segmento eliminado correctamente"
+      });
+      
+      // Recargar la lista de assets
+      fetchMapAssets();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Error al eliminar el segmento",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingAssets(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,74 +235,274 @@ const AdminPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 flex flex-col items-center justify-center">
-      <Card className="w-full max-w-md">
-        <CardHeader className="bg-primary text-white">
-          <CardTitle className="text-xl">Validación de Premios</CardTitle>
-        </CardHeader>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <h1 className="text-3xl font-bold mb-6 text-center">Panel de Administración</h1>
+      
+      <Tabs defaultValue="prizes" className="max-w-5xl mx-auto">
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="prizes">Validación de Premios</TabsTrigger>
+          <TabsTrigger value="map">Segmentos del Mapa</TabsTrigger>
+        </TabsList>
         
-        <CardContent className="pt-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <label htmlFor="redemption-code" className="block text-sm font-medium text-gray-700">
-                Código de Redención
+        <TabsContent value="prizes">
+          <Card className="w-full">
+            <CardHeader className="bg-primary text-white">
+              <CardTitle className="text-xl">Validación de Premios</CardTitle>
+              <CardDescription className="text-white/80">
+                Ingresa un código de redención para validar un premio
+              </CardDescription>
+            </CardHeader>
+            
+            <CardContent className="pt-6">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <label htmlFor="redemption-code" className="block text-sm font-medium text-gray-700">
+                    Código de Redención
+                  </label>
+                  <Input
+                    id="redemption-code"
+                    type="text"
+                    value={redemptionCode}
+                    onChange={(e) => setRedemptionCode(e.target.value)}
+                    placeholder="Ingresa el código de redención"
+                    className="w-full"
+                    required
+                  />
+                </div>
+                
+                <Button 
+                  type="submit"
+                  className="w-full"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Validando..." : "Validar Premio"}
+                </Button>
+              </form>
+              
+              {result && (
+                <div className={`mt-6 p-4 rounded-md ${result.success ? 'bg-green-50' : 'bg-red-50'}`}>
+                  <div className="flex items-center mb-2">
+                    <Badge variant={result.success ? "success" : "destructive"} className="mr-2">
+                      {result.success ? "Válido" : "Inválido"}
+                    </Badge>
+                    <p className="font-medium">{result.message}</p>
+                  </div>
+                  
+                  {result.redeemedAt && (
+                    <p className="text-sm text-gray-600">
+                      Reclamado el: {new Date(result.redeemedAt).toLocaleString()}
+                    </p>
+                  )}
+                  
+                  {result.success && (
+                    <div className="flex justify-end mt-4">
+                      <Button 
+                        variant="default" 
+                        onClick={() => {
+                          toast({
+                            title: "Premio entregado",
+                            description: "El premio ha sido marcado como entregado",
+                          });
+                          setResult(null);
+                          setRedemptionCode("");
+                        }}
+                      >
+                        Confirmar Entrega
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="map">
+          <Card className="w-full">
+            <CardHeader className="bg-primary text-white">
+              <CardTitle className="text-xl">Gestión de Segmentos del Mapa</CardTitle>
+              <CardDescription className="text-white/80">
+                Administra las imágenes y URLs de redirección de los segmentos del mapa
+              </CardDescription>
+            </CardHeader>
+            
+            <CardContent className="pt-6">
+              <div className="flex justify-end mb-6">
+                <Button onClick={handleCreateAsset}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Nuevo Segmento
+                </Button>
+              </div>
+              
+              {loadingAssets ? (
+                <div className="flex justify-center py-10">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : mapAssets.length === 0 ? (
+                <div className="text-center py-10 text-gray-500">
+                  <p>No hay segmentos configurados</p>
+                  <p className="text-sm mt-2">Haz clic en "Nuevo Segmento" para empezar</p>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {mapAssets.map((asset) => (
+                    <Card key={asset.id} className="overflow-hidden">
+                      <div className="relative aspect-square">
+                        <img 
+                          src={asset.imageUrl} 
+                          alt={`Segmento ${asset.segmentId}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "https://placehold.co/400x400/e2e8f0/64748b?text=Imagen+no+disponible";
+                          }}
+                        />
+                        <div className="absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-sm">
+                          Segmento {asset.segmentId}
+                        </div>
+                      </div>
+                      
+                      <CardContent className="p-4">
+                        <h3 className="font-bold truncate">{asset.title || `Segmento ${asset.segmentId}`}</h3>
+                        
+                        {asset.description && (
+                          <p className="text-sm text-gray-500 mt-1 line-clamp-2">{asset.description}</p>
+                        )}
+                        
+                        {asset.redirectUrl && (
+                          <div className="flex items-center mt-2 text-sm text-blue-600">
+                            <ExternalLink className="h-4 w-4 mr-1" />
+                            <span className="truncate">{asset.redirectUrl}</span>
+                          </div>
+                        )}
+                      </CardContent>
+                      
+                      <CardFooter className="flex justify-between p-4 pt-0">
+                        <Button variant="outline" size="sm" onClick={() => handleEditAsset(asset)}>
+                          <Pencil className="h-4 w-4 mr-1" />
+                          Editar
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => handleDeleteAsset(asset.segmentId)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Eliminar
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+      
+      {/* Diálogo para crear/editar assets */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {dialogMode === "create" ? "Crear Nuevo Segmento" : "Editar Segmento"}
+            </DialogTitle>
+            <DialogDescription>
+              {dialogMode === "create" 
+                ? "Ingresa los detalles para un nuevo segmento del mapa" 
+                : `Editar configuración del segmento ${selectedAsset?.segmentId}`
+              }
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="segmentId" className="text-right">
+                ID Segmento
               </label>
               <Input
-                id="redemption-code"
-                type="text"
-                value={redemptionCode}
-                onChange={(e) => setRedemptionCode(e.target.value)}
-                placeholder="Ingresa el código de redención"
-                className="w-full"
+                id="segmentId"
+                type="number"
+                min="1"
+                max="9"
+                value={formData.segmentId}
+                onChange={(e) => setFormData({...formData, segmentId: parseInt(e.target.value)})}
+                className="col-span-3"
+                disabled={dialogMode === "edit"}
                 required
               />
             </div>
             
-            <Button 
-              type="submit"
-              className="w-full"
-              disabled={isLoading}
-            >
-              {isLoading ? "Validando..." : "Validar Premio"}
-            </Button>
-          </form>
-          
-          {result && (
-            <div className={`mt-6 p-4 rounded-md ${result.success ? 'bg-green-50' : 'bg-red-50'}`}>
-              <div className="flex items-center mb-2">
-                <Badge variant={result.success ? "success" : "destructive"} className="mr-2">
-                  {result.success ? "Válido" : "Inválido"}
-                </Badge>
-                <p className="font-medium">{result.message}</p>
-              </div>
-              
-              {result.redeemedAt && (
-                <p className="text-sm text-gray-600">
-                  Reclamado el: {new Date(result.redeemedAt).toLocaleString()}
-                </p>
-              )}
-              
-              {result.success && (
-                <div className="flex justify-end mt-4">
-                  <Button 
-                    variant="default" 
-                    onClick={() => {
-                      toast({
-                        title: "Premio entregado",
-                        description: "El premio ha sido marcado como entregado",
-                      });
-                      setResult(null);
-                      setRedemptionCode("");
-                    }}
-                  >
-                    Confirmar Entrega
-                  </Button>
-                </div>
-              )}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="title" className="text-right">
+                Título
+              </label>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                className="col-span-3"
+                required
+              />
             </div>
-          )}
-        </CardContent>
-      </Card>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="imageUrl" className="text-right">
+                URL Imagen
+              </label>
+              <Input
+                id="imageUrl"
+                value={formData.imageUrl}
+                onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
+                className="col-span-3"
+                placeholder="https://ejemplo.com/imagen.jpg"
+                required
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="redirectUrl" className="text-right">
+                URL Redirección
+              </label>
+              <Input
+                id="redirectUrl"
+                value={formData.redirectUrl}
+                onChange={(e) => setFormData({...formData, redirectUrl: e.target.value})}
+                className="col-span-3"
+                placeholder="https://ejemplo.com"
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-start gap-4">
+              <label htmlFor="description" className="text-right pt-2">
+                Descripción
+              </label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                className="col-span-3"
+                rows={3}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveAsset} disabled={loadingAssets}>
+              {loadingAssets ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                "Guardar"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
