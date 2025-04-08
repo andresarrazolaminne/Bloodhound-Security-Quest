@@ -28,14 +28,29 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
 
   // Inicializar el escáner QR
   useEffect(() => {
+    // Solo intentar inicializar el escáner cuando el diálogo esté abierto, estemos en la tab de scanner
     if (isOpen && activeTab === "scanner" && scannerContainerRef.current) {
-      // Crear el contenedor para el escáner si no existe
-      if (!document.getElementById('qr-reader')) {
-        const container = document.createElement('div');
-        container.id = 'qr-reader';
-        scannerContainerRef.current.innerHTML = '';
-        scannerContainerRef.current.appendChild(container);
+      // Limpiar el escáner anterior primero si existe
+      if (scanner) {
+        try {
+          scanner.clear();
+        } catch (e) {
+          console.warn("Error al limpiar scanner:", e);
+        }
+        setScanner(null);
       }
+      
+      // Crear un nuevo contenedor para el escáner cada vez
+      const oldContainer = document.getElementById('qr-reader');
+      if (oldContainer) {
+        oldContainer.remove();
+      }
+      
+      // Crear un nuevo contenedor fresco
+      const container = document.createElement('div');
+      container.id = 'qr-reader';
+      scannerContainerRef.current.innerHTML = '';
+      scannerContainerRef.current.appendChild(container);
 
       // Configurar el escáner con opciones específicas para mayor compatibilidad
       const qrScanner = new Html5QrcodeScanner(
@@ -118,6 +133,7 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
     // Limpiar el escáner si se cambia a manual
     if (value === "manual" && scanner) {
       scanner.clear();
+      setScanner(null);
     }
   };
 
@@ -136,13 +152,33 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
     }
   };
 
-  // Limpiar el escáner cuando se cierra el diálogo
+  // Limpiar el escáner cuando se cierra el diálogo y resetear el estado
   const handleDialogChange = (open: boolean) => {
     if (!open) {
-      if (scanner) {
-        scanner.clear();
+      try {
+        if (scanner) {
+          try {
+            scanner.clear();
+          } catch (e) {
+            console.warn("Error al limpiar scanner en dialog:", e);
+          }
+          setScanner(null);
+        }
+        
+        // Asegurar que el contenedor del escáner esté vacío
+        if (scannerContainerRef.current) {
+          scannerContainerRef.current.innerHTML = '';
+        }
+        
+        // Reset al estado inicial cuando se cierra
+        setActiveTab("manual");
+        setManualSegmentId("");
+        
+        // Notificar al componente padre
+        onClose();
+      } catch (e) {
+        console.error("Error al cerrar diálogo:", e);
       }
-      onClose();
     }
   };
 
