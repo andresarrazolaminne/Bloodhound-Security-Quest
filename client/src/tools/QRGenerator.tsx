@@ -1,42 +1,70 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import QRCode from 'qrcode';
 
-// Simple utility to generate a QR code URL using the Google Charts API
-const getQRCodeUrl = (data: string) => {
-  // Encode the data to be URL-safe
-  const encodedData = encodeURIComponent(data);
-  return `https://chart.googleapis.com/chart?cht=qr&chl=${encodedData}&chs=250x250&chld=L|0`;
+// Function to generate QR code as data URL
+const generateQRCode = async (data: string): Promise<string> => {
+  try {
+    return await QRCode.toDataURL(data, {
+      width: 250,
+      margin: 1,
+      errorCorrectionLevel: 'L'
+    });
+  } catch (err) {
+    console.error('Error generating QR code:', err);
+    return '';
+  }
 };
 
 const QRGenerator = () => {
   const [segmentId, setSegmentId] = useState<number>(1);
   const [qrCodes, setQrCodes] = useState<{id: number, url: string}[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const handleGenerateQR = () => {
+  const handleGenerateQR = async () => {
+    setIsLoading(true);
     // Format: segmentId as a simple JSON object
     const qrData = JSON.stringify({ segmentId });
-    const qrUrl = getQRCodeUrl(qrData);
     
-    // Add to the list, avoid duplicates
-    if (!qrCodes.some(code => code.id === segmentId)) {
-      setQrCodes([...qrCodes, { id: segmentId, url: qrUrl }]);
+    try {
+      const qrUrl = await generateQRCode(qrData);
+      
+      // Add to the list, avoid duplicates
+      if (!qrCodes.some(code => code.id === segmentId)) {
+        setQrCodes([...qrCodes, { id: segmentId, url: qrUrl }]);
+      } else {
+        // Update existing QR code
+        setQrCodes(qrCodes.map(code => 
+          code.id === segmentId ? { ...code, url: qrUrl } : code
+        ));
+      }
+    } catch (error) {
+      console.error("Error generating QR code:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleGenerateAll = () => {
-    // Generate QR codes for all 9 segments
-    const newCodes = [];
-    for (let i = 1; i <= 9; i++) {
-      const qrData = JSON.stringify({ segmentId: i });
-      newCodes.push({
-        id: i,
-        url: getQRCodeUrl(qrData)
+  const handleGenerateAll = async () => {
+    setIsLoading(true);
+    try {
+      // Generate QR codes for all 9 segments
+      const newCodesPromises = Array.from({ length: 9 }, (_, i) => {
+        const id = i + 1;
+        const qrData = JSON.stringify({ segmentId: id });
+        return generateQRCode(qrData).then(url => ({ id, url }));
       });
+      
+      const newCodes = await Promise.all(newCodesPromises);
+      setQrCodes(newCodes);
+    } catch (error) {
+      console.error("Error generating all QR codes:", error);
+    } finally {
+      setIsLoading(false);
     }
-    setQrCodes(newCodes);
   };
 
   return (
@@ -59,12 +87,18 @@ const QRGenerator = () => {
                   onChange={(e) => setSegmentId(parseInt(e.target.value) || 1)}
                 />
               </div>
-              <Button onClick={handleGenerateQR}>Generar QR</Button>
+              <Button 
+                onClick={handleGenerateQR} 
+                disabled={isLoading}
+              >
+                {isLoading ? 'Generando...' : 'Generar QR'}
+              </Button>
               <Button 
                 variant="outline"
                 onClick={handleGenerateAll}
+                disabled={isLoading}
               >
-                Generar Todos
+                {isLoading ? 'Generando...' : 'Generar Todos'}
               </Button>
             </div>
           </div>
