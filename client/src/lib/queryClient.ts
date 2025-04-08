@@ -19,7 +19,8 @@ export async function apiRequest(
     credentials: "include",
   });
 
-  await throwIfResNotOk(res);
+  // Don't throw errors automatically - let the calling function handle this
+  // This allows more control for handling specific status codes like 404
   return res;
 }
 

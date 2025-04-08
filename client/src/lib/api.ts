@@ -35,12 +35,20 @@ export interface RedeemPrizeResponse {
 // Login with document number
 export const login = async (documentNumber: string): Promise<LoginResponse> => {
   const response = await apiRequest("POST", "/api/login", { documentNumber });
+  // If the response is not ok, throw the response object so we can check status codes
+  if (!response.ok) {
+    throw response;
+  }
   return response.json();
 };
 
 // Register new user
 export const register = async (documentNumber: string, name: string): Promise<RegisterResponse> => {
   const response = await apiRequest("POST", "/api/register", { documentNumber, name });
+  // If the response is not ok, throw the response object so we can check status codes
+  if (!response.ok) {
+    throw response;
+  }
   return response.json();
 };
 
