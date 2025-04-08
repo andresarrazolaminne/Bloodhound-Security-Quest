@@ -3,12 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/context/UserContext";
-import { unlockSegment } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-// Use dynamic import for QR scanner library
-let jsQR: any = null;
+import { Html5QrcodeScanner } from "html5-qrcode";
 
 interface QRScannerProps {
   isOpen: boolean;
@@ -17,212 +14,147 @@ interface QRScannerProps {
 }
 
 const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [scanning, setScanning] = useState(false);
-  const [cameraError, setCameraError] = useState(false);
+  const [useManualMode, setUseManualMode] = useState(false);
   const [manualSegmentId, setManualSegmentId] = useState<string>("");
+  const [isScanning, setIsScanning] = useState(false);
+  const scannerContainerRef = useRef<HTMLDivElement>(null);
+  const scannerInstanceRef = useRef<Html5QrcodeScanner | null>(null);
   const { toast } = useToast();
   const { currentUser } = useUser();
 
-  // Load jsQR dynamically
+  // Initialize QR Scanner when modal is opened
   useEffect(() => {
-    let libraryLoaded = false;
+    if (isOpen && !useManualMode) {
+      initializeScanner();
+    }
 
-    if (isOpen && !jsQR) {
-      import('jsqr').then(module => {
-        jsQR = module.default;
-        libraryLoaded = true;
-        console.log("jsQR library loaded successfully");
-        startScanner();
-      }).catch(error => {
-        console.error("Error loading jsQR:", error);
-        setCameraError(true);
+    return () => {
+      cleanupScanner();
+    };
+  }, [isOpen, useManualMode]);
+
+  // Initialize the HTML5 QR Scanner
+  const initializeScanner = () => {
+    if (!scannerContainerRef.current) return;
+    
+    try {
+      // Clean up previous instance if exists
+      cleanupScanner();
+      
+      // Clear the container
+      scannerContainerRef.current.innerHTML = '';
+      
+      // Create a new scanner instance
+      const scannerId = 'html5-qr-scanner';
+      const scannerElement = document.createElement('div');
+      scannerElement.id = scannerId;
+      scannerContainerRef.current.appendChild(scannerElement);
+
+      // Configure scanner options
+      const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        rememberLastUsedCamera: true,
+        aspectRatio: 1,
+        showTorchButtonIfSupported: true,
+      };
+
+      // Create scanner instance
+      scannerInstanceRef.current = new Html5QrcodeScanner(
+        scannerId,
+        config,
+        /* verbose= */ false
+      );
+
+      // Initialize scanner with success/error callbacks
+      scannerInstanceRef.current.render(onScanSuccess, onScanFailure);
+      setIsScanning(true);
+
+      console.log("QR Scanner initialized successfully");
+    } catch (error) {
+      console.error("Error initializing QR scanner:", error);
+      setUseManualMode(true);
+      toast({
+        title: "Error",
+        description: "No se pudo iniciar el escáner de QR. Ingresa el código manualmente.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Clean up QR scanner resources
+  const cleanupScanner = () => {
+    if (scannerInstanceRef.current && isScanning) {
+      try {
+        scannerInstanceRef.current.clear();
+        console.log("QR Scanner stopped and cleaned up");
+      } catch (error) {
+        console.error("Error cleaning up scanner:", error);
+      }
+      scannerInstanceRef.current = null;
+      setIsScanning(false);
+    }
+  };
+
+  // Handle successful QR scan
+  const onScanSuccess = (decodedText: string) => {
+    console.log("QR Code detected:", decodedText);
+    
+    try {
+      // Try to parse as JSON first (from our generator)
+      let segmentId;
+      try {
+        const data = JSON.parse(decodedText);
+        segmentId = data.segmentId;
+      } catch {
+        // If not valid JSON, try direct parsing
+        segmentId = parseInt(decodedText);
+      }
+      
+      console.log("Parsed segmentId:", segmentId);
+      
+      if (!isNaN(segmentId) && segmentId >= 1 && segmentId <= 9) {
+        // Show success feedback
         toast({
-          title: "Error",
-          description: "No se pudo cargar el escáner de QR. Por favor usa el modo manual.",
+          title: "¡Código detectado!",
+          description: `Desbloqueando segmento ${segmentId}...`,
+        });
+        
+        // Stop scanner and process success
+        cleanupScanner();
+        onSuccess(segmentId);
+      } else {
+        toast({
+          title: "Código inválido",
+          description: "El código escaneado no corresponde a un segmento válido (1-9)",
           variant: "destructive"
         });
-      });
-    }
-
-    return () => {
-      // Prevent starting scanner after component unmounted
-      if (!libraryLoaded) {
-        jsQR = null;
-      }
-    };
-  }, [isOpen]);
-
-  // Start camera when modal is opened
-  useEffect(() => {
-    if (isOpen) {
-      startScanner();
-    } else {
-      stopScanner();
-    }
-
-    return () => {
-      stopScanner();
-    };
-  }, [isOpen]);
-
-  const startScanner = async () => {
-    // Reset state
-    setCameraError(false);
-    
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      toast({
-        title: "Error",
-        description: "Tu navegador no soporta acceso a la cámara.",
-        variant: "destructive"
-      });
-      setCameraError(true);
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }
-      });
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        
-        // Use try-catch for play() to handle interrupted play requests
-        try {
-          await videoRef.current.play();
-          setScanning(true);
-          scanQRCode();
-        } catch (playError) {
-          console.error("Error playing video:", playError);
-          setCameraError(true);
-          
-          // Stop tracks since play failed
-          stream.getTracks().forEach(track => track.stop());
-          
-          toast({
-            title: "Error",
-            description: "No se pudo iniciar la cámara. Ingresa el código manualmente.",
-            variant: "destructive"
-          });
-        }
       }
     } catch (error) {
-      console.error("Error accessing camera:", error);
-      setCameraError(true);
+      console.error("Error processing QR code data:", error);
       toast({
         title: "Error",
-        description: "No se pudo acceder a la cámara. Ingresa el código manualmente.",
+        description: "El código QR no tiene el formato esperado",
         variant: "destructive"
       });
     }
   };
 
-  const stopScanner = () => {
-    setScanning(false);
-    
-    if (videoRef.current && videoRef.current.srcObject) {
-      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-      tracks.forEach(track => track.stop());
-      videoRef.current.srcObject = null;
-    }
-  };
-
-  const scanQRCode = () => {
-    if (!scanning || !jsQR) {
-      console.log("Scanning stopped or jsQR not loaded");
-      return;
-    }
-
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-
-    if (!video || !canvas) {
-      console.log("Video or canvas ref not available");
-      requestAnimationFrame(scanQRCode);
-      return;
-    }
-
-    try {
-      if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        const context = canvas.getContext('2d');
-        if (!context) {
-          console.log("Could not get canvas context");
-          requestAnimationFrame(scanQRCode);
-          return;
-        }
-
-        canvas.height = video.videoHeight;
-        canvas.width = video.videoWidth;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        console.log("Processing frame for QR code detection");
-        
-        try {
-          const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-          const code = jsQR(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: "dontInvert",
-          });
-
-          if (code) {
-            console.log("QR code detected:", code.data);
-            try {
-              // Try to parse as JSON first (from our generator)
-              let segmentId;
-              try {
-                const data = JSON.parse(code.data);
-                segmentId = data.segmentId;
-              } catch {
-                // If not valid JSON, try direct parsing
-                segmentId = parseInt(code.data);
-              }
-              
-              console.log("Parsed segmentId:", segmentId);
-              
-              if (!isNaN(segmentId) && segmentId >= 1 && segmentId <= 9) {
-                console.log("Valid segment ID, processing success");
-                // Show feedback toast
-                toast({
-                  title: "¡Código detectado!",
-                  description: `Desbloqueando segmento ${segmentId}...`,
-                });
-                
-                // Stop scanning and close modal
-                stopScanner();
-                onSuccess(segmentId);
-              } else {
-                console.log("Invalid segment ID, continuing scan");
-                // Continue scanning for valid QR codes
-                requestAnimationFrame(scanQRCode);
-              }
-            } catch (error) {
-              console.error("Error parsing QR code data:", error);
-              // If parsing fails, just continue scanning
-              requestAnimationFrame(scanQRCode);
-            }
-          } else {
-            // No QR code found, continue scanning
-            requestAnimationFrame(scanQRCode);
-          }
-        } catch (error) {
-          console.error("Error processing image data:", error);
-          requestAnimationFrame(scanQRCode);
-        }
-      } else {
-        // Video not ready yet, keep trying
-        requestAnimationFrame(scanQRCode);
-      }
-    } catch (error) {
-      console.error("Error in QR scanning process:", error);
-      requestAnimationFrame(scanQRCode);
-    }
+  // Handle scan failures/errors
+  const onScanFailure = (error: string) => {
+    // We don't need to show errors for each frame that doesn't contain a QR code
+    // Only log for debugging purposes
+    console.debug("QR scan error:", error);
   };
 
   // Handle manual submission
   const handleManualSubmit = () => {
     const id = parseInt(manualSegmentId);
     if (!isNaN(id) && id >= 1 && id <= 9) {
+      toast({
+        title: "Procesando",
+        description: `Desbloqueando segmento ${id}...`,
+      });
       onSuccess(id);
     } else {
       toast({
@@ -240,40 +172,21 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
           <DialogTitle>Escanear Código QR</DialogTitle>
         </DialogHeader>
         
-        {!cameraError ? (
+        {!useManualMode ? (
           <div className="p-4">
-            <div className="aspect-square mb-4 bg-gray-200 rounded relative overflow-hidden">
-              <video 
-                ref={videoRef} 
-                className="w-full h-full object-cover"
-                muted
-                playsInline
-              />
-              
-              <canvas 
-                ref={canvasRef} 
-                className="hidden"
-              />
-              
-              {/* Scanner visual indicator */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="border-2 border-primary w-2/3 h-2/3 rounded flex items-center justify-center">
-                  <div className="w-full h-px bg-primary/60 absolute"></div>
-                  <div className="h-full w-px bg-primary/60 absolute"></div>
-                </div>
-              </div>
-            </div>
+            <div 
+              ref={scannerContainerRef} 
+              className="mb-4"
+              style={{ minHeight: "300px" }}
+            />
             
-            <p className="text-gray-600 text-center text-sm mb-4">
+            <p className="text-gray-600 text-center text-sm mt-4">
               Posiciona el código QR dentro del recuadro para escanearlo
             </p>
           </div>
         ) : (
           <div className="p-4">
             <div className="text-center mb-4">
-              <p className="text-amber-600 font-medium mb-2">
-                No se pudo acceder a la cámara
-              </p>
               <p className="text-gray-600 text-sm mb-6">
                 Ingresa manualmente el número de segmento que deseas desbloquear (1-9)
               </p>
@@ -305,13 +218,24 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
         )}
         
         <DialogFooter>
-          {!cameraError && (
+          {!useManualMode ? (
             <Button 
               variant="secondary" 
-              onClick={() => setCameraError(true)}
+              onClick={() => {
+                cleanupScanner();
+                setUseManualMode(true);
+              }}
               className="mr-auto"
             >
               Ingresar código manualmente
+            </Button>
+          ) : (
+            <Button 
+              variant="secondary" 
+              onClick={() => setUseManualMode(false)}
+              className="mr-auto"
+            >
+              Volver al escáner
             </Button>
           )}
           <Button variant="outline" onClick={onClose}>
