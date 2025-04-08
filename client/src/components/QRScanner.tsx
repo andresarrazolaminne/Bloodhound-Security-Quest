@@ -14,7 +14,8 @@ interface QRScannerProps {
 }
 
 const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
-  const [useManualMode, setUseManualMode] = useState(false);
+  // Iniciamos directamente en modo manual para evitar problemas con la cámara
+  const [useManualMode, setUseManualMode] = useState(true);
   const [manualSegmentId, setManualSegmentId] = useState<string>("");
   const [isScanning, setIsScanning] = useState(false);
   const scannerContainerRef = useRef<HTMLDivElement>(null);
@@ -169,75 +170,44 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Escanear Código QR</DialogTitle>
+          <DialogTitle>Desbloquear Segmento de Mapa</DialogTitle>
         </DialogHeader>
         
-        {!useManualMode ? (
-          <div className="p-4">
-            <div 
-              ref={scannerContainerRef} 
-              className="mb-4"
-              style={{ minHeight: "300px" }}
-            />
+        <div className="p-4">
+          <div className="text-center mb-4">
+            <p className="text-amber-600 font-medium mb-2">
+              Ingreso manual de segmento
+            </p>
+            <p className="text-gray-600 text-sm mb-6">
+              Ingresa el número del segmento que deseas desbloquear (1-9)
+            </p>
             
-            <p className="text-gray-600 text-center text-sm mt-4">
-              Posiciona el código QR dentro del recuadro para escanearlo
+            <div className="max-w-xs mx-auto space-y-2">
+              <Label htmlFor="segment-id-manual">Número de Segmento</Label>
+              <Input
+                id="segment-id-manual"
+                type="number"
+                min={1}
+                max={9}
+                placeholder="Ingresa un número del 1 al 9"
+                value={manualSegmentId}
+                onChange={(e) => setManualSegmentId(e.target.value)}
+              />
+              <Button 
+                className="w-full mt-4" 
+                onClick={handleManualSubmit}
+              >
+                Desbloquear Segmento
+              </Button>
+            </div>
+            
+            <p className="text-sm text-gray-500 mt-4">
+              Puedes encontrar los códigos de segmentos en la sección <strong>"/qr-generator"</strong>
             </p>
           </div>
-        ) : (
-          <div className="p-4">
-            <div className="text-center mb-4">
-              <p className="text-gray-600 text-sm mb-6">
-                Ingresa manualmente el número de segmento que deseas desbloquear (1-9)
-              </p>
-              
-              <div className="max-w-xs mx-auto space-y-2">
-                <Label htmlFor="segment-id-manual">Número de Segmento</Label>
-                <Input
-                  id="segment-id-manual"
-                  type="number"
-                  min={1}
-                  max={9}
-                  placeholder="Ingresa un número del 1 al 9"
-                  value={manualSegmentId}
-                  onChange={(e) => setManualSegmentId(e.target.value)}
-                />
-                <Button 
-                  className="w-full mt-4" 
-                  onClick={handleManualSubmit}
-                >
-                  Desbloquear Segmento
-                </Button>
-              </div>
-              
-              <p className="text-sm text-gray-500 mt-4">
-                Nota: También puedes generar los códigos QR yendo a la sección "/qr-generator"
-              </p>
-            </div>
-          </div>
-        )}
+        </div>
         
         <DialogFooter>
-          {!useManualMode ? (
-            <Button 
-              variant="secondary" 
-              onClick={() => {
-                cleanupScanner();
-                setUseManualMode(true);
-              }}
-              className="mr-auto"
-            >
-              Ingresar código manualmente
-            </Button>
-          ) : (
-            <Button 
-              variant="secondary" 
-              onClick={() => setUseManualMode(false)}
-              className="mr-auto"
-            >
-              Volver al escáner
-            </Button>
-          )}
           <Button variant="outline" onClick={onClose}>
             Cancelar
           </Button>
