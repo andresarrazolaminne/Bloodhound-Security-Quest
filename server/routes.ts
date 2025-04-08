@@ -32,7 +32,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   apiRouter.post("/register", async (req, res) => {
     try {
+      console.log("Recibido en registro:", req.body);
+      
       const userData = insertUserSchema.parse(req.body);
+      console.log("Datos validados:", userData);
       
       // Check if user already exists
       const existingUser = await storage.getUserByDocumentNumber(userData.documentNumber);
@@ -43,8 +46,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newUser = await storage.createUser(userData);
       return res.status(201).json({ user: newUser });
     } catch (error) {
+      console.error("Error en registro:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Datos de usuario inválidos" });
+        return res.status(400).json({ 
+          message: "Por favor completa todos tus datos",
+          errors: error.errors
+        });
       }
       return res.status(500).json({ message: "Error interno del servidor" });
     }

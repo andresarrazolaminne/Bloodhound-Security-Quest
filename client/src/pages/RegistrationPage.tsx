@@ -39,6 +39,7 @@ const RegistrationPage = () => {
 
     try {
       setIsLoading(true);
+      console.log("Enviando datos:", { documentNumber, name });
       const response = await register(documentNumber, name);
       
       setCurrentUser(response.user);
@@ -48,10 +49,26 @@ const RegistrationPage = () => {
         title: "Bienvenido",
         description: "Tu cuenta ha sido creada exitosamente",
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Error en registro:", error);
+      
+      // Intentar extraer el mensaje de error detallado
+      let errorMessage = "No pudimos registrar tu cuenta. Inténtalo de nuevo.";
+      
+      if (error?.json) {
+        try {
+          const errorData = await error.json();
+          if (errorData?.message) {
+            errorMessage = errorData.message;
+          }
+        } catch (e) {
+          // Si no podemos parsear el error, usamos el mensaje genérico
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "No pudimos registrar tu cuenta. Inténtalo de nuevo.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -69,9 +86,25 @@ const RegistrationPage = () => {
           </div>
           
           <form onSubmit={handleSubmit} className="space-y-6">
-            <input type="hidden" value={documentNumber} />
+            <input type="hidden" name="documentNumber" value={documentNumber} />
             
             <div className="space-y-2">
+              <div className="mb-4">
+                <label htmlFor="document-number" className="block text-sm font-medium text-gray-700">
+                  Número de Documento
+                </label>
+                <Input
+                  id="document-number"
+                  type="text"
+                  value={documentNumber}
+                  onChange={(e) => setDocumentNumber(e.target.value)}
+                  placeholder="Ingresa tu número de cédula"
+                  className="w-full"
+                  required
+                  readOnly={documentNumber !== ""}
+                />
+              </div>
+            
               <label htmlFor="user-name" className="block text-sm font-medium text-gray-700">
                 Nombre Completo
               </label>
