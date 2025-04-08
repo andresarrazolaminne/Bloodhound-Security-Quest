@@ -8,6 +8,7 @@ import AuthPage from "@/pages/AuthPage";
 import MapPage from "@/pages/MapPage";
 import RegistrationPage from "@/pages/RegistrationPage";
 import AdminPage from "@/pages/AdminPage";
+import QRGeneratorPage from "@/pages/QRGeneratorPage";
 
 function Router() {
   return (
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/register" component={RegistrationPage} />
       <Route path="/map" component={MapPage} />
       <Route path="/admin" component={AdminPage} />
+      <Route path="/qr-generator" component={QRGeneratorPage} />
       <Route component={NotFound} />
     </Switch>
   );
