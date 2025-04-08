@@ -64,35 +64,103 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
   }, [isOpen]);
   
   // Iniciar la transmisión de la cámara
-  const startCamera = async (cameraId: string) => {
+  const startCamera = async (cameraId: string = "") => {
     try {
       if (!videoRef.current) return;
       
       // Detener cualquier stream anterior
       stopCamera();
       
-      // Configurar la transmisión de video
-      const constraints = {
-        video: {
-          deviceId: cameraId ? { exact: cameraId } : undefined,
-          facingMode: "environment", // Usar cámara trasera si está disponible
-          width: { ideal: 640 },
-          height: { ideal: 480 }
+      // Buscar cámara trasera si no se especificó un id
+      let constraints: MediaStreamConstraints;
+      
+      if (!cameraId) {
+        // Intentar detectar una cámara trasera
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const cameras = devices.filter(device => device.kind === 'videoinput');
+          
+          // Buscar cámara que tenga "back" o "trasera" en su etiqueta
+          const backCamera = cameras.find(camera => 
+            camera.label.toLowerCase().includes('back') || 
+            camera.label.toLowerCase().includes('trasera') ||
+            camera.label.toLowerCase().includes('rear')
+          );
+          
+          if (backCamera) {
+            console.log("Cámara trasera detectada:", backCamera.label);
+            constraints = {
+              video: {
+                deviceId: { exact: backCamera.deviceId },
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+              }
+            };
+          } else {
+            // Si no se encuentra una cámara trasera específica, usar facingMode
+            constraints = {
+              video: {
+                facingMode: { exact: "environment" }, // Forzar cámara trasera
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+              }
+            };
+          }
+        } catch (e) {
+          // Si hay error al buscar cámaras, usar valores por defecto
+          constraints = {
+            video: {
+              facingMode: "environment",
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            }
+          };
         }
-      };
+      } else {
+        // Usar la cámara especificada
+        constraints = {
+          video: {
+            deviceId: { exact: cameraId },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        };
+      }
       
       // Obtener stream
+      console.log("Solicitando cámara con constraints:", constraints);
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       
       // Asignar stream al elemento de video
       videoRef.current.srcObject = stream;
-      videoRef.current.play();
+      await videoRef.current.play().catch(err => console.error("Error al reproducir video:", err));
       
       // Iniciar el escaneo
       setScanning(true);
       scanQRCode();
     } catch (error) {
       console.error("Error al iniciar la cámara:", error);
+      
+      // Intento secundario con restricciones más simples si falló
+      try {
+        if (cameraId) {
+          // Si falló con una cámara específica, intentar sin restricciones de device
+          const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: true 
+          });
+          
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            await videoRef.current.play().catch(err => console.error("Error al reproducir video en segundo intento:", err));
+            setScanning(true);
+            scanQRCode();
+            return;
+          }
+        }
+      } catch (secondError) {
+        console.error("Error en segundo intento:", secondError);
+      }
+      
       setCameraError("No se pudo iniciar la cámara. Asegúrate de dar permisos en tu navegador.");
       setHasCamera(false);
     }
@@ -216,25 +284,24 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
   
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <QrCode className="h-5 w-5" />
-            <span>Escanear Código QR</span>
+      <DialogContent className="max-w-[95vw] w-full sm:max-w-md p-4 sm:p-6 overflow-hidden">
+        <DialogHeader className="pb-2 space-y-1">
+          <DialogTitle className="flex items-center text-base sm:text-lg gap-2">
+            <QrCode className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+            <span className="truncate">Escanear Código QR</span>
           </DialogTitle>
-          <DialogDescription>
-            Apunta con la cámara a un código QR para desbloquear un segmento del mapa
+          <DialogDescription className="text-xs sm:text-sm">
+            Apunta la cámara al código QR del segmento
           </DialogDescription>
         </DialogHeader>
         
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-          <div className="flex gap-3 items-start">
-            <Camera className="h-5 w-5 text-blue-600 mt-0.5" />
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3 text-xs sm:text-sm">
+          <div className="flex gap-2 items-start">
+            <Camera className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-blue-800 font-medium mb-1">Escanear Código</p>
-              <p className="text-blue-700 text-sm">
+              <p className="text-blue-800 font-medium mb-0.5 text-sm">Escanear Código</p>
+              <p className="text-blue-700 text-xs">
                 Apunta con la cámara al código QR para escanearlo automáticamente.
-                Permite el acceso a la cámara cuando se te solicite.
               </p>
             </div>
           </div>
@@ -242,9 +309,9 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
         
         {/* Selector de cámara (solo mostrar si hay más de una) */}
         {availableCameras.length > 1 && (
-          <div className="mb-4">
+          <div className="mb-3">
             <select 
-              className="w-full p-2 border rounded-md" 
+              className="w-full p-2 text-sm border rounded-md" 
               value={deviceId} 
               onChange={handleCameraChange}
             >
@@ -258,7 +325,11 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
         )}
         
         {/* Área de visualización de la cámara */}
-        <div className="relative bg-black rounded-lg overflow-hidden" style={{ minHeight: "300px" }}>
+        <div className="relative bg-black rounded-lg overflow-hidden mb-2" style={{ 
+          minHeight: "250px", 
+          height: "50vh",
+          maxHeight: "400px" 
+        }}>
           {hasCamera ? (
             <>
               <video 
@@ -277,15 +348,15 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
               
               {/* Superposición para indicar el área de escaneo */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="border-2 border-primary w-64 h-64 rounded-lg opacity-60"></div>
+                <div className="border-2 border-primary w-48 h-48 sm:w-64 sm:h-64 rounded-lg opacity-60"></div>
               </div>
             </>
           ) : (
-            <div className="flex flex-col items-center justify-center p-8 h-full">
-              <div className="text-center text-white mb-4">
-                <p className="mb-2">{cameraError || "No se pudo acceder a la cámara"}</p>
-                <Button onClick={handleRestartCamera} variant="secondary" className="mt-2">
-                  <RefreshCcw className="mr-2 h-4 w-4" />
+            <div className="flex flex-col items-center justify-center p-4 sm:p-8 h-full">
+              <div className="text-center text-white">
+                <p className="mb-2 text-sm">{cameraError || "No se pudo acceder a la cámara"}</p>
+                <Button onClick={handleRestartCamera} variant="secondary" size="sm" className="mt-2">
+                  <RefreshCcw className="mr-2 h-3 w-3" />
                   Reintentar
                 </Button>
               </div>
@@ -293,8 +364,8 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
           )}
         </div>
         
-        <DialogFooter className="flex justify-between mt-4">
-          <Button variant="outline" onClick={onClose}>
+        <DialogFooter className="flex justify-end mt-2 pt-2 border-t">
+          <Button variant="outline" size="sm" onClick={onClose} className="w-full sm:w-auto">
             Cancelar
           </Button>
         </DialogFooter>
