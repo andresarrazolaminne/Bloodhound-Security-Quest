@@ -44,6 +44,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
+    // Limpiar localStorage para evitar auto-login
+    try {
+      localStorage.removeItem("last_login_document");
+    } catch (e) {
+      console.error("Error al limpiar localStorage:", e);
+    }
+    
+    // Reiniciar estado
     setCurrentUser(null);
     setUnlockedSegmentsState([]);
     setIsMapCompleted(false);

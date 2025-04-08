@@ -172,7 +172,27 @@ const MapPage = () => {
               total={9} 
             />
             
-            <div className="flex justify-end mb-4">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                {isMapCompleted && (
+                  <Button 
+                    variant="outline" 
+                    className="flex items-center gap-2 border-primary text-primary hover:bg-primary/5"
+                    onClick={() => setShowCompletionModal(true)}
+                  >
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      viewBox="0 0 24 24" 
+                      fill="currentColor" 
+                      className="h-5 w-5"
+                    >
+                      <path fillRule="evenodd" d="M5.166 2.621v.858c-1.035.148-2.059.33-3.071.543a.75.75 0 00-.584.859 6.753 6.753 0 006.138 5.6 6.73 6.73 0 002.743-.356l1.918-.87a.5.5 0 01.449 0l1.918.87a6.73 6.73 0 002.743.356 6.753 6.753 0 006.138-5.6.75.75 0 00-.584-.86 47.25 47.25 0 00-3.07-.543v-.858a48.322 48.322 0 00-11.782 0z" clipRule="evenodd" />
+                      <path d="M9.5 14.25l-3.22 2.092a.75.75 0 01-1.035-.229.75.75 0 01-.054-.789L7.099 11.5l-3.22-2.092a.75.75 0 01.4-1.357l3.98-.326 1.483-3.918a.75.75 0 011.437 0l1.483 3.918 3.98.326a.75.75 0 01.4 1.357L13.773 11.5l1.906 3.824a.75.75 0 01-.837 1.003L11 14.25l-1.5-.375zm4.5 9.75h-3c-4.416 0-8-3.584-8-8v-2.909l.112.063 2.094 1.371-.6 1.199A1.75 1.75 0 004.917 16 6.3 6.3 0 008.48 17.38l1.733.78.429.195-.518 3.053a1.75 1.75 0 003.462.32L14 16.5l1.265.57a6.3 6.3 0 003.539 1a1.75 1.75 0 001.21-2.89l-.493-.986 1.207-.794a1.75 1.75 0 00.625-2.31l-.516-1.24a44.84 44.84 0 00-.742-.628A1.76 1.76 0 0018.65 8.75l-2.436.607-.469-1.152a1.75 1.75 0 00-1.587-1.014h-.358A7.555 7.555 0 0012 7c-.596 0-1.176.07-1.735.2h-.691a1.75 1.75 0 00-1.594 1.065l-.413 1.011-2.145-.53a1.75 1.75 0 00-1.45.301 1.69 1.69 0 00-.618-.99h-.002L4 8.364v-1.45l.062-.028c.719-.32 1.437-.605 2.156-.855L13.933 4c2.848 0 5.67.285 8.426.847l.64.152.063.028v.242A48.476 48.476 0 0118 6v1.636l.114.062c.284.156.568.319.85.491l.262.159.176.103.06.036.042.028.027.02.011.009L20 9l-.024-.04-.043-.066-.064-.092-.086-.119-.106-.147-.127-.173-.145-.199-.141-.188L19.17 8l-.3.5c-.242.396-.46.796-.653 1.2-.155.325-.282.657-.38.997-.09.33-.149.67-.175 1.018l.334.006.743.014 1.497.045 1.952.09c-.244-4.422-3.906-7.87-8.355-7.87-4.624 0-8.372 3.748-8.372 8.372 0 4.582 3.7 8.294 8.281 8.37l.09-.012z" />
+                    </svg>
+                    Ver Código Premio
+                  </Button>
+                )}
+              </div>
               <AuthCertificate />
             </div>
             
@@ -250,33 +270,34 @@ const MapPage = () => {
       <Dialog open={showCompletionModal} onOpenChange={setShowCompletionModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>¡Felicidades! ¡Mapa Completo!</DialogTitle>
+            <DialogTitle className="text-center text-lg sm:text-xl">¡Felicidades! ¡Mapa Completo!</DialogTitle>
           </DialogHeader>
           
           <div className="pt-6 pb-4 px-6 flex flex-col items-center">
-            <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mb-4 animate-pulse">
+            {/* Trofeo animado */}
+            <div className="w-24 h-24 mb-4 flex items-center justify-center">
               <svg 
                 xmlns="http://www.w3.org/2000/svg" 
-                className="h-10 w-10 text-orange-500" 
-                fill="none" 
                 viewBox="0 0 24 24" 
-                stroke="currentColor"
+                fill="currentColor" 
+                className="h-16 w-16 text-yellow-500 animate-[spin_3s_linear_infinite]"
               >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" 
-                />
+                <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
               </svg>
             </div>
-            <p className="text-gray-600 text-center mb-4">
-              Has completado todo el mapa de logros y desbloqueado tu premio.
-            </p>
             
-            <div className="border border-gray-200 rounded p-4 w-full bg-gray-50 mb-4">
+            <div className="text-center">
+              <p className="text-gray-800 text-lg font-medium mb-1">
+                ¡Misión cumplida!
+              </p>
+              <p className="text-gray-600 text-center mb-4">
+                Has completado todo el mapa de logros y desbloqueado tu premio.
+              </p>
+            </div>
+            
+            <div className="border border-gray-200 rounded-lg p-4 w-full bg-gradient-to-b from-yellow-50 to-white mb-4">
               <h4 className="text-center font-medium text-gray-700 mb-3">Código de Redención</h4>
-              <div className="w-48 h-48 mx-auto bg-white p-2 border border-gray-300 flex items-center justify-center">
+              <div className="w-48 h-48 mx-auto bg-white p-2 border border-gray-300 rounded-lg shadow-sm flex items-center justify-center">
                 {redemptionCode ? (
                   <img 
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${redemptionCode}`}
@@ -293,9 +314,19 @@ const MapPage = () => {
             </div>
           </div>
           
-          <DialogFooter>
-            <Button onClick={() => setShowCompletionModal(false)}>
-              Entendido
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowCompletionModal(false)}
+              className="w-full sm:w-auto order-2 sm:order-1"
+            >
+              Cerrar
+            </Button>
+            <Button
+              onClick={() => window.print()}
+              className="w-full sm:w-auto order-1 sm:order-2"
+            >
+              Guardar Premio
             </Button>
           </DialogFooter>
         </DialogContent>
