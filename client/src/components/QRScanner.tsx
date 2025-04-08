@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/context/UserContext";
-import { unlockSegment } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
@@ -18,141 +17,147 @@ interface QRScannerProps {
 }
 
 const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
-  const qrContainerRef = useRef<HTMLDivElement>(null);
   const [scanning, setScanning] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [qrScanner, setQrScanner] = useState<any>(null);
+  const [qrScanner, setQrScanner] = useState<Html5Qrcode | null>(null);
   const [manualSegmentId, setManualSegmentId] = useState<string>("");
   const [cameraError, setCameraError] = useState(false);
   const { toast } = useToast();
   const { currentUser } = useUser();
 
+  // Función para iniciar el escáner
   useEffect(() => {
     let scanner: Html5Qrcode | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
 
-    const startScanner = async () => {
+    const startScanner = () => {
       setCameraError(false);
       setLoading(true);
       console.log("Iniciando escáner de QR...");
 
-      try {
-        // Crear una instancia del escáner
-        scanner = new Html5Qrcode("qr-reader");
+      // Esperamos a que el componente esté montado
+      timeoutId = setTimeout(async () => {
+        try {
+          // Verificamos que el elemento exista
+          const qrElement = document.getElementById("qr-reader");
+          if (!qrElement) {
+            throw new Error("Elemento qr-reader no encontrado");
+          }
 
-        // Solicitar permisos de cámara explícitamente
-        const devices = await Html5Qrcode.getCameras();
-        if (devices && devices.length > 0) {
-          const cameraId = devices[0].id;
-          
-          console.log("Solicitando acceso a la cámara...");
-          
-          const config = {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1,
-          };
-
-          await scanner.start(
-            cameraId, 
-            config,
-            // Success callback
-            async (decodedText: string) => {
-              console.log("QR Code detectado:", decodedText);
-              
-              try {
-                // Intenta parsear el contenido
-                let segmentId: number;
-                
-                try {
-                  // Primero verifica si es un JSON
-                  const data = JSON.parse(decodedText);
-                  if (data && typeof data.segmentId === 'number') {
-                    segmentId = data.segmentId;
-                  } else {
-                    throw new Error("JSON no válido");
-                  }
-                } catch (jsonError) {
-                  // Si no es JSON, intenta con un número directo
-                  segmentId = parseInt(decodedText);
-                  if (isNaN(segmentId)) {
-                    throw new Error("No es un número válido");
-                  }
-                }
-                
-                // Verificar rango
-                if (segmentId >= 1 && segmentId <= 9) {
-                  // Detener el escáner
-                  if (scanner) {
-                    await scanner.stop();
-                    setQrScanner(null);
-                  }
-                  onSuccess(segmentId);
-                } else {
-                  throw new Error("Segmento fuera de rango (1-9)");
-                }
-              } catch (error) {
-                console.error("Error procesando QR:", error);
-                toast({
-                  title: "QR no válido",
-                  description: "El código escaneado no corresponde a un segmento del mapa",
-                  variant: "destructive"
-                });
-              }
-            },
-            // Error callback (silencioso para no mostrar errores durante el escaneo)
-            () => {}
-          );
-          
-          console.log("Cámara accedida correctamente");
-          setScanning(true);
-          setLoading(false);
+          // Inicializamos el escáner
+          scanner = new Html5Qrcode("qr-reader");
           setQrScanner(scanner);
-          
+
+          // Obtenemos las cámaras disponibles
+          const devices = await Html5Qrcode.getCameras();
+          if (devices && devices.length > 0) {
+            const cameraId = devices[0].id;
+            console.log("Solicitando acceso a la cámara...");
+
+            const config = {
+              fps: 10,
+              qrbox: { width: 250, height: 250 },
+              aspectRatio: 1,
+            };
+
+            await scanner.start(
+              cameraId,
+              config,
+              (decodedText) => {
+                console.log("QR Code detectado:", decodedText);
+                processQRCode(decodedText, scanner);
+              },
+              () => {} // Error callback silencioso
+            );
+
+            console.log("Cámara accedida correctamente");
+            setScanning(true);
+            setLoading(false);
+          } else {
+            throw new Error("No se detectaron cámaras");
+          }
+        } catch (error) {
+          console.error("Error inicializando el escáner:", error);
+          setCameraError(true);
+          setLoading(false);
+          toast({
+            title: "Error de cámara",
+            description: "No se pudo acceder a la cámara. Permite el acceso o ingresa el código manualmente.",
+            variant: "destructive"
+          });
+        }
+      }, 500); // Pequeño delay para asegurar que el DOM esté listo
+    };
+
+    // Procesar el código QR detectado
+    const processQRCode = async (decodedText: string, scanner: Html5Qrcode | null) => {
+      try {
+        let segmentId: number;
+        
+        try {
+          // Intenta parsear como JSON
+          const data = JSON.parse(decodedText);
+          if (data && typeof data.segmentId === 'number') {
+            segmentId = data.segmentId;
+          } else {
+            throw new Error("JSON no válido");
+          }
+        } catch (jsonError) {
+          // Si no es JSON, intenta como número directo
+          segmentId = parseInt(decodedText);
+          if (isNaN(segmentId)) {
+            throw new Error("No es un número válido");
+          }
+        }
+        
+        // Verificar rango válido
+        if (segmentId >= 1 && segmentId <= 9) {
+          // Detener el escáner antes de continuar
+          if (scanner) {
+            await scanner.stop();
+            setQrScanner(null);
+          }
+          onSuccess(segmentId);
         } else {
-          throw new Error("No se detectaron cámaras");
+          throw new Error("Segmento fuera de rango (1-9)");
         }
       } catch (error) {
-        console.error("Error inicializando el escáner:", error);
-        setCameraError(true);
-        setLoading(false);
-        
+        console.error("Error procesando QR:", error);
         toast({
-          title: "Error de cámara",
-          description: "No se pudo acceder a la cámara. Permite el acceso o ingresa el código manualmente.",
+          title: "QR no válido",
+          description: "El código escaneado no corresponde a un segmento del mapa",
           variant: "destructive"
         });
       }
     };
 
-    // Inicia o detiene el escáner según el estado de isOpen
+    // Gestión del ciclo de vida del componente
     if (isOpen) {
       startScanner();
-    } else {
-      // Detener el escáner si está activo
-      if (qrScanner) {
-        qrScanner.stop()
-          .then(() => {
-            console.log("Escáner detenido correctamente");
-            setQrScanner(null);
-            setScanning(false);
-          })
-          .catch(error => {
-            console.error("Error al detener el escáner:", error);
-          });
-      }
+    } else if (qrScanner) {
+      qrScanner.stop()
+        .then(() => {
+          console.log("Escáner detenido correctamente");
+          setQrScanner(null);
+          setScanning(false);
+        })
+        .catch((error: any) => {
+          console.error("Error al detener el escáner:", error);
+        });
     }
 
-    // Limpieza cuando el componente se desmonte
+    // Limpiar al desmontar
     return () => {
+      if (timeoutId) clearTimeout(timeoutId);
       if (qrScanner) {
-        qrScanner.stop().catch(error => {
+        qrScanner.stop().catch((error: any) => {
           console.error("Error al limpiar el escáner:", error);
         });
       }
     };
   }, [isOpen, onSuccess, toast]);
 
-  // Handle manual submission
+  // Manejar envío manual
   const handleManualSubmit = () => {
     const id = parseInt(manualSegmentId);
     if (!isNaN(id) && id >= 1 && id <= 9) {
