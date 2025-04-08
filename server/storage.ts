@@ -150,4 +150,97 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Database storage implementation
+import { db } from "./db";
+import { eq, sql } from "drizzle-orm";
+
+export class DatabaseStorage implements IStorage {
+  async getUserByDocumentNumber(documentNumber: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.documentNumber, documentNumber));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(insertUser).returning();
+    
+    // Create empty segments for the user
+    const segmentsToCreate = Array.from({ length: 9 }, (_, i) => ({
+      userId: user.id,
+      segmentId: i + 1,
+      unlocked: false
+    }));
+    
+    await db.insert(mapSegments).values(segmentsToCreate);
+    
+    // Create an empty prize for the user
+    await db.insert(prizes).values({
+      userId: user.id,
+      redeemed: false,
+      redemptionCode: null,
+      redeemedAt: null
+    });
+
+    return user;
+  }
+
+  async getSegmentsByUserId(userId: number): Promise<MapSegment[]> {
+    return await db.select().from(mapSegments).where(eq(mapSegments.userId, userId));
+  }
+
+  async unlockSegment(userId: number, segmentId: number): Promise<MapSegment> {
+    const [segment] = await db
+      .update(mapSegments)
+      .set({ unlocked: true })
+      .where(
+        sql`${mapSegments.userId} = ${userId} AND ${mapSegments.segmentId} = ${segmentId}`
+      )
+      .returning();
+    
+    return segment;
+  }
+
+  async getPrizeByUserId(userId: number): Promise<Prize | undefined> {
+    const [prize] = await db.select().from(prizes).where(eq(prizes.userId, userId));
+    return prize || undefined;
+  }
+
+  async createRedemptionCode(userId: number): Promise<string> {
+    // Create a unique redemption code
+    const redemptionCode = nanoid(10).toUpperCase();
+    
+    // Store it with the prize
+    await db
+      .update(prizes)
+      .set({ redemptionCode })
+      .where(eq(prizes.userId, userId));
+    
+    return redemptionCode;
+  }
+
+  async redeemPrize(userId: number): Promise<Prize> {
+    const now = new Date();
+    
+    const [prize] = await db
+      .update(prizes)
+      .set({ 
+        redeemed: true,
+        redeemedAt: now.toISOString()
+      })
+      .where(eq(prizes.userId, userId))
+      .returning();
+    
+    return prize;
+  }
+
+  async getPrizeByRedemptionCode(code: string): Promise<Prize | undefined> {
+    const [prize] = await db
+      .select()
+      .from(prizes)
+      .where(eq(prizes.redemptionCode, code));
+    
+    return prize || undefined;
+  }
+}
+
+// Use database storage instead of memory storage
+export const storage = new DatabaseStorage();

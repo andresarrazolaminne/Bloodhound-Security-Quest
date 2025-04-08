@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, json } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, json, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -20,7 +20,7 @@ export const prizes = pgTable("prizes", {
   userId: integer("user_id").notNull(),
   redeemed: boolean("redeemed").default(false),
   redemptionCode: text("redemption_code"),
-  redeemedAt: text("redeemed_at"),
+  redeemedAt: timestamp("redeemed_at"),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
