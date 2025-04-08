@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 
-// Importamos la librería de manera dinámica
-import { Html5QrcodeScanner } from "html5-qrcode";
+// Importamos la librería 
+import { Html5Qrcode } from "html5-qrcode";
 
 interface QRScannerProps {
   isOpen: boolean;
@@ -28,99 +28,97 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
   const { currentUser } = useUser();
 
   useEffect(() => {
-    let scanner: any = null;
+    let scanner: Html5Qrcode | null = null;
 
     const startScanner = async () => {
-      if (!qrContainerRef.current) return;
-      
+      setCameraError(false);
       setLoading(true);
-      
-      // Limpiamos el contenedor antes de inicializar
-      qrContainerRef.current.innerHTML = "";
+      console.log("Iniciando escáner de QR...");
 
       try {
-        const qrScannerId = "qr-scanner-container";
-        // Creamos un div para el scanner dentro del contenedor
-        const scannerDiv = document.createElement("div");
-        scannerDiv.id = qrScannerId;
-        qrContainerRef.current.appendChild(scannerDiv);
+        // Crear una instancia del escáner
+        scanner = new Html5Qrcode("qr-reader");
 
-        const config = {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          rememberLastUsedCamera: true,
-          aspectRatio: 1,
-          showTorchButtonIfSupported: true,
-          showZoomSliderIfSupported: true,
-        };
+        // Solicitar permisos de cámara explícitamente
+        const devices = await Html5Qrcode.getCameras();
+        if (devices && devices.length > 0) {
+          const cameraId = devices[0].id;
+          
+          console.log("Solicitando acceso a la cámara...");
+          
+          const config = {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1,
+          };
 
-        // Inicializa el escáner
-        scanner = new Html5QrcodeScanner(qrScannerId, config, false);
-        setQrScanner(scanner);
-
-        scanner.render(
-          // Success callback
-          (decodedText: string) => {
-            console.log("QR Code detectado:", decodedText);
-            try {
-              // Intenta parsear el contenido
-              let data: any;
+          await scanner.start(
+            cameraId, 
+            config,
+            // Success callback
+            async (decodedText: string) => {
+              console.log("QR Code detectado:", decodedText);
+              
               try {
-                data = JSON.parse(decodedText);
-              } catch {
-                // Si no es JSON, intenta directamente como número
-                const segmentId = parseInt(decodedText);
-                if (!isNaN(segmentId) && segmentId >= 1 && segmentId <= 9) {
-                  scanner.pause();
-                  onSuccess(segmentId);
-                  return;
+                // Intenta parsear el contenido
+                let segmentId: number;
+                
+                try {
+                  // Primero verifica si es un JSON
+                  const data = JSON.parse(decodedText);
+                  if (data && typeof data.segmentId === 'number') {
+                    segmentId = data.segmentId;
+                  } else {
+                    throw new Error("JSON no válido");
+                  }
+                } catch (jsonError) {
+                  // Si no es JSON, intenta con un número directo
+                  segmentId = parseInt(decodedText);
+                  if (isNaN(segmentId)) {
+                    throw new Error("No es un número válido");
+                  }
                 }
-                throw new Error("Formato de QR no válido");
-              }
-              
-              // Si es JSON, extrae el segmentId
-              if (data && typeof data.segmentId === 'number') {
-                const segmentId = data.segmentId;
+                
+                // Verificar rango
                 if (segmentId >= 1 && segmentId <= 9) {
-                  scanner.pause();
+                  // Detener el escáner
+                  if (scanner) {
+                    await scanner.stop();
+                    setQrScanner(null);
+                  }
                   onSuccess(segmentId);
-                  return;
+                } else {
+                  throw new Error("Segmento fuera de rango (1-9)");
                 }
+              } catch (error) {
+                console.error("Error procesando QR:", error);
+                toast({
+                  title: "QR no válido",
+                  description: "El código escaneado no corresponde a un segmento del mapa",
+                  variant: "destructive"
+                });
               }
-              
-              toast({
-                title: "QR no válido",
-                description: "El código escaneado no corresponde a un segmento del mapa",
-                variant: "destructive"
-              });
-            } catch (error) {
-              console.error("Error procesando QR:", error);
-              toast({
-                title: "Error de formato",
-                description: "El código QR no tiene el formato esperado",
-                variant: "destructive"
-              });
-            }
-          },
-          // Error callback
-          (errorMessage: string) => {
-            // Ignoramos errores comunes durante el escaneo
-            if (errorMessage.includes("No MultiFormat Readers")) return;
-            if (errorMessage.includes("No barcode found")) return;
-            
-            console.error("Error en el escáner QR:", errorMessage);
-          }
-        );
-        
-        setScanning(true);
-        setLoading(false);
-        
+            },
+            // Error callback (silencioso para no mostrar errores durante el escaneo)
+            () => {}
+          );
+          
+          console.log("Cámara accedida correctamente");
+          setScanning(true);
+          setLoading(false);
+          setQrScanner(scanner);
+          
+        } else {
+          throw new Error("No se detectaron cámaras");
+        }
       } catch (error) {
         console.error("Error inicializando el escáner:", error);
+        setCameraError(true);
         setLoading(false);
+        
         toast({
-          title: "Error",
-          description: "No se pudo inicializar el escáner de QR",
+          title: "Error de cámara",
+          description: "No se pudo acceder a la cámara. Permite el acceso o ingresa el código manualmente.",
           variant: "destructive"
         });
       }
@@ -129,24 +127,27 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
     // Inicia o detiene el escáner según el estado de isOpen
     if (isOpen) {
       startScanner();
-    } else if (qrScanner) {
-      try {
-        qrScanner.clear();
-      } catch (error) {
-        console.error("Error al detener el escáner:", error);
+    } else {
+      // Detener el escáner si está activo
+      if (qrScanner) {
+        qrScanner.stop()
+          .then(() => {
+            console.log("Escáner detenido correctamente");
+            setQrScanner(null);
+            setScanning(false);
+          })
+          .catch(error => {
+            console.error("Error al detener el escáner:", error);
+          });
       }
-      setQrScanner(null);
-      setScanning(false);
     }
 
     // Limpieza cuando el componente se desmonte
     return () => {
-      if (scanner) {
-        try {
-          scanner.clear();
-        } catch (error) {
+      if (qrScanner) {
+        qrScanner.stop().catch(error => {
           console.error("Error al limpiar el escáner:", error);
-        }
+        });
       }
     };
   }, [isOpen, onSuccess, toast]);
@@ -182,9 +183,12 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
             ) : (
               <>
                 <div 
-                  ref={qrContainerRef} 
-                  className="qr-scanner-container"
-                  style={{ maxWidth: '100%' }}
+                  id="qr-reader" 
+                  style={{ 
+                    width: '100%', 
+                    maxWidth: '400px',
+                    margin: '0 auto'
+                  }}
                 ></div>
                 
                 <p className="text-gray-600 text-center text-sm mt-4">
