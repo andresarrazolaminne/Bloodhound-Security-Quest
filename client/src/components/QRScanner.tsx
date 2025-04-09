@@ -44,10 +44,9 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
           return;
         }
         
-        // Usar la primera cámara por defecto
-        const defaultDeviceId = videoDevices[0].deviceId;
-        setDeviceId(defaultDeviceId);
-        await startCamera(defaultDeviceId);
+        // En lugar de usar la primera cámara, intentamos usar directamente la cámara trasera
+        // La función startCamera ya tiene la lógica para buscar la cámara trasera
+        await startCamera("");
       } catch (error) {
         console.error("Error al configurar el escáner:", error);
         setCameraError("No se pudo acceder a la cámara. Por favor, permite el acceso a la cámara en tu navegador.");
@@ -104,16 +103,41 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
           setAvailableCameras(cameras);
           
           // Buscar cámara que tenga "back", "trasera", "rear", etc. en su etiqueta
-          const backCamera = cameras.find(camera => {
+          // Intentamos varias estrategias para identificar cámaras traseras
+          
+          // 1. Buscar términos explícitos de cámara trasera
+          let backCamera = cameras.find(camera => {
             const label = camera.label.toLowerCase();
             return label.includes('back') || 
                    label.includes('trasera') || 
                    label.includes('rear') ||
                    label.includes('trás') ||
                    label.includes('posterior') ||
-                   label.includes('atrás') ||
-                   !label.includes('front'); // Si no tiene "front" podría ser trasera
+                   label.includes('atrás');
           });
+          
+          // 2. Si no encontramos por términos, buscamos cámaras que NO sean frontales
+          if (!backCamera) {
+            backCamera = cameras.find(camera => {
+              const label = camera.label.toLowerCase();
+              return !label.includes('front') && 
+                     !label.includes('frontal') && 
+                     !label.includes('selfie') &&
+                     !label.includes('user');
+            });
+          }
+          
+          // 3. Si hay exactamente 2 cámaras, asumimos que la segunda es la trasera
+          // (muchos dispositivos móviles tienen la cámara frontal como índice 0 y la trasera como índice 1)
+          if (!backCamera && cameras.length === 2) {
+            backCamera = cameras[1];
+          }
+          
+          // 4. Si no hemos encontrado una cámara trasera y tenemos múltiples cámaras,
+          // usamos la última (a menudo la trasera en dispositivos Android)
+          if (!backCamera && cameras.length > 1) {
+            backCamera = cameras[cameras.length - 1];
+          }
           
           if (backCamera) {
             console.log("Cámara trasera encontrada por etiqueta:", backCamera.label);
@@ -303,10 +327,37 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
   const handleRestartCamera = () => {
     setHasCamera(true);
     setCameraError(null);
+    
+    // Primero intentamos usar la cámara trasera
     if (deviceId) {
+      // Si ya hay un deviceId seleccionado, usamos ese
       startCamera(deviceId);
-    } else if (availableCameras.length > 0) {
-      startCamera(availableCameras[0].deviceId);
+    } else {
+      // Si no hay deviceId, intentamos encontrar la cámara trasera primero
+      const backCamera = availableCameras.find(camera => {
+        const label = camera.label.toLowerCase();
+        return label.includes('back') || 
+              label.includes('trasera') || 
+              label.includes('rear') ||
+              label.includes('trás') ||
+              label.includes('posterior') ||
+              label.includes('environment');
+      });
+      
+      if (backCamera) {
+        // Si encontramos una cámara trasera, la usamos
+        startCamera(backCamera.deviceId);
+      } else if (availableCameras.length > 1) {
+        // Si hay más de una cámara, usamos la segunda (suele ser la trasera)
+        startCamera(availableCameras[1].deviceId);
+      } else if (availableCameras.length > 0) {
+        // Como último recurso, usamos la primera cámara disponible
+        startCamera(availableCameras[0].deviceId);
+      } else {
+        // Si no hay cámaras, usamos "" para que la función startCamera 
+        // intente con facingMode: "environment"
+        startCamera("");
+      }
     }
   };
   
@@ -355,16 +406,28 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
               {availableCameras.map((device, index) => {
                 // Determinar si parece ser cámara trasera o frontal
                 const label = device.label || `Cámara ${index + 1}`;
-                const isBackCamera = 
-                  label.toLowerCase().includes('back') || 
-                  label.toLowerCase().includes('trasera') || 
-                  label.toLowerCase().includes('rear') ||
-                  label.toLowerCase().includes('posterior');
+                const labelLower = label.toLowerCase();
                 
+                // Mejorar la detección de cámaras traseras con más términos
+                const isBackCamera = 
+                  labelLower.includes('back') || 
+                  labelLower.includes('trasera') || 
+                  labelLower.includes('rear') ||
+                  labelLower.includes('trás') ||
+                  labelLower.includes('posterior') ||
+                  labelLower.includes('atrás') ||
+                  labelLower.includes('environment') || 
+                  (labelLower.includes('camera') && labelLower.includes('0')) || // Camera 0 a menudo es trasera
+                  (labelLower.includes('camera') && index === 1) || // Segunda cámara en muchos dispositivos
+                  (device.deviceId === deviceId && !deviceId.includes("front")); // Si es la cámara seleccionada
+                
+                // Mejorar la detección de cámaras frontales
                 const isFrontCamera = 
-                  label.toLowerCase().includes('front') || 
-                  label.toLowerCase().includes('frontal') ||
-                  label.toLowerCase().includes('selfie');
+                  labelLower.includes('front') || 
+                  labelLower.includes('frontal') ||
+                  labelLower.includes('selfie') ||
+                  labelLower.includes('user') ||
+                  labelLower.includes('face');
                 
                 // Crear etiqueta amigable
                 let friendlyLabel = label;
@@ -423,6 +486,30 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
               {/* Superposición para indicar el área de escaneo */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="border-2 border-primary w-48 h-48 sm:w-64 sm:h-64 rounded-lg opacity-60"></div>
+              </div>
+              
+              {/* Botón para cambiar rápidamente de cámara */}
+              <div className="absolute bottom-3 right-3">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    // Encontrar la cámara que no está actualmente activa
+                    const currentIndex = availableCameras.findIndex(cam => cam.deviceId === deviceId);
+                    if (currentIndex === -1 || availableCameras.length <= 1) return;
+                    
+                    // Alternar a la siguiente cámara (o volver a la primera si estamos en la última)
+                    const nextIndex = (currentIndex + 1) % availableCameras.length;
+                    const nextCamera = availableCameras[nextIndex];
+                    
+                    setDeviceId(nextCamera.deviceId);
+                    startCamera(nextCamera.deviceId);
+                  }}
+                  className="bg-black/70 text-white p-2 rounded-full hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-primary"
+                  aria-label="Cambiar cámara"
+                  title="Cambiar cámara"
+                >
+                  <RefreshCcw className="h-5 w-5" />
+                </button>
               </div>
             </>
           ) : (
