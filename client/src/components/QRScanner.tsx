@@ -562,12 +562,19 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
               
               {/* Superposición para indicar el área de escaneo */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="border-2 border-primary w-48 h-48 sm:w-64 sm:h-64 rounded-lg opacity-60"></div>
+                <div className="border-3 border-green-500 w-56 h-56 sm:w-72 sm:h-72 rounded-lg shadow-lg" 
+                     style={{boxShadow: "0 0 0 2000px rgba(0, 0, 0, 0.3), inset 0 0 20px rgba(95, 211, 95, 0.5)"}}>
+                  {/* Esquinas para resaltar el área de escaneo */}
+                  <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-green-500 rounded-tl-lg"></div>
+                  <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-green-500 rounded-tr-lg"></div>
+                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-green-500 rounded-bl-lg"></div>
+                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-green-500 rounded-br-lg"></div>
+                </div>
               </div>
               
               {/* Botones para controlar la cámara */}
-              <div className="absolute bottom-3 right-3 flex gap-2">
-                {/* Botón para reiniciar el escaneo */}
+              <div className="absolute bottom-0 left-0 right-0 p-3 flex justify-center items-center gap-3">
+                {/* Botón principal de escaneo con etiqueta */}
                 <button
                   onClick={(e) => {
                     e.preventDefault();
@@ -578,11 +585,12 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
                     }
                     scanQRCode();
                   }}
-                  className="bg-green-600/90 text-white p-2 rounded-full hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-primary"
-                  aria-label="Iniciar escaneo"
-                  title="Iniciar/Reiniciar escaneo"
+                  className="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-primary shadow-lg flex items-center justify-center gap-2 font-medium"
+                  aria-label="Escanear código"
+                  title="Escanear QR"
                 >
                   <Play className="h-5 w-5" />
+                  <span>Escanear</span>
                 </button>
                 
                 {/* Botón para cambiar rápidamente de cámara */}
@@ -600,11 +608,12 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
                     setDeviceId(nextCamera.deviceId);
                     startCamera(nextCamera.deviceId);
                   }}
-                  className="bg-black/70 text-white p-2 rounded-full hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary shadow-lg flex items-center justify-center gap-2 font-medium"
                   aria-label="Cambiar cámara"
                   title="Cambiar cámara"
                 >
                   <RefreshCcw className="h-5 w-5" />
+                  <span>Cambiar cámara</span>
                 </button>
               </div>
             </>
