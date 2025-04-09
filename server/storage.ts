@@ -3,6 +3,7 @@ import {
   mapSegments, 
   prizes,
   mapSegmentAssets,
+  systemConfig,
   type User, 
   type InsertUser, 
   type MapSegment, 
@@ -11,7 +12,7 @@ import {
   type InsertPrize,
   type MapSegmentAsset,
   type InsertMapSegmentAsset,
-  systemConfig as systemConfigTable
+  type SystemConfig
 } from "@shared/schema";
 import { nanoid } from "nanoid";
 
@@ -347,32 +348,50 @@ export class DatabaseStorage implements IStorage {
 
   // System Configuration
   async getSystemConfig() {
-    const configs = await db.select().from(systemConfigTable);
-    return configs[0] || {
-      instructionsText: "Bienvenido a nuestra aplicación. Sigue las instrucciones para participar.",
-      siteMapImageUrl: "https://placehold.co/1200x800/e2e8f0/64748b?text=Mapa+del+Sitio"
-    };
+    try {
+      const configs = await db.select().from(systemConfig);
+      return configs[0] || {
+        instructionsText: "Bienvenido a nuestra aplicación. Sigue las instrucciones para participar.",
+        siteMapImageUrl: "https://placehold.co/1200x800/e2e8f0/64748b?text=Mapa+del+Sitio"
+      };
+    } catch (error) {
+      console.error("Error al obtener la configuración:", error);
+      return {
+        instructionsText: "Bienvenido a nuestra aplicación. Sigue las instrucciones para participar.",
+        siteMapImageUrl: "https://placehold.co/1200x800/e2e8f0/64748b?text=Mapa+del+Sitio"
+      };
+    }
   }
 
   async updateSystemConfig(configData: {
     instructionsText: string;
     siteMapImageUrl: string;
   }) {
-    const configs = await db.select().from(systemConfigTable);
+    try {
+      const configs = await db.select().from(systemConfig);
 
-    if (configs.length === 0) {
-      return db.insert(systemConfigTable).values({
-        ...configData,
-        updatedAt: new Date()
-      }).returning();
+      if (configs.length === 0) {
+        // Si no hay registros, insertar uno nuevo
+        const [inserted] = await db.insert(systemConfig).values({
+          ...configData,
+          updatedAt: new Date()
+        }).returning();
+        return inserted;
+      }
+
+      // Actualizar el primer registro existente (solo debería haber uno)
+      const [updated] = await db.update(systemConfig)
+        .set({
+          ...configData,
+          updatedAt: new Date()
+        })
+        .where(eq(systemConfig.id, configs[0].id))
+        .returning();
+      return updated;
+    } catch (error) {
+      console.error("Error al actualizar la configuración:", error);
+      throw error;
     }
-
-    return db.update(systemConfigTable)
-      .set({
-        ...configData,
-        updatedAt: new Date()
-      })
-      .returning();
   }
 }
 

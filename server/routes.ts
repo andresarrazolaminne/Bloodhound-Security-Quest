@@ -2,7 +2,7 @@ import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { insertUserSchema, insertMapSegmentAssetsSchema } from "@shared/schema";
+import { insertUserSchema, insertMapSegmentAssetsSchema, insertSystemConfigSchema } from "@shared/schema";
 import { nanoid } from "nanoid";
 
 // Función para generar un código de seguridad alfanumérico aleatorio
