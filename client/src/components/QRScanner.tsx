@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { QrCode, Camera, RefreshCcw } from "lucide-react";
+import { QrCode, Camera, RefreshCcw, Play } from "lucide-react";
 import jsQR from "jsqr";
 
 interface QRScannerProps {
@@ -26,12 +26,16 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
   
   const { toast } = useToast();
   
+  // Referencia para controlar si el escaneo está inicializado
+  const scanInitializedRef = useRef<boolean>(false);
+  
   // Inicializar el stream de video al montar el componente
   useEffect(() => {
     const setupScanner = async () => {
       if (!isOpen) return;
       
       try {
+        console.log("Inicializando escáner...");
         // Obtener lista de cámaras
         const devices = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = devices.filter(device => device.kind === 'videoinput');
@@ -43,6 +47,9 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
           setCameraError("No se detectaron cámaras en este dispositivo");
           return;
         }
+        
+        // Restablecer estado de escáner cada vez que se abre
+        scanInitializedRef.current = false;
         
         // En lugar de usar la primera cámara, intentamos usar directamente la cámara trasera
         // La función startCamera ya tiene la lógica para buscar la cámara trasera
@@ -65,6 +72,8 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
         clearTimeout(successTimeoutRef.current);
         successTimeoutRef.current = null;
       }
+      
+      scanInitializedRef.current = false;
     };
   }, [isOpen]);
   
@@ -73,9 +82,11 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
     try {
       if (!videoRef.current) return;
       
+      // Reiniciar el estado de escaneo
+      scanInitializedRef.current = false;
+      
       // Detener cualquier stream anterior
       stopCamera();
-      
       // Primero intentamos con la estrategia más agresiva para cámara trasera
       if (!cameraId) {
         try {
@@ -251,7 +262,16 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
 
   // Escanear continuamente códigos QR con optimización de rendimiento
   const scanQRCode = () => {
-    if (!scanning) return;
+    if (!scanning) {
+      console.log("Escaneo detenido, se ignora solicitud de escaneo");
+      return;
+    }
+    
+    // Para depuración
+    if (!scanInitializedRef.current) {
+      console.log("¡Iniciando escaneo de QR por primera vez!");
+      scanInitializedRef.current = true;
+    }
     
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -545,8 +565,27 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
                 <div className="border-2 border-primary w-48 h-48 sm:w-64 sm:h-64 rounded-lg opacity-60"></div>
               </div>
               
-              {/* Botón para cambiar rápidamente de cámara */}
-              <div className="absolute bottom-3 right-3">
+              {/* Botones para controlar la cámara */}
+              <div className="absolute bottom-3 right-3 flex gap-2">
+                {/* Botón para reiniciar el escaneo */}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    // Reiniciar el escaneo sin cambiar de cámara
+                    scanInitializedRef.current = false;
+                    if (!scanning) {
+                      setScanning(true);
+                    }
+                    scanQRCode();
+                  }}
+                  className="bg-green-600/90 text-white p-2 rounded-full hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                  aria-label="Iniciar escaneo"
+                  title="Iniciar/Reiniciar escaneo"
+                >
+                  <Play className="h-5 w-5" />
+                </button>
+                
+                {/* Botón para cambiar rápidamente de cámara */}
                 <button
                   onClick={(e) => {
                     e.preventDefault();
