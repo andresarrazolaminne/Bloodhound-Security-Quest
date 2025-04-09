@@ -90,7 +90,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { documentNumber, segmentId, securityCode } = z.object({
         documentNumber: z.string(),
         segmentId: z.number(),
-        securityCode: z.string().optional() // Permitimos que sea opcional para compatibilidad con versiones anteriores
+        securityCode: z.string().optional()
       }).parse(req.body);
       
       const user = await storage.getUserByDocumentNumber(documentNumber);
@@ -98,17 +98,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Usuario no encontrado" });
       }
       
-      // Si se proporcionó un código de seguridad, verificamos que coincida con el del segmento
-      if (securityCode) {
-        const segmentAsset = await storage.getMapSegmentAsset(segmentId);
-        
-        // Si el segmento tiene un código de seguridad y no coincide con el proporcionado
-        if (segmentAsset && segmentAsset.securityCode && 
-            segmentAsset.securityCode !== securityCode) {
-          return res.status(403).json({ 
-            message: "Código de seguridad inválido para este segmento" 
-          });
-        }
+      // Obtenemos los datos del segmento de la base de datos
+      const segmentAsset = await storage.getMapSegmentAsset(segmentId);
+      
+      // Verificamos si existe configuración para este segmento
+      if (!segmentAsset) {
+        return res.status(404).json({ 
+          message: "No se encontró configuración para este segmento" 
+        });
+      }
+      
+      // Verificamos que se haya proporcionado un código de seguridad
+      if (!securityCode) {
+        return res.status(403).json({ 
+          message: "Se requiere un código de seguridad para desbloquear el segmento" 
+        });
+      }
+      
+      // Verificamos que el código de seguridad coincida exactamente con el almacenado
+      if (segmentAsset.securityCode !== securityCode) {
+        return res.status(403).json({ 
+          message: "Código de seguridad inválido para este segmento" 
+        });
       }
       
       const segment = await storage.unlockSegment(user.id, segmentId);
