@@ -2,6 +2,21 @@ import { pgTable, text, serial, integer, boolean, json, timestamp } from "drizzl
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Esquema para la configuración del sistema
+export const systemConfigSchema = z.object({
+  id: z.number(),
+  instructionsText: z.string(),
+  siteMapImageUrl: z.string(),
+  updatedAt: z.date()
+});
+
+export type SystemConfig = z.infer<typeof systemConfigSchema>;
+
+export const insertSystemConfigSchema = systemConfigSchema.omit({ 
+  id: true,
+  updatedAt: true 
+});
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   documentNumber: text("document_number").notNull().unique(),

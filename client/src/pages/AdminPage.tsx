@@ -46,7 +46,7 @@ const AdminPage = () => {
     redeemedAt?: string;
     alreadyRedeemed?: boolean;
   } | null>(null);
-  
+
   // Gestión de segmentos del mapa
   const [mapAssets, setMapAssets] = useState<MapSegmentAsset[]>([]);
   const [loadingAssets, setLoadingAssets] = useState(false);
@@ -63,29 +63,29 @@ const AdminPage = () => {
     securityCode: "",
     generateNewCode: false
   });
-  
+
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  
+
   // Función para cerrar sesión
   const handleLogout = () => {
     // Eliminar la autenticación de la sesión
     sessionStorage.removeItem("adminAuthenticated");
-    
+
     toast({
       title: "Sesión cerrada",
       description: "Has salido del panel de administración",
     });
-    
+
     // Redirigir a la página de login
     setLocation("/admin-login");
   };
-  
+
   // Cargar assets de segmentos del mapa al iniciar
   useEffect(() => {
     fetchMapAssets();
   }, []);
-  
+
   // Función para cargar los assets de segmentos del mapa
   const fetchMapAssets = async () => {
     try {
@@ -103,7 +103,7 @@ const AdminPage = () => {
       setLoadingAssets(false);
     }
   };
-  
+
   // Función para abrir el diálogo de crear asset
   const handleCreateAsset = () => {
     setDialogMode("create");
@@ -118,7 +118,7 @@ const AdminPage = () => {
     });
     setDialogOpen(true);
   };
-  
+
   // Función para abrir el diálogo de editar asset
   const handleEditAsset = (asset: MapSegmentAsset) => {
     setDialogMode("edit");
@@ -134,12 +134,12 @@ const AdminPage = () => {
     });
     setDialogOpen(true);
   };
-  
+
   // Función para guardar un asset (crear o actualizar)
   const handleSaveAsset = async () => {
     try {
       setLoadingAssets(true);
-      
+
       const payload = {
         ...formData,
         redirectUrl: formData.redirectUrl || null,
@@ -148,7 +148,7 @@ const AdminPage = () => {
         // para que el servidor genere uno nuevo
         generateNewCode: formData.generateNewCode || false
       };
-      
+
       if (dialogMode === "create") {
         // Crear nuevo asset
         await apiRequest("POST", "/api/admin/map-assets", payload);
@@ -164,7 +164,7 @@ const AdminPage = () => {
           description: "Segmento actualizado correctamente"
         });
       }
-      
+
       // Recargar la lista de assets
       fetchMapAssets();
       setDialogOpen(false);
@@ -178,22 +178,22 @@ const AdminPage = () => {
       setLoadingAssets(false);
     }
   };
-  
+
   // Función para eliminar un asset
   const handleDeleteAsset = async (segmentId: number) => {
     if (!confirm("¿Estás seguro de eliminar este segmento?")) {
       return;
     }
-    
+
     try {
       setLoadingAssets(true);
       await apiRequest("DELETE", `/api/admin/map-assets/${segmentId}`);
-      
+
       toast({
         title: "Éxito",
         description: "Segmento eliminado correctamente"
       });
-      
+
       // Recargar la lista de assets
       fetchMapAssets();
     } catch (error) {
@@ -209,7 +209,7 @@ const AdminPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!redemptionCode.trim()) {
       toast({
         title: "Error",
@@ -222,22 +222,22 @@ const AdminPage = () => {
     try {
       setIsLoading(true);
       setResult(null);
-      
+
       const response = await redeemPrize(redemptionCode);
-      
+
       setResult({
         success: true,
         message: "Premio disponible para redención"
       });
-      
+
       toast({
         title: "Éxito",
         description: "Premio validado correctamente",
       });
-      
+
     } catch (error) {
       const errorResponse = await (error as Response).json();
-      
+
       if (errorResponse.redeemedAt) {
         // Already redeemed - Mostrar como validado pero ya reclamado
         setResult({
@@ -253,7 +253,7 @@ const AdminPage = () => {
           message: errorResponse.message || "Código de redención inválido"
         });
       }
-      
+
       toast({
         title: "Error",
         description: errorResponse.message || "Código de redención inválido",
@@ -277,13 +277,14 @@ const AdminPage = () => {
           Cerrar Sesión
         </Button>
       </div>
-      
+
       <Tabs defaultValue="prizes" className="max-w-5xl mx-auto">
-        <TabsList className="grid w-full grid-cols-2 mb-6">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 mb-6">
           <TabsTrigger value="prizes">Validación de Premios</TabsTrigger>
-          <TabsTrigger value="map">Segmentos del Mapa</TabsTrigger>
+          <TabsTrigger value="segments">Segmentos del Mapa</TabsTrigger>
+          <TabsTrigger value="config">Configuración</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="prizes">
           <Card className="w-full">
             <CardHeader className="bg-primary text-white">
@@ -292,7 +293,7 @@ const AdminPage = () => {
                 Ingresa un código de redención para validar un premio
               </CardDescription>
             </CardHeader>
-            
+
             <CardContent className="pt-6">
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
@@ -309,7 +310,7 @@ const AdminPage = () => {
                     required
                   />
                 </div>
-                
+
                 <Button 
                   type="submit"
                   className="w-full"
@@ -318,7 +319,7 @@ const AdminPage = () => {
                   {isLoading ? "Validando..." : "Validar Premio"}
                 </Button>
               </form>
-              
+
               {result && (
                 <div className={`mt-6 p-4 rounded-md ${result.success ? (result.alreadyRedeemed ? 'bg-yellow-50' : 'bg-green-50') : 'bg-red-50'}`}>
                   <div className="flex items-center mb-2">
@@ -334,7 +335,7 @@ const AdminPage = () => {
                     </Badge>
                     <p className="font-medium">{result.message}</p>
                   </div>
-                  
+
                   {/* Mostrar el código de redención validado */}
                   {result.success && redemptionCode && (
                     <div className="my-3 p-3 bg-white border border-gray-200 rounded-md">
@@ -344,7 +345,7 @@ const AdminPage = () => {
                       </p>
                     </div>
                   )}
-                  
+
                   {result.redeemedAt && (
                     <div className="mt-2 mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                       <div className="flex items-center text-yellow-800">
@@ -356,15 +357,15 @@ const AdminPage = () => {
                       </p>
                     </div>
                   )}
-                  
+
                   {/* El botón de confirmar entrega ha sido eliminado ya que es redundante */}
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
-        
-        <TabsContent value="map">
+
+        <TabsContent value="segments">
           <Card className="w-full">
             <CardHeader className="bg-primary text-white">
               <CardTitle className="text-xl">Gestión de Segmentos del Mapa</CardTitle>
@@ -372,17 +373,17 @@ const AdminPage = () => {
                 Administra las imágenes y URLs de redirección de los segmentos del mapa
               </CardDescription>
             </CardHeader>
-            
+
             <CardContent className="pt-6">
               <div className="flex justify-between mb-6">
                 <Button 
                   onClick={async () => {
                     try {
                       setSeedingData(true);
-                      
+
                       const response = await apiRequest("POST", "/api/admin/seed-map-assets");
                       const data = await response.json();
-                      
+
                       if (data.success) {
                         toast({
                           title: "Éxito",
@@ -415,13 +416,13 @@ const AdminPage = () => {
                     </>
                   )}
                 </Button>
-                
+
                 <Button onClick={handleCreateAsset}>
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Nuevo Segmento
                 </Button>
               </div>
-              
+
               {loadingAssets ? (
                 <div className="flex justify-center py-10">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -448,21 +449,21 @@ const AdminPage = () => {
                           Segmento {asset.segmentId}
                         </div>
                       </div>
-                      
+
                       <CardContent className="p-4">
                         <h3 className="font-bold truncate">{asset.title || `Segmento ${asset.segmentId}`}</h3>
-                        
+
                         {asset.description && (
                           <p className="text-sm text-gray-500 mt-1 line-clamp-2">{asset.description}</p>
                         )}
-                        
+
                         {asset.redirectUrl && (
                           <div className="flex items-center mt-2 text-sm text-blue-600">
                             <ExternalLink className="h-4 w-4 mr-1" />
                             <span className="truncate">{asset.redirectUrl}</span>
                           </div>
                         )}
-                        
+
                         {asset.securityCode && (
                           <div className="flex items-center mt-2 text-xs text-gray-600 bg-gray-100 p-1 rounded">
                             <span className="font-mono font-semibold tracking-wider mr-1">
@@ -471,7 +472,7 @@ const AdminPage = () => {
                           </div>
                         )}
                       </CardContent>
-                      
+
                       <CardFooter className="flex justify-between p-4 pt-0">
                         <Button variant="outline" size="sm" onClick={() => handleEditAsset(asset)}>
                           <Pencil className="h-4 w-4 mr-1" />
@@ -493,8 +494,12 @@ const AdminPage = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="config">
+          {/* Content for the configuration tab will go here */}
+        </TabsContent>
       </Tabs>
-      
+
       {/* Diálogo para crear/editar assets */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
@@ -509,7 +514,7 @@ const AdminPage = () => {
               }
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <label htmlFor="segmentId" className="text-right">
@@ -527,7 +532,7 @@ const AdminPage = () => {
                 required
               />
             </div>
-            
+
             <div className="grid grid-cols-4 items-center gap-4">
               <label htmlFor="title" className="text-right">
                 Título
@@ -540,7 +545,7 @@ const AdminPage = () => {
                 required
               />
             </div>
-            
+
             <div className="grid grid-cols-4 items-center gap-4">
               <label htmlFor="imageUrl" className="text-right">
                 URL Imagen
@@ -566,7 +571,7 @@ const AdminPage = () => {
                 </p>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-4 items-center gap-4">
               <label htmlFor="redirectUrl" className="text-right">
                 URL Redirección
@@ -584,7 +589,7 @@ const AdminPage = () => {
                 </p>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-4 items-start gap-4">
               <label htmlFor="description" className="text-right pt-2">
                 Descripción
@@ -597,7 +602,7 @@ const AdminPage = () => {
                 rows={3}
               />
             </div>
-            
+
             <div className="grid grid-cols-4 items-center gap-4">
               <label htmlFor="securityCode" className="text-right">
                 Código Seguridad
@@ -633,7 +638,7 @@ const AdminPage = () => {
               </div>
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancelar

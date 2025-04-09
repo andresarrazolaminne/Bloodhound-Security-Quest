@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { HelpCircle, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/context/UserContext";
@@ -28,8 +29,17 @@ const MapPage = () => {
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [showInstructionsModal, setShowInstructionsModal] = useState(false);
+  const [showSiteMapModal, setShowSiteMapModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [systemConfig, setSystemConfig] = useState<{
+    instructionsText: string;
+    siteMapImageUrl: string;
+  }>({
+    instructionsText: '',
+    siteMapImageUrl: 'https://i.pinimg.com/736x/df/93/10/df93101fdd1057543ae9a6bf2ff16b1c.jpg'
+  });
 
   // Redirect if not logged in
   useEffect(() => {
@@ -38,9 +48,35 @@ const MapPage = () => {
       return;
     }
 
-    // Load user segments
+    // Load user segments and system config
     loadUserData();
+    
+    // Check if first time visit
+    const hasVisitedKey = `has_visited_${currentUser.documentNumber}`;
+    const hasVisited = localStorage.getItem(hasVisitedKey);
+    
+    if (!hasVisited) {
+      setShowInstructionsModal(true);
+      localStorage.setItem(hasVisitedKey, 'true');
+    }
   }, [currentUser]);
+
+  useEffect(() => {
+    // Cargar configuración del sistema
+    const loadSystemConfig = async () => {
+      try {
+        const response = await fetch('/api/system-config');
+        if (response.ok) {
+          const data = await response.json();
+          setSystemConfig(data.config);
+        }
+      } catch (error) {
+        console.error('Error loading system config:', error);
+      }
+    };
+    
+    loadSystemConfig();
+  }, []);
 
   const loadUserData = async () => {
     if (!currentUser) return;
@@ -221,10 +257,73 @@ const MapPage = () => {
 
             </div>
             
+            <div className="flex gap-2 mb-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowInstructionsModal(true)}
+                className="flex items-center gap-2"
+              >
+                <HelpCircle className="h-4 w-4" />
+                Ayuda
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowSiteMapModal(true)}
+                className="flex items-center gap-2"
+              >
+                <Map className="h-4 w-4" />
+                Mapa del Sitio
+              </Button>
+            </div>
+            
             <MapGrid unlockedSegments={unlockedSegments} />
           </>
         )}
       </main>
+
+      {/* Instructions Modal */}
+      <Dialog open={showInstructionsModal} onOpenChange={setShowInstructionsModal}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Instrucciones</DialogTitle>
+          </DialogHeader>
+          <div className="prose prose-sm max-w-none">
+            {systemConfig.instructionsText ? (
+              <div dangerouslySetInnerHTML={{ __html: systemConfig.instructionsText }} />
+            ) : (
+              <p>Cargando instrucciones...</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowInstructionsModal(false)}>
+              Entendido
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Site Map Modal */}
+      <Dialog open={showSiteMapModal} onOpenChange={setShowSiteMapModal}>
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Mapa del Sitio</DialogTitle>
+          </DialogHeader>
+          <div className="relative w-full aspect-video">
+            <img 
+              src={systemConfig.siteMapImageUrl} 
+              alt="Mapa del sitio"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowSiteMapModal(false)}>
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* QR Scanner Button */}
       <div className="fixed bottom-6 right-6 z-10">
