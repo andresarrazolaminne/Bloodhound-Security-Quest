@@ -473,13 +473,13 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
         
         {/* Selector de cámara - siempre mostrar si hay cámaras disponibles */}
         {availableCameras.length > 1 && (
-          <div className="mb-2">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Camera className="h-3.5 w-3.5 text-primary" />
-              <span className="text-xs font-medium">Cámaras disponibles:</span>
+          <div className="mb-3 p-2 bg-slate-50 rounded-lg shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <Camera className="h-4 w-4 text-blue-600" />
+              <span className="text-sm font-medium text-blue-700">Selecciona una cámara:</span>
             </div>
             
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2 justify-center">
               {availableCameras.map((device, index) => {
                 // Determinar si parece ser cámara trasera o frontal
                 const label = device.label || `Cámara ${index + 1}`;
@@ -508,29 +508,36 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
                 
                 // Crear etiqueta amigable
                 let friendlyLabel = label;
+                let icon = "📷";
+                
                 if (isBackCamera) {
-                  friendlyLabel = "📷 Cámara Trasera";
+                  friendlyLabel = "Cámara Trasera";
+                  icon = "📷";
                 } else if (isFrontCamera) {
-                  friendlyLabel = "🤳 Cámara Frontal";
+                  friendlyLabel = "Cámara Frontal";
+                  icon = "🤳";
                 } else if (index === 0) {
-                  friendlyLabel = "📷 Cámara Principal";
+                  friendlyLabel = "Cámara Principal";
+                  icon = "📷";
                 } else {
-                  friendlyLabel = `📷 Cámara ${index + 1}`;
+                  friendlyLabel = `Cámara ${index + 1}`;
+                  icon = "📷";
                 }
                 
                 return (
                   <button
                     key={device.deviceId}
-                    className={`text-xs px-2 py-1.5 rounded-md flex-shrink-0 
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg flex-1 min-w-[120px] justify-center transition-all 
                                ${device.deviceId === deviceId 
-                                 ? 'bg-primary text-white font-medium' 
-                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                                 ? 'bg-blue-600 text-white font-medium shadow-md scale-105' 
+                                 : 'bg-white text-slate-800 border border-slate-200 hover:bg-slate-100 hover:border-slate-300'}`}
                     onClick={() => {
                       setDeviceId(device.deviceId);
                       startCamera(device.deviceId);
                     }}
                   >
-                    {friendlyLabel}
+                    <span>{icon}</span>
+                    <span className="text-sm truncate">{friendlyLabel}</span>
                   </button>
                 );
               })}
@@ -572,8 +579,8 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
                 </div>
               </div>
               
-              {/* Botones para controlar la cámara */}
-              <div className="absolute bottom-0 left-0 right-0 p-3 flex justify-center items-center gap-3">
+              {/* Botón principal centrado */}
+              <div className="absolute bottom-0 left-0 right-0 p-3 flex justify-center items-center">
                 {/* Botón principal de escaneo con etiqueta */}
                 <button
                   onClick={(e) => {
@@ -585,35 +592,12 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
                     }
                     scanQRCode();
                   }}
-                  className="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-primary shadow-lg flex items-center justify-center gap-2 font-medium"
+                  className="bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-primary shadow-lg flex items-center justify-center gap-2 font-medium text-base"
                   aria-label="Escanear código"
                   title="Escanear QR"
                 >
                   <Play className="h-5 w-5" />
                   <span>Escanear</span>
-                </button>
-                
-                {/* Botón para cambiar rápidamente de cámara */}
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    // Encontrar la cámara que no está actualmente activa
-                    const currentIndex = availableCameras.findIndex(cam => cam.deviceId === deviceId);
-                    if (currentIndex === -1 || availableCameras.length <= 1) return;
-                    
-                    // Alternar a la siguiente cámara (o volver a la primera si estamos en la última)
-                    const nextIndex = (currentIndex + 1) % availableCameras.length;
-                    const nextCamera = availableCameras[nextIndex];
-                    
-                    setDeviceId(nextCamera.deviceId);
-                    startCamera(nextCamera.deviceId);
-                  }}
-                  className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary shadow-lg flex items-center justify-center gap-2 font-medium"
-                  aria-label="Cambiar cámara"
-                  title="Cambiar cámara"
-                >
-                  <RefreshCcw className="h-5 w-5" />
-                  <span>Cambiar cámara</span>
                 </button>
               </div>
             </>
