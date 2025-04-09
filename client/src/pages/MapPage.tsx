@@ -7,7 +7,7 @@ import { getUserSegments, unlockSegment as apiUnlockSegment, getUserPrize } from
 import MapGrid from "@/components/MapGrid";
 import ProgressBar from "@/components/ProgressBar";
 import QRScanner from "@/components/QRScanner";
-import AuthCertificate from "@/components/AuthCertificate";
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 const MapPage = () => {
@@ -193,7 +193,7 @@ const MapPage = () => {
                   </Button>
                 )}
               </div>
-              <AuthCertificate />
+
             </div>
             
             <MapGrid unlockedSegments={unlockedSegments} />

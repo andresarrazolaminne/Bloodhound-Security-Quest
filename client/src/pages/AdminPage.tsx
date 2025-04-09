@@ -320,24 +320,7 @@ const AdminPage = () => {
                     </div>
                   )}
                   
-                  {/* Solo mostrar el botón si el premio no ha sido reclamado aún */}
-                  {result.success && !result.alreadyRedeemed && (
-                    <div className="flex justify-end mt-4">
-                      <Button 
-                        variant="default" 
-                        onClick={() => {
-                          toast({
-                            title: "Premio entregado",
-                            description: "El premio ha sido marcado como entregado",
-                          });
-                          setResult(null);
-                          setRedemptionCode("");
-                        }}
-                      >
-                        Confirmar Entrega
-                      </Button>
-                    </div>
-                  )}
+                  {/* El botón de confirmar entrega ha sido eliminado ya que es redundante */}
                 </div>
               )}
             </CardContent>
