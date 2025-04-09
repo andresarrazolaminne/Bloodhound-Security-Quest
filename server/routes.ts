@@ -337,6 +337,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Health check endpoint
+  // System configuration routes
+  apiRouter.get("/system-config", async (_req, res) => {
+    try {
+      const config = await storage.getSystemConfig();
+      return res.status(200).json({ config });
+    } catch (error) {
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  apiRouter.post("/admin/system-config", async (req, res) => {
+    try {
+      const configData = insertSystemConfigSchema.parse(req.body);
+      const config = await storage.updateSystemConfig(configData);
+      return res.status(200).json({ config });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Datos inválidos", 
+          errors: error.errors 
+        });
+      }
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
   apiRouter.get("/health", (req, res) => {
     res.status(200).json({ status: "ok" });
   });

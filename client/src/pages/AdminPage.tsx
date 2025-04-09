@@ -496,7 +496,79 @@ const AdminPage = () => {
         </TabsContent>
 
         <TabsContent value="config">
-          {/* Content for the configuration tab will go here */}
+          <Card className="w-full">
+            <CardHeader className="bg-primary text-white">
+              <CardTitle className="text-xl">Configuración del Sistema</CardTitle>
+              <CardDescription className="text-white/80">
+                Gestiona las configuraciones globales de la aplicación
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="pt-6">
+              <form className="space-y-6" onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  await apiRequest("POST", "/api/admin/system-config", {
+                    instructionsText: systemConfig.instructionsText,
+                    siteMapImageUrl: systemConfig.siteMapImageUrl
+                  });
+                  
+                  toast({
+                    title: "Éxito",
+                    description: "Configuración actualizada correctamente"
+                  });
+                } catch (error) {
+                  toast({
+                    title: "Error",
+                    description: "No se pudo actualizar la configuración",
+                    variant: "destructive"
+                  });
+                }
+              }}>
+                <div className="space-y-2">
+                  <label htmlFor="instructions" className="block text-sm font-medium text-gray-700">
+                    Texto de Instrucciones
+                  </label>
+                  <Textarea
+                    id="instructions"
+                    value={systemConfig.instructionsText}
+                    onChange={(e) => setSystemConfig({
+                      ...systemConfig,
+                      instructionsText: e.target.value
+                    })}
+                    placeholder="Ingresa las instrucciones para los usuarios"
+                    className="min-h-[200px]"
+                  />
+                  <p className="text-sm text-gray-500">
+                    Este texto se mostrará en el modal de instrucciones. Puedes usar HTML básico.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="map-url" className="block text-sm font-medium text-gray-700">
+                    URL del Mapa del Sitio
+                  </label>
+                  <Input
+                    id="map-url"
+                    type="url"
+                    value={systemConfig.siteMapImageUrl}
+                    onChange={(e) => setSystemConfig({
+                      ...systemConfig,
+                      siteMapImageUrl: e.target.value
+                    })}
+                    placeholder="https://ejemplo.com/mapa.jpg"
+                  />
+                  <p className="text-sm text-gray-500">
+                    URL de la imagen del mapa del sitio que se mostrará en el modal correspondiente
+                  </p>
+                </div>
+
+                <Button type="submit" className="w-full">
+                  Guardar Configuración
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

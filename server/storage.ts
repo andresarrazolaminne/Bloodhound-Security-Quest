@@ -10,7 +10,8 @@ import {
   type Prize,
   type InsertPrize,
   type MapSegmentAsset,
-  type InsertMapSegmentAsset
+  type InsertMapSegmentAsset,
+  systemConfig as systemConfigTable
 } from "@shared/schema";
 import { nanoid } from "nanoid";
 
@@ -22,13 +23,13 @@ export interface IStorage {
   // Map segment operations
   getSegmentsByUserId(userId: number): Promise<MapSegment[]>;
   unlockSegment(userId: number, segmentId: number): Promise<MapSegment>;
-  
+
   // Prize operations
   getPrizeByUserId(userId: number): Promise<Prize | undefined>;
   createRedemptionCode(userId: number): Promise<string>;
   redeemPrize(userId: number): Promise<Prize>;
   getPrizeByRedemptionCode(code: string): Promise<Prize | undefined>;
-  
+
   // Map segment assets operations (for admin dashboard)
   getAllMapSegmentAssets(): Promise<MapSegmentAsset[]>;
   getMapSegmentAsset(segmentId: number): Promise<MapSegmentAsset | undefined>;
@@ -74,10 +75,10 @@ export class MemStorage implements IStorage {
     const id = this.currentUserId++;
     const user: User = { ...insertUser, id };
     this.users.set(id, user);
-    
+
     // Initialize empty segments for the new user
     this.segments.set(id, []);
-    
+
     // Initialize prize record for the user
     const prize: Prize = {
       id: this.currentPrizeId++,
@@ -87,7 +88,7 @@ export class MemStorage implements IStorage {
       redeemedAt: null
     };
     this.prizes.set(id, prize);
-    
+
     return user;
   }
 
@@ -98,7 +99,7 @@ export class MemStorage implements IStorage {
 
   async unlockSegment(userId: number, segmentId: number): Promise<MapSegment> {
     const userSegments = this.segments.get(userId) || [];
-    
+
     // Check if segment is already unlocked
     const existingSegment = userSegments.find(s => s.segmentId === segmentId);
     if (existingSegment) {
@@ -107,7 +108,7 @@ export class MemStorage implements IStorage {
       }
       return existingSegment;
     }
-    
+
     // Create new segment record
     const newSegment: MapSegment = {
       id: this.currentSegmentId++,
@@ -115,10 +116,10 @@ export class MemStorage implements IStorage {
       segmentId,
       unlocked: true
     };
-    
+
     userSegments.push(newSegment);
     this.segments.set(userId, userSegments);
-    
+
     return newSegment;
   }
 
@@ -132,12 +133,12 @@ export class MemStorage implements IStorage {
     if (!prize) {
       throw new Error("User prize record not found");
     }
-    
+
     const redemptionCode = nanoid(10); // Generate a random code
     prize.redemptionCode = redemptionCode;
     this.prizes.set(userId, prize);
     this.redemptionCodes.set(redemptionCode, userId);
-    
+
     return redemptionCode;
   }
 
@@ -146,11 +147,11 @@ export class MemStorage implements IStorage {
     if (!prize) {
       throw new Error("User prize record not found");
     }
-    
+
     prize.redeemed = true;
     prize.redeemedAt = new Date().toISOString();
     this.prizes.set(userId, prize);
-    
+
     return prize;
   }
 
@@ -159,7 +160,7 @@ export class MemStorage implements IStorage {
     if (!userId) {
       return undefined;
     }
-    
+
     return this.prizes.get(userId);
   }
 
@@ -179,7 +180,7 @@ export class MemStorage implements IStorage {
       ...asset,
       updatedAt: new Date()
     };
-    
+
     this.mapAssets.set(asset.segmentId, newAsset);
     return newAsset;
   }
@@ -189,13 +190,13 @@ export class MemStorage implements IStorage {
     if (!existingAsset) {
       throw new Error("Map segment asset not found");
     }
-    
+
     const updatedAsset: MapSegmentAsset = {
       ...existingAsset,
       ...asset,
       updatedAt: new Date()
     };
-    
+
     this.mapAssets.set(segmentId, updatedAsset);
     return updatedAsset;
   }
@@ -217,16 +218,16 @@ export class DatabaseStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
-    
+
     // Create empty segments for the user
     const segmentsToCreate = Array.from({ length: 9 }, (_, i) => ({
       userId: user.id,
       segmentId: i + 1,
       unlocked: false
     }));
-    
+
     await db.insert(mapSegments).values(segmentsToCreate);
-    
+
     // Create an empty prize for the user
     await db.insert(prizes).values({
       userId: user.id,
@@ -250,7 +251,7 @@ export class DatabaseStorage implements IStorage {
         sql`${mapSegments.userId} = ${userId} AND ${mapSegments.segmentId} = ${segmentId}`
       )
       .returning();
-    
+
     return segment;
   }
 
@@ -262,19 +263,19 @@ export class DatabaseStorage implements IStorage {
   async createRedemptionCode(userId: number): Promise<string> {
     // Create a unique redemption code
     const redemptionCode = nanoid(10).toUpperCase();
-    
+
     // Store it with the prize
     await db
       .update(prizes)
       .set({ redemptionCode })
       .where(eq(prizes.userId, userId));
-    
+
     return redemptionCode;
   }
 
   async redeemPrize(userId: number): Promise<Prize> {
     const now = new Date();
-    
+
     const [prize] = await db
       .update(prizes)
       .set({ 
@@ -283,7 +284,7 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(prizes.userId, userId))
       .returning();
-    
+
     return prize;
   }
 
@@ -292,7 +293,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(prizes)
       .where(eq(prizes.redemptionCode, code));
-    
+
     return prize || undefined;
   }
 
@@ -309,7 +310,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(mapSegmentAssets)
       .where(eq(mapSegmentAssets.segmentId, segmentId));
-    
+
     return asset || undefined;
   }
 
@@ -321,7 +322,7 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date()
       })
       .returning();
-    
+
     return newAsset;
   }
 
@@ -334,7 +335,7 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(mapSegmentAssets.segmentId, segmentId))
       .returning();
-    
+
     return updatedAsset;
   }
 
@@ -342,6 +343,36 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(mapSegmentAssets)
       .where(eq(mapSegmentAssets.segmentId, segmentId));
+  }
+
+  // System Configuration
+  async getSystemConfig() {
+    const configs = await db.select().from(systemConfigTable);
+    return configs[0] || {
+      instructionsText: "Bienvenido a nuestra aplicación. Sigue las instrucciones para participar.",
+      siteMapImageUrl: "https://placehold.co/1200x800/e2e8f0/64748b?text=Mapa+del+Sitio"
+    };
+  }
+
+  async updateSystemConfig(configData: {
+    instructionsText: string;
+    siteMapImageUrl: string;
+  }) {
+    const configs = await db.select().from(systemConfigTable);
+
+    if (configs.length === 0) {
+      return db.insert(systemConfigTable).values({
+        ...configData,
+        updatedAt: new Date()
+      }).returning();
+    }
+
+    return db.update(systemConfigTable)
+      .set({
+        ...configData,
+        updatedAt: new Date()
+      })
+      .returning();
   }
 }
 
