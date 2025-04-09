@@ -31,6 +31,7 @@ export const mapSegmentAssets = pgTable("map_segment_assets", {
   redirectUrl: text("redirect_url"),
   title: text("title").notNull().default(""),
   description: text("description"),
+  securityCode: text("security_code").notNull().default(""), // Nuevo campo para código de seguridad
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
@@ -58,6 +59,7 @@ export const insertMapSegmentAssetsSchema = createInsertSchema(mapSegmentAssets)
   redirectUrl: true,
   title: true,
   description: true,
+  securityCode: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

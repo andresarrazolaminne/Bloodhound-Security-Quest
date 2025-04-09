@@ -59,8 +59,21 @@ export const getUserSegments = async (documentNumber: string): Promise<SegmentsR
 };
 
 // Unlock segment
-export const unlockSegment = async (documentNumber: string, segmentId: number): Promise<UnlockSegmentResponse> => {
-  const response = await apiRequest("POST", "/api/unlock-segment", { documentNumber, segmentId });
+export const unlockSegment = async (documentNumber: string, segmentId: number, securityCode?: string): Promise<UnlockSegmentResponse> => {
+  const payload = { documentNumber, segmentId };
+  
+  // Solo incluimos el código de seguridad si está definido
+  if (securityCode) {
+    Object.assign(payload, { securityCode });
+  }
+  
+  const response = await apiRequest("POST", "/api/unlock-segment", payload);
+  
+  // Si hay un error, lanzamos la respuesta para poder verificar el código de estado
+  if (!response.ok) {
+    throw response;
+  }
+  
   return response.json();
 };
 

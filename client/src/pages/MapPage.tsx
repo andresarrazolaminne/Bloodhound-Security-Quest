@@ -75,7 +75,7 @@ const MapPage = () => {
     }
   };
 
-  const handleQRScan = async (segmentId: number) => {
+  const handleQRScan = async (segmentId: number, securityCode?: string) => {
     if (!currentUser) return;
 
     try {
@@ -88,7 +88,10 @@ const MapPage = () => {
         return;
       }
       
-      const response = await apiUnlockSegment(currentUser.documentNumber, segmentId);
+      setIsLoading(true);
+      
+      // Pasar el código de seguridad (si existe) a la API para verificación
+      const response = await apiUnlockSegment(currentUser.documentNumber, segmentId, securityCode);
       
       // Update unlocked segments
       addUnlockedSegment(segmentId);
@@ -106,11 +109,33 @@ const MapPage = () => {
         }, 1500);
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "No pudimos desbloquear el segmento. Inténtalo de nuevo.",
-        variant: "destructive"
-      });
+      console.error("Error unlocking segment:", error);
+      
+      // Verificar si el error es por código de seguridad inválido
+      if (error instanceof Response && error.status === 403) {
+        try {
+          const errorData = await error.json();
+          toast({
+            title: "Código de seguridad inválido",
+            description: errorData.message || "El código de seguridad no es correcto para este segmento.",
+            variant: "destructive"
+          });
+        } catch (e) {
+          toast({
+            title: "Error",
+            description: "Código de seguridad inválido o no proporcionado.",
+            variant: "destructive"
+          });
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: "No pudimos desbloquear el segmento. Inténtalo de nuevo.",
+          variant: "destructive"
+        });
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 

@@ -8,7 +8,7 @@ import jsQR from "jsqr";
 interface QRScannerProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (segmentId: number) => void;
+  onSuccess: (segmentId: number, securityCode?: string) => void;
 }
 
 /**
@@ -273,21 +273,45 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
       try {
         // Intentar procesar el contenido
         let segmentId: number;
+        let securityCode: string | undefined;
         
         try {
           // Primero intentar como JSON
           const data = JSON.parse(code.data);
+          
+          // Formato nuevo con ID y código de seguridad
           if (data && typeof data.segmentId === 'number') {
             segmentId = data.segmentId;
+            // Si hay código de seguridad, lo guardamos
+            if (data.securityCode && typeof data.securityCode === 'string') {
+              securityCode = data.securityCode;
+            }
           } else {
             throw new Error("Formato JSON inválido");
           }
         } catch (jsonError) {
-          // Si no es JSON, intentar como número directamente
-          segmentId = parseInt(code.data);
-          
-          if (isNaN(segmentId)) {
-            throw new Error("El código QR no contiene un número válido");
+          // Formato alternativo que combina segmentId y securityCode 
+          // en un formato como "3:ABC12" (segmento 3, código ABC12)
+          if (code.data.includes(':')) {
+            const parts = code.data.split(':');
+            if (parts.length === 2) {
+              segmentId = parseInt(parts[0]);
+              securityCode = parts[1];
+              
+              // Verificar que tenemos valores válidos
+              if (isNaN(segmentId) || !securityCode) {
+                throw new Error("Formato de código QR inválido");
+              }
+            } else {
+              throw new Error("Formato de código QR inválido");
+            }
+          } else {
+            // Formato más antiguo (solo número de segmento)
+            segmentId = parseInt(code.data);
+            
+            if (isNaN(segmentId)) {
+              throw new Error("El código QR no contiene un número válido");
+            }
           }
         }
         
@@ -295,7 +319,7 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
         if (segmentId >= 1 && segmentId <= 9) {
           // Detener el escáner y notificar éxito
           stopCamera();
-          onSuccess(segmentId);
+          onSuccess(segmentId, securityCode);
         } else {
           throw new Error(`Segmento ${segmentId} fuera de rango (1-9)`);
         }

@@ -5,6 +5,17 @@ import { z } from "zod";
 import { insertUserSchema, insertMapSegmentAssetsSchema } from "@shared/schema";
 import { nanoid } from "nanoid";
 
+// Función para generar un código de seguridad alfanumérico aleatorio
+function generateSecurityCode(length: number = 5): string {
+  // Limitamos a caracteres alfanuméricos fáciles de leer (evitamos 0, O, 1, I, etc)
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // API routes
   const apiRouter = express.Router();
@@ -76,14 +87,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   apiRouter.post("/unlock-segment", async (req, res) => {
     try {
-      const { documentNumber, segmentId } = z.object({
+      const { documentNumber, segmentId, securityCode } = z.object({
         documentNumber: z.string(),
-        segmentId: z.number()
+        segmentId: z.number(),
+        securityCode: z.string().optional() // Permitimos que sea opcional para compatibilidad con versiones anteriores
       }).parse(req.body);
       
       const user = await storage.getUserByDocumentNumber(documentNumber);
       if (!user) {
         return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+      
+      // Si se proporcionó un código de seguridad, verificamos que coincida con el del segmento
+      if (securityCode) {
+        const segmentAsset = await storage.getMapSegmentAsset(segmentId);
+        
+        // Si el segmento tiene un código de seguridad y no coincide con el proporcionado
+        if (segmentAsset && segmentAsset.securityCode && 
+            segmentAsset.securityCode !== securityCode) {
+          return res.status(403).json({ 
+            message: "Código de seguridad inválido para este segmento" 
+          });
+        }
       }
       
       const segment = await storage.unlockSegment(user.id, segmentId);
@@ -228,6 +253,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Generar un código de seguridad aleatorio si no se proporciona uno
+      if (!assetData.securityCode) {
+        assetData.securityCode = generateSecurityCode();
+      }
+      
       const newAsset = await storage.createMapSegmentAsset(assetData);
       return res.status(201).json({ asset: newAsset });
     } catch (error) {
@@ -256,8 +286,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imageUrl: z.string().optional(),
         redirectUrl: z.string().nullable().optional(),
         title: z.string().optional(),
-        description: z.string().nullable().optional()
+        description: z.string().nullable().optional(),
+        securityCode: z.string().optional()
       }).parse(req.body);
+      
+      // Generar un código de seguridad aleatorio si se solicita explícitamente
+      if (req.body.generateNewCode === true) {
+        updatedData.securityCode = generateSecurityCode();
+      }
       
       const updatedAsset = await storage.updateMapSegmentAsset(segmentId, updatedData);
       return res.status(200).json({ asset: updatedAsset });
@@ -373,21 +409,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           if (existing) {
             // Actualizar registro existente
+            // Si no tiene código de seguridad, generamos uno nuevo
+            let securityCode = existing.securityCode;
+            if (!securityCode) {
+              securityCode = generateSecurityCode();
+            }
+            
             const updated = await storage.updateMapSegmentAsset(segment.segmentId, {
               imageUrl: segment.imageUrl,
               redirectUrl: segment.redirectUrl,
               title: segment.title,
               description: segment.description,
+              securityCode,
             });
             results.push({ segmentId: segment.segmentId, action: 'updated', asset: updated });
           } else {
             // Crear nuevo registro
+            // Generar un código de seguridad único para este segmento
+            const securityCode = generateSecurityCode();
+            
             const created = await storage.createMapSegmentAsset({
               segmentId: segment.segmentId,
               imageUrl: segment.imageUrl,
               redirectUrl: segment.redirectUrl,
               title: segment.title,
               description: segment.description,
+              securityCode, // Agregar el código de seguridad
             });
             results.push({ segmentId: segment.segmentId, action: 'created', asset: created });
           }

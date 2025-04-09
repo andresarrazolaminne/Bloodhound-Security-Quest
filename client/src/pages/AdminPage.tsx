@@ -32,6 +32,8 @@ interface MapAssetFormData {
   redirectUrl: string;
   title: string;
   description: string;
+  securityCode: string;
+  generateNewCode?: boolean;
 }
 
 const AdminPage = () => {
@@ -57,7 +59,9 @@ const AdminPage = () => {
     imageUrl: "",
     redirectUrl: "",
     title: "",
-    description: ""
+    description: "",
+    securityCode: "",
+    generateNewCode: false
   });
   
   const { toast } = useToast();
@@ -108,7 +112,9 @@ const AdminPage = () => {
       imageUrl: "",
       redirectUrl: "",
       title: "",
-      description: ""
+      description: "",
+      securityCode: "",
+      generateNewCode: true
     });
     setDialogOpen(true);
   };
@@ -122,7 +128,9 @@ const AdminPage = () => {
       imageUrl: asset.imageUrl,
       redirectUrl: asset.redirectUrl || "",
       title: asset.title,
-      description: asset.description || ""
+      description: asset.description || "",
+      securityCode: asset.securityCode || "",
+      generateNewCode: false
     });
     setDialogOpen(true);
   };
@@ -135,7 +143,10 @@ const AdminPage = () => {
       const payload = {
         ...formData,
         redirectUrl: formData.redirectUrl || null,
-        description: formData.description || null
+        description: formData.description || null,
+        // Si el usuario eligió generar un nuevo código, incluimos la bandera
+        // para que el servidor genere uno nuevo
+        generateNewCode: formData.generateNewCode || false
       };
       
       if (dialogMode === "create") {
@@ -451,6 +462,14 @@ const AdminPage = () => {
                             <span className="truncate">{asset.redirectUrl}</span>
                           </div>
                         )}
+                        
+                        {asset.securityCode && (
+                          <div className="flex items-center mt-2 text-xs text-gray-600 bg-gray-100 p-1 rounded">
+                            <span className="font-mono font-semibold tracking-wider mr-1">
+                              Código: {asset.securityCode}
+                            </span>
+                          </div>
+                        )}
                       </CardContent>
                       
                       <CardFooter className="flex justify-between p-4 pt-0">
@@ -577,6 +596,41 @@ const AdminPage = () => {
                 className="col-span-3"
                 rows={3}
               />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="securityCode" className="text-right">
+                Código Seguridad
+              </label>
+              <div className="col-span-3 space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    id="securityCode"
+                    value={formData.securityCode}
+                    onChange={(e) => setFormData({...formData, securityCode: e.target.value})}
+                    className="flex-1"
+                    placeholder="ABCD1"
+                    maxLength={5}
+                    disabled={formData.generateNewCode}
+                  />
+                  <Button 
+                    type="button"
+                    variant="outline"
+                    onClick={() => setFormData({
+                      ...formData, 
+                      generateNewCode: !formData.generateNewCode
+                    })}
+                    className="whitespace-nowrap"
+                  >
+                    {formData.generateNewCode ? "Usar código manual" : "Generar nuevo"}
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500">
+                  {formData.generateNewCode 
+                    ? "Se generará un nuevo código de seguridad al guardar" 
+                    : "Código alfanumérico de 5 caracteres que los usuarios deberán escanear para desbloquear este segmento"}
+                </p>
+              </div>
             </div>
           </div>
           
