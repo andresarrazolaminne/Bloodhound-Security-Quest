@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { MapSegmentAsset } from "@shared/schema";
+import QRGenerator from '@/tools/QRGenerator';
 import {
   Dialog,
   DialogContent,
@@ -376,9 +377,10 @@ const AdminPage = () => {
       </div>
 
       <Tabs defaultValue="prizes" className="max-w-5xl mx-auto">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 mb-6">
           <TabsTrigger value="prizes">Validación de Premios</TabsTrigger>
           <TabsTrigger value="segments">Segmentos del Mapa</TabsTrigger>
+          <TabsTrigger value="qrgenerator">Generador de QR</TabsTrigger>
           <TabsTrigger value="ranking">Ranking de Usuarios</TabsTrigger>
           <TabsTrigger value="config">Configuración</TabsTrigger>
         </TabsList>
@@ -589,6 +591,20 @@ const AdminPage = () => {
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="qrgenerator">
+          <Card className="w-full">
+            <CardHeader className="bg-primary text-white">
+              <CardTitle className="text-xl">Generador de Códigos QR</CardTitle>
+              <CardDescription className="text-white/80">
+                Crea códigos QR para el desbloqueo de segmentos del mapa
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <QRGenerator />
             </CardContent>
           </Card>
         </TabsContent>

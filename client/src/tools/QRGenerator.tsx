@@ -169,100 +169,93 @@ const QRGenerator = () => {
   };
 
   return (
-    <div className="container mx-auto p-4">
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Generador de Códigos QR</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4">
-            <div className="grid md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <Label htmlFor="segment-id" className="mb-2 block">ID del Segmento (1-9)</Label>
-                <Input
-                  id="segment-id"
-                  type="number"
-                  min={1}
-                  max={9}
-                  value={segmentId}
-                  onChange={(e) => setSegmentId(parseInt(e.target.value) || 1)}
-                  className="mb-1"
-                />
-                <p className="text-xs text-gray-500">ID del segmento del mapa a desbloquear</p>
-              </div>
-              
-              <div>
-                <Label htmlFor="security-code" className="mb-2 block">Código de Seguridad</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="security-code"
-                    value={securityCode}
-                    onChange={(e) => setSecurityCode(e.target.value.toUpperCase())}
-                    className="mb-1 font-mono uppercase"
-                    maxLength={5}
-                    placeholder="ABC12"
-                  />
-                  <Button 
-                    variant="outline"
-                    onClick={() => setSecurityCode(generateSecurityCode())}
-                    type="button"
-                    className="shrink-0"
-                  >
-                    Nuevo
-                  </Button>
-                </div>
-                <p className="text-xs text-gray-500">
-                  {isLoadingAssets ? "Cargando códigos..." : mapAssets.find(a => a.segmentId === segmentId)?.securityCode 
-                    ? "Mostrando código actual del segmento" 
-                    : "No hay código configurado para este segmento"}
-                </p>
-              </div>
-            </div>
-            
-            <div className="mb-4">
-              <Label className="mb-2 block">Formato del QR</Label>
-              <RadioGroup 
-                value={qrFormat} 
-                onValueChange={setQrFormat}
-                className="flex flex-col space-y-1"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="json" id="format-json" />
-                  <Label htmlFor="format-json" className="cursor-pointer">
-                    JSON ({"{"}"segmentId": {segmentId}, "securityCode": "{securityCode}"{"}"})</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="text" id="format-text" />
-                  <Label htmlFor="format-text" className="cursor-pointer">
-                    Texto ({`${segmentId}:${securityCode}`})
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
-            
-            <div className="flex flex-wrap gap-2">
-              <Button 
-                onClick={handleGenerateQR} 
-                disabled={isLoading}
-                className="flex-1"
-              >
-                {isLoading ? 'Generando...' : 'Generar QR'}
-              </Button>
+    <div>
+      <div className="grid gap-4">
+        <div className="grid md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <Label htmlFor="segment-id" className="mb-2 block">ID del Segmento (1-9)</Label>
+            <Input
+              id="segment-id"
+              type="number"
+              min={1}
+              max={9}
+              value={segmentId}
+              onChange={(e) => setSegmentId(parseInt(e.target.value) || 1)}
+              className="mb-1"
+            />
+            <p className="text-xs text-gray-500">ID del segmento del mapa a desbloquear</p>
+          </div>
+          
+          <div>
+            <Label htmlFor="security-code" className="mb-2 block">Código de Seguridad</Label>
+            <div className="flex gap-2">
+              <Input
+                id="security-code"
+                value={securityCode}
+                onChange={(e) => setSecurityCode(e.target.value.toUpperCase())}
+                className="mb-1 font-mono uppercase"
+                maxLength={5}
+                placeholder="ABC12"
+              />
               <Button 
                 variant="outline"
-                onClick={handleGenerateAll}
-                disabled={isLoading}
-                className="flex-1"
+                onClick={() => setSecurityCode(generateSecurityCode())}
+                type="button"
+                className="shrink-0"
               >
-                {isLoading ? 'Generando...' : 'Generar Todos'}
+                Nuevo
               </Button>
             </div>
+            <p className="text-xs text-gray-500">
+              {isLoadingAssets ? "Cargando códigos..." : mapAssets.find(a => a.segmentId === segmentId)?.securityCode 
+                ? "Mostrando código actual del segmento" 
+                : "No hay código configurado para este segmento"}
+            </p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+        
+        <div className="mb-4">
+          <Label className="mb-2 block">Formato del QR</Label>
+          <RadioGroup 
+            value={qrFormat} 
+            onValueChange={setQrFormat}
+            className="flex flex-col space-y-1"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="json" id="format-json" />
+              <Label htmlFor="format-json" className="cursor-pointer">
+                JSON ({"{"}"segmentId": {segmentId}, "securityCode": "{securityCode}"{"}"})</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="text" id="format-text" />
+              <Label htmlFor="format-text" className="cursor-pointer">
+                Texto ({`${segmentId}:${securityCode}`})
+              </Label>
+            </div>
+          </RadioGroup>
+        </div>
+        
+        <div className="flex flex-wrap gap-2">
+          <Button 
+            onClick={handleGenerateQR} 
+            disabled={isLoading}
+            className="flex-1"
+          >
+            {isLoading ? 'Generando...' : 'Generar QR'}
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={handleGenerateAll}
+            disabled={isLoading}
+            className="flex-1"
+          >
+            {isLoading ? 'Generando...' : 'Generar Todos'}
+          </Button>
+        </div>
+      </div>
 
       {qrCodes.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
           {qrCodes.map((code) => (
             <Card key={code.id}>
               <CardHeader className="pb-2">

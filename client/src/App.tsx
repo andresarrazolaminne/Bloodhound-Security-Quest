@@ -9,7 +9,6 @@ import MapPage from "@/pages/MapPage";
 import RegistrationPage from "@/pages/RegistrationPage";
 import AdminPage from "@/pages/AdminPage";
 import AdminLoginPage from "@/pages/AdminLoginPage";
-import QRGeneratorPage from "@/pages/QRGeneratorPage";
 import { Loader2 } from "lucide-react";
 import AdminProtectedRoute from "@/components/AdminProtectedRoute";
 
@@ -36,7 +35,6 @@ function Router() {
       <Route path="/admin">
         <AdminProtectedRoute component={AdminPage} />
       </Route>
-      <Route path="/qr-generator" component={QRGeneratorPage} />
       <Route component={NotFound} />
     </Switch>
   );
