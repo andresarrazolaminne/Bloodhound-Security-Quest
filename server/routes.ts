@@ -2,7 +2,9 @@ import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { insertUserSchema, insertMapSegmentAssetsSchema, insertSystemConfigSchema } from "@shared/schema";
+import { insertUserSchema, insertMapSegmentAssetsSchema, insertSystemConfigSchema, users } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 // Función para generar un código de seguridad alfanumérico aleatorio
@@ -133,6 +135,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (unlockedSegments === totalSegments) {
         // Create redemption code if all segments are unlocked
         redemptionCode = await storage.createRedemptionCode(user.id);
+        
+        // Si el usuario completó el mapa y no tiene fecha de completado, registramos la fecha
+        if (!user.completedAt) {
+          await db.update(users)
+            .set({ completedAt: new Date() })
+            .where(eq(users.id, user.id));
+        }
       }
       
       return res.status(200).json({ 

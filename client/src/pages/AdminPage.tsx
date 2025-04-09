@@ -85,7 +85,7 @@ const AdminPage = () => {
   
   // Ranking de usuarios
   const [userRanking, setUserRanking] = useState<Array<{
-    user: { id: number; documentNumber: string; name: string };
+    user: { id: number; documentNumber: string; name: string; completedAt: string | null };
     segments: Array<{ id: number; userId: number; segmentId: number; unlocked: boolean }>;
     totalSegments: number;
     unlockedSegments: number;
@@ -702,6 +702,7 @@ const AdminPage = () => {
                       <TableHead className="w-40">Documento</TableHead>
                       <TableHead>Nombre</TableHead>
                       <TableHead className="w-32 text-center">Progreso</TableHead>
+                      <TableHead className="w-40 text-center">Fecha Logro</TableHead>
                       <TableHead className="w-32 text-center">Premio</TableHead>
                       <TableHead className="w-32 text-center">Segmentos</TableHead>
                       <TableHead className="w-32 text-center">Estado</TableHead>
@@ -710,13 +711,13 @@ const AdminPage = () => {
                   <TableBody>
                     {loadingRanking ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-10">
+                        <TableCell colSpan={8} className="text-center py-10">
                           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
                         </TableCell>
                       </TableRow>
                     ) : filteredRanking.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-6 text-gray-500">
+                        <TableCell colSpan={8} className="text-center py-6 text-gray-500">
                           No hay usuarios registrados o que coincidan con el filtro
                         </TableCell>
                       </TableRow>
@@ -736,6 +737,21 @@ const AdminPage = () => {
                                 {Math.round(item.completionPercentage)}%
                               </span>
                             </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {item.user.completedAt ? (
+                              <span className="text-sm">
+                                {new Date(item.user.completedAt).toLocaleString('es-ES', {
+                                  year: 'numeric',
+                                  month: '2-digit',
+                                  day: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            ) : (
+                              <span className="text-sm text-gray-400">No completado</span>
+                            )}
                           </TableCell>
                           <TableCell className="text-center">
                             {item.completionPercentage === 100 ? (

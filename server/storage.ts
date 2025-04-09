@@ -1,20 +1,22 @@
 import { 
-  users, 
   mapSegments, 
-  prizes,
-  mapSegmentAssets,
-  systemConfig,
+  users, 
+  prizes, 
+  mapSegmentAssets, 
+  systemConfig, 
   type User, 
   type InsertUser, 
   type MapSegment, 
-  type InsertMapSegment,
-  type Prize,
-  type InsertPrize,
-  type MapSegmentAsset,
+  type InsertMapSegment, 
+  type Prize, 
+  type InsertPrize, 
+  type MapSegmentAsset, 
   type InsertMapSegmentAsset,
-  type SystemConfig
-} from "@shared/schema";
-import { nanoid } from "nanoid";
+  type SystemConfig,
+  insertSystemConfigSchema
+} from '@shared/schema';
+import { nanoid } from 'nanoid';
+import { z } from 'zod';
 
 export interface IStorage {
   // User operations
@@ -49,6 +51,7 @@ export interface IStorage {
   }>>;
 }
 
+// In-memory storage implementation
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private segments: Map<number, MapSegment[]>;
@@ -84,7 +87,11 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
-    const user: User = { ...insertUser, id };
+    const user = { 
+      ...insertUser, 
+      id, 
+      completedAt: null 
+    };
     this.users.set(id, user);
 
     // Initialize empty segments for the new user
@@ -142,25 +149,33 @@ export class MemStorage implements IStorage {
   async createRedemptionCode(userId: number): Promise<string> {
     const prize = this.prizes.get(userId);
     if (!prize) {
-      throw new Error("User prize record not found");
+      throw new Error("No prize found for user");
     }
 
-    const redemptionCode = nanoid(10); // Generate a random code
-    prize.redemptionCode = redemptionCode;
-    this.prizes.set(userId, prize);
-    this.redemptionCodes.set(redemptionCode, userId);
+    if (prize.redemptionCode) {
+      return prize.redemptionCode;
+    }
 
-    return redemptionCode;
+    // Generate unique 6-character redemption code
+    const code = nanoid(6).toUpperCase();
+    
+    // Update prize with redemption code
+    prize.redemptionCode = code;
+    this.prizes.set(userId, prize);
+    this.redemptionCodes.set(code, userId);
+
+    return code;
   }
 
   async redeemPrize(userId: number): Promise<Prize> {
     const prize = this.prizes.get(userId);
     if (!prize) {
-      throw new Error("User prize record not found");
+      throw new Error("No prize found for user");
     }
 
+    // Mark as redeemed with timestamp
     prize.redeemed = true;
-    prize.redeemedAt = new Date().toISOString();
+    prize.redeemedAt = new Date();
     this.prizes.set(userId, prize);
 
     return prize;
@@ -171,7 +186,6 @@ export class MemStorage implements IStorage {
     if (!userId) {
       return undefined;
     }
-
     return this.prizes.get(userId);
   }
 
@@ -186,9 +200,15 @@ export class MemStorage implements IStorage {
 
   async createMapSegmentAsset(asset: InsertMapSegmentAsset): Promise<MapSegmentAsset> {
     const id = this.currentAssetId++;
+
     const newAsset: MapSegmentAsset = {
       id,
-      ...asset,
+      segmentId: asset.segmentId,
+      imageUrl: asset.imageUrl,
+      redirectUrl: asset.redirectUrl || null,
+      title: asset.title || "",
+      description: asset.description || null,
+      securityCode: asset.securityCode || "",
       updatedAt: new Date()
     };
 
@@ -199,7 +219,7 @@ export class MemStorage implements IStorage {
   async updateMapSegmentAsset(segmentId: number, asset: Partial<InsertMapSegmentAsset>): Promise<MapSegmentAsset> {
     const existingAsset = this.mapAssets.get(segmentId);
     if (!existingAsset) {
-      throw new Error("Map segment asset not found");
+      throw new Error("Asset not found");
     }
 
     const updatedAsset: MapSegmentAsset = {
@@ -245,91 +265,187 @@ export class MemStorage implements IStorage {
       });
     }
     
-    // Ordenar por mayor porcentaje de completación
-    return result.sort((a, b) => b.completionPercentage - a.completionPercentage);
+    // Primero ordenamos por quién completó el mapa (100%)
+    // Luego por la fecha de completado (los que completaron primero aparecen primero)
+    // Finalmente por el porcentaje de completado para los que no han terminado
+    return result.sort((a, b) => {
+      // Si ambos completaron el mapa
+      if (a.completionPercentage === 100 && b.completionPercentage === 100) {
+        // Si ambos tienen fecha de completado, ordenar por fecha (más antigua primero)
+        if (a.user.completedAt && b.user.completedAt) {
+          return a.user.completedAt.getTime() - b.user.completedAt.getTime();
+        }
+        // Si solo uno tiene fecha de completado, ese va primero
+        else if (a.user.completedAt) {
+          return -1;
+        } else if (b.user.completedAt) {
+          return 1;
+        }
+        // Si ninguno tiene fecha, mantener el orden actual
+        return 0;
+      }
+      
+      // Si solo uno completó el mapa, ese va primero
+      if (a.completionPercentage === 100) return -1;
+      if (b.completionPercentage === 100) return 1;
+      
+      // Si ninguno completó, ordenar por porcentaje de completado (mayor primero)
+      return b.completionPercentage - a.completionPercentage;
+    });
   }
 }
 
 // Database storage implementation
 import { db } from "./db";
-import { eq, sql } from "drizzle-orm";
+import { asc, desc, eq, and, count } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
   async getUserByDocumentNumber(documentNumber: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.documentNumber, documentNumber));
-    return user || undefined;
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.documentNumber, documentNumber));
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
-
-    // Create empty segments for the user
-    const segmentsToCreate = Array.from({ length: 9 }, (_, i) => ({
-      userId: user.id,
-      segmentId: i + 1,
-      unlocked: false
-    }));
-
-    await db.insert(mapSegments).values(segmentsToCreate);
-
-    // Create an empty prize for the user
-    await db.insert(prizes).values({
-      userId: user.id,
-      redeemed: false,
-      redemptionCode: null,
-      redeemedAt: null
-    });
-
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    
+    // Crear segmentos para el usuario (inicialmente bloqueados)
+    for (let i = 1; i <= 9; i++) {
+      await db
+        .insert(mapSegments)
+        .values({
+          userId: user.id,
+          segmentId: i,
+          unlocked: false
+        });
+    }
+    
+    // Crear premio para el usuario (inicialmente no reclamado)
+    await db
+      .insert(prizes)
+      .values({
+        userId: user.id,
+        redeemed: false,
+        redemptionCode: null,
+        redeemedAt: null
+      });
+    
     return user;
   }
 
   async getSegmentsByUserId(userId: number): Promise<MapSegment[]> {
-    return await db.select().from(mapSegments).where(eq(mapSegments.userId, userId));
+    return await db
+      .select()
+      .from(mapSegments)
+      .where(eq(mapSegments.userId, userId));
   }
 
   async unlockSegment(userId: number, segmentId: number): Promise<MapSegment> {
-    const [segment] = await db
-      .update(mapSegments)
-      .set({ unlocked: true })
+    // Verificar si el segmento ya existe
+    const [existingSegment] = await db
+      .select()
+      .from(mapSegments)
       .where(
-        sql`${mapSegments.userId} = ${userId} AND ${mapSegments.segmentId} = ${segmentId}`
-      )
-      .returning();
-
-    return segment;
+        and(
+          eq(mapSegments.userId, userId),
+          eq(mapSegments.segmentId, segmentId)
+        )
+      );
+    
+    if (existingSegment) {
+      // Si existe pero no está desbloqueado, actualizarlo
+      if (!existingSegment.unlocked) {
+        await db
+          .update(mapSegments)
+          .set({ unlocked: true })
+          .where(eq(mapSegments.id, existingSegment.id));
+        
+        return { ...existingSegment, unlocked: true };
+      }
+      // Si ya está desbloqueado, simplemente retornarlo
+      return existingSegment;
+    } 
+    else {
+      // Crear nuevo registro de segmento desbloqueado
+      const [newSegment] = await db
+        .insert(mapSegments)
+        .values({
+          userId,
+          segmentId,
+          unlocked: true
+        })
+        .returning();
+      
+      return newSegment;
+    }
   }
 
   async getPrizeByUserId(userId: number): Promise<Prize | undefined> {
-    const [prize] = await db.select().from(prizes).where(eq(prizes.userId, userId));
-    return prize || undefined;
+    const [prize] = await db
+      .select()
+      .from(prizes)
+      .where(eq(prizes.userId, userId));
+    
+    return prize;
   }
 
   async createRedemptionCode(userId: number): Promise<string> {
-    // Create a unique redemption code
-    const redemptionCode = nanoid(10).toUpperCase();
-
-    // Store it with the prize
+    const [prize] = await db
+      .select()
+      .from(prizes)
+      .where(eq(prizes.userId, userId));
+    
+    if (!prize) {
+      throw new Error("No prize found for user");
+    }
+    
+    // Si ya tiene código, simplemente devolverlo
+    if (prize.redemptionCode) {
+      return prize.redemptionCode;
+    }
+    
+    // Generar código único de 6 caracteres
+    const code = nanoid(6).toUpperCase();
+    
+    // Actualizar premio con código de redención
     await db
       .update(prizes)
-      .set({ redemptionCode })
-      .where(eq(prizes.userId, userId));
-
-    return redemptionCode;
+      .set({ redemptionCode: code })
+      .where(eq(prizes.id, prize.id));
+    
+    return code;
   }
 
   async redeemPrize(userId: number): Promise<Prize> {
-    const now = new Date();
-
     const [prize] = await db
+      .select()
+      .from(prizes)
+      .where(eq(prizes.userId, userId));
+    
+    if (!prize) {
+      throw new Error("No prize found for user");
+    }
+    
+    // Marcar como reclamado con marca de tiempo
+    const now = new Date();
+    await db
       .update(prizes)
       .set({ 
         redeemed: true,
         redeemedAt: now
       })
-      .where(eq(prizes.userId, userId))
-      .returning();
-
-    return prize;
+      .where(eq(prizes.id, prize.id));
+    
+    return {
+      ...prize,
+      redeemed: true,
+      redeemedAt: now
+    };
   }
 
   async getPrizeByRedemptionCode(code: string): Promise<Prize | undefined> {
@@ -337,11 +453,10 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(prizes)
       .where(eq(prizes.redemptionCode, code));
-
-    return prize || undefined;
+    
+    return prize;
   }
 
-  // Map segment assets operations (for admin dashboard)
   async getAllMapSegmentAssets(): Promise<MapSegmentAsset[]> {
     return await db
       .select()
@@ -354,8 +469,8 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(mapSegmentAssets)
       .where(eq(mapSegmentAssets.segmentId, segmentId));
-
-    return asset || undefined;
+    
+    return asset;
   }
 
   async createMapSegmentAsset(asset: InsertMapSegmentAsset): Promise<MapSegmentAsset> {
@@ -366,7 +481,7 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date()
       })
       .returning();
-
+    
     return newAsset;
   }
 
@@ -379,7 +494,7 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(mapSegmentAssets.segmentId, segmentId))
       .returning();
-
+    
     return updatedAsset;
   }
 
@@ -388,49 +503,50 @@ export class DatabaseStorage implements IStorage {
       .delete(mapSegmentAssets)
       .where(eq(mapSegmentAssets.segmentId, segmentId));
   }
-
-  // System Configuration
+  
   async getSystemConfig() {
-    try {
-      const configs = await db.select().from(systemConfig);
-      return configs[0] || {
-        instructionsText: "Bienvenido a nuestra aplicación. Sigue las instrucciones para participar.",
-        siteMapImageUrl: "https://placehold.co/1200x800/e2e8f0/64748b?text=Mapa+del+Sitio"
-      };
-    } catch (error) {
-      console.error("Error al obtener la configuración:", error);
-      return {
-        instructionsText: "Bienvenido a nuestra aplicación. Sigue las instrucciones para participar.",
-        siteMapImageUrl: "https://placehold.co/1200x800/e2e8f0/64748b?text=Mapa+del+Sitio"
-      };
-    }
+    const [config] = await db
+      .select()
+      .from(systemConfig);
+    
+    return config || null;
   }
-
+  
   async updateSystemConfig(configData: {
-    instructionsText: string;
-    siteMapImageUrl: string;
-  }) {
+    instructionsText?: string;
+    siteMapImageUrl?: string;
+  }): Promise<SystemConfig> {
     try {
-      const configs = await db.select().from(systemConfig);
-
-      if (configs.length === 0) {
-        // Si no hay registros, insertar uno nuevo
-        const [inserted] = await db.insert(systemConfig).values({
-          ...configData,
-          updatedAt: new Date()
-        }).returning();
-        return inserted;
+      // Validar los datos 
+      const validatedData = insertSystemConfigSchema.parse(configData);
+      
+      // Verificar si ya existe una configuración
+      const existingConfig = await this.getSystemConfig();
+      
+      if (existingConfig) {
+        // Actualizar configuración existente
+        const [updatedConfig] = await db
+          .update(systemConfig)
+          .set({
+            ...validatedData,
+            updatedAt: new Date()
+          })
+          .where(eq(systemConfig.id, existingConfig.id))
+          .returning();
+        
+        return updatedConfig;
+      } else {
+        // Crear nueva configuración
+        const [newConfig] = await db
+          .insert(systemConfig)
+          .values({
+            ...validatedData,
+            updatedAt: new Date()
+          })
+          .returning();
+        
+        return newConfig;
       }
-
-      // Actualizar el primer registro existente (solo debería haber uno)
-      const [updated] = await db.update(systemConfig)
-        .set({
-          ...configData,
-          updatedAt: new Date()
-        })
-        .where(eq(systemConfig.id, configs[0].id))
-        .returning();
-      return updated;
     } catch (error) {
       console.error("Error al actualizar la configuración:", error);
       throw error;
@@ -474,8 +590,33 @@ export class DatabaseStorage implements IStorage {
       });
     }
     
-    // Ordenar por mayor porcentaje de completación
-    return result.sort((a, b) => b.completionPercentage - a.completionPercentage);
+    // Primero ordenamos por quién completó el mapa (100%)
+    // Luego por la fecha de completado (los que completaron primero aparecen primero)
+    // Finalmente por el porcentaje de completado para los que no han terminado
+    return result.sort((a, b) => {
+      // Si ambos completaron el mapa
+      if (a.completionPercentage === 100 && b.completionPercentage === 100) {
+        // Si ambos tienen fecha de completado, ordenar por fecha (más antigua primero)
+        if (a.user.completedAt && b.user.completedAt) {
+          return a.user.completedAt.getTime() - b.user.completedAt.getTime();
+        }
+        // Si solo uno tiene fecha de completado, ese va primero
+        else if (a.user.completedAt) {
+          return -1;
+        } else if (b.user.completedAt) {
+          return 1;
+        }
+        // Si ninguno tiene fecha, mantener el orden actual
+        return 0;
+      }
+      
+      // Si solo uno completó el mapa, ese va primero
+      if (a.completionPercentage === 100) return -1;
+      if (b.completionPercentage === 100) return 1;
+      
+      // Si ninguno completó, ordenar por porcentaje de completado (mayor primero)
+      return b.completionPercentage - a.completionPercentage;
+    });
   }
 }
 

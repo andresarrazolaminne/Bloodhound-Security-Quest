@@ -29,6 +29,7 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   documentNumber: text("document_number").notNull().unique(),
   name: text("name").notNull(),
+  completedAt: timestamp("completed_at"),
 });
 
 export const mapSegments = pgTable("map_segments", {
@@ -61,6 +62,7 @@ export const mapSegmentAssets = pgTable("map_segment_assets", {
 export const insertUserSchema = createInsertSchema(users).pick({
   documentNumber: true,
   name: true,
+  completedAt: true,
 });
 
 export const insertMapSegmentSchema = createInsertSchema(mapSegments).pick({
