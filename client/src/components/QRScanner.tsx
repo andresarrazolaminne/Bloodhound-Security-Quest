@@ -246,7 +246,7 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
   
   // Referencia para control de tiempo entre escaneos
   const lastScanRef = useRef<number>(0);
-  const scanIntervalRef = useRef<number>(100); // milisegundos entre escaneos
+  const scanIntervalRef = useRef<number>(30); // reducido a 30ms para escaneo más rápido
   const successTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Escanear continuamente códigos QR con optimización de rendimiento
@@ -274,8 +274,8 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
     
-    // Usar dimensiones más pequeñas para el procesamiento - mejora rendimiento
-    const scaleFactor = 0.7; // Escalar al 70% para procesamiento más rápido
+    // Usar dimensiones más grandes para mejor detección, incluso si es un poco más lento
+    const scaleFactor = 0.9; // Escalar al 90% para mejor reconocimiento
     const captureWidth = video.videoWidth * scaleFactor;
     const captureHeight = video.videoHeight * scaleFactor;
     
@@ -290,7 +290,7 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
     
     // Analizar la imagen en busca de un código QR con configuración optimizada
     const code = jsQR(imageData.data, imageData.width, imageData.height, {
-      inversionAttempts: "dontInvert", // Más rápido que intentar invertir
+      inversionAttempts: "attemptBoth", // Probar tanto normal como invertido para mayor compatibilidad
     });
     
     if (code) {
