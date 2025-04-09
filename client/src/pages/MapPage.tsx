@@ -268,60 +268,66 @@ const MapPage = () => {
 
       {/* Completion Modal */}
       <Dialog open={showCompletionModal} onOpenChange={setShowCompletionModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-center text-lg sm:text-xl">¡Felicidades! ¡Mapa Completo!</DialogTitle>
           </DialogHeader>
           
-          <div className="pt-6 pb-4 px-6 flex flex-col items-center">
-            {/* Trofeo animado */}
-            <div className="w-24 h-24 mb-4 flex items-center justify-center">
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                viewBox="0 0 24 24" 
-                fill="currentColor" 
-                className="h-16 w-16 text-yellow-500 animate-[spin_3s_linear_infinite]"
-              >
-                <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
-              </svg>
-            </div>
-            
-            <div className="text-center">
-              <p className="text-gray-800 text-lg font-medium mb-1">
-                ¡Misión cumplida!
-              </p>
-              <p className="text-gray-600 text-center mb-4">
-                Has completado todo el mapa de logros y desbloqueado tu premio.
-              </p>
-            </div>
-            
-            <div className="border border-gray-200 rounded-lg p-4 w-full bg-gradient-to-b from-yellow-50 to-white mb-4">
-              <h4 className="text-center font-medium text-gray-700 mb-3">Código de Redención</h4>
-              <div className="w-48 h-48 mx-auto bg-white p-2 border border-gray-300 rounded-lg shadow-sm flex items-center justify-center">
-                {redemptionCode ? (
-                  <img 
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${redemptionCode}`}
-                    alt="QR de redención"
-                    className="max-w-full max-h-full"
-                  />
-                ) : (
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-                )}
+          <div className="py-3 px-4 flex flex-col items-center">
+            {/* Contenido más compacto */}
+            <div className="flex items-center gap-4 mb-3">
+              {/* Trofeo animado */}
+              <div className="flex-shrink-0">
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  viewBox="0 0 24 24" 
+                  fill="currentColor" 
+                  className="h-12 w-12 text-yellow-500 animate-[spin_3s_linear_infinite]"
+                >
+                  <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
+                </svg>
               </div>
               
-              {/* Código de redención en formato texto */}
-              {redemptionCode && (
-                <div className="mt-4 bg-white p-3 border border-gray-300 rounded-md text-center">
-                  <p className="text-xs text-gray-500 mb-1">Código de validación</p>
-                  <p className="font-mono text-lg font-bold tracking-wider select-all break-all">
-                    {redemptionCode}
-                  </p>
-                </div>
-              )}
+              <div className="text-left">
+                <p className="text-gray-800 text-lg font-medium">
+                  ¡Misión cumplida!
+                </p>
+                <p className="text-gray-600 text-sm">
+                  Has completado el mapa y desbloqueado tu premio.
+                </p>
+              </div>
+            </div>
+            
+            <div className="border border-gray-200 rounded-lg p-3 w-full bg-gradient-to-b from-yellow-50 to-white mb-3">
+              <h4 className="text-center font-medium text-gray-700 mb-2 text-sm">Código de Redención</h4>
               
-              <p className="text-sm text-gray-500 text-center mt-2">
-                Muestra este código para reclamar tu premio
-              </p>
+              <div className="flex flex-col sm:flex-row gap-3 items-center">
+                {/* QR Code */}
+                <div className="w-36 h-36 sm:w-40 sm:h-40 flex-shrink-0 mx-auto sm:mx-0 bg-white p-2 border border-gray-300 rounded-lg shadow-sm flex items-center justify-center">
+                  {redemptionCode ? (
+                    <img 
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${redemptionCode}`}
+                      alt="QR de redención"
+                      className="max-w-full max-h-full"
+                    />
+                  ) : (
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                  )}
+                </div>
+                
+                {/* Código de redención en formato texto */}
+                {redemptionCode && (
+                  <div className="flex-grow bg-white p-3 border border-gray-300 rounded-md text-center">
+                    <p className="text-xs text-gray-500 mb-1">Código de validación</p>
+                    <p className="font-mono text-lg font-bold tracking-wider select-all break-all">
+                      {redemptionCode}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Muestra este código para reclamar tu premio
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           
