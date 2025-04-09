@@ -289,6 +289,16 @@ const AdminPage = () => {
                     <p className="font-medium">{result.message}</p>
                   </div>
                   
+                  {/* Mostrar el código de redención validado */}
+                  {result.success && redemptionCode && (
+                    <div className="my-3 p-3 bg-white border border-gray-200 rounded-md">
+                      <p className="text-xs text-gray-500 mb-1">Código validado:</p>
+                      <p className="font-mono text-lg font-bold tracking-wider break-all">
+                        {redemptionCode}
+                      </p>
+                    </div>
+                  )}
+                  
                   {result.redeemedAt && (
                     <p className="text-sm text-gray-600">
                       Reclamado el: {new Date(result.redeemedAt).toLocaleString()}

@@ -308,6 +308,17 @@ const MapPage = () => {
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
                 )}
               </div>
+              
+              {/* Código de redención en formato texto */}
+              {redemptionCode && (
+                <div className="mt-4 bg-white p-3 border border-gray-300 rounded-md text-center">
+                  <p className="text-xs text-gray-500 mb-1">Código de validación</p>
+                  <p className="font-mono text-lg font-bold tracking-wider select-all break-all">
+                    {redemptionCode}
+                  </p>
+                </div>
+              )}
+              
               <p className="text-sm text-gray-500 text-center mt-2">
                 Muestra este código para reclamar tu premio
               </p>
