@@ -133,6 +133,9 @@ const MapPage = () => {
       // Update unlocked segments
       addUnlockedSegment(segmentId);
       
+      // Recargar los datos para asegurar que todo esté sincronizado
+      await loadUserData();
+      
       setSuccessMessage(`¡Has desbloqueado el segmento ${segmentId}!`);
       setShowSuccessModal(true);
       

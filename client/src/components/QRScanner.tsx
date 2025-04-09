@@ -374,7 +374,16 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
           successTimeoutRef.current = setTimeout(() => {
             // Detener el escáner y notificar éxito
             stopCamera();
+            
+            // Añadir un pequeño retraso antes de la notificación para asegurar 
+            // que todas las interfaces se actualizan correctamente
             onSuccess(segmentId, securityCode);
+            
+            // Emitir un evento personalizado para notificar a otros componentes
+            // que deberían actualizar su estado de mapa
+            window.dispatchEvent(new CustomEvent('mapSegmentUnlocked', { 
+              detail: { segmentId, timestamp: Date.now() } 
+            }));
           }, 300);
         } else {
           throw new Error(`Segmento ${segmentId} fuera de rango (1-9)`);

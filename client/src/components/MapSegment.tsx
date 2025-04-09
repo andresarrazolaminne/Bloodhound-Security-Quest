@@ -17,10 +17,43 @@ const MapSegment = ({ id, imageUrl, altText, unlocked, className }: MapSegmentPr
   const [imageError, setImageError] = useState(false);
   const [asset, setAsset] = useState<MapSegmentAsset | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isNewlyUnlocked, setIsNewlyUnlocked] = useState(false);
   
   // Cargar el asset del segmento independientemente de si está desbloqueado o no
   useEffect(() => {
     loadSegmentAsset();
+    
+    // Detectar cambios en el estado de desbloqueo
+    if (unlocked) {
+      // Verificar si es un nuevo desbloqueo
+      setIsNewlyUnlocked(true);
+      setTimeout(() => {
+        setIsNewlyUnlocked(false);
+      }, 1500);
+    }
+  }, [id, unlocked]);
+  
+  // Escuchar el evento personalizado de segmento desbloqueado
+  useEffect(() => {
+    const handleMapSegmentUnlock = (event: Event) => {
+      const customEvent = event as CustomEvent<{ segmentId: number, timestamp: number }>;
+      
+      // Solo aplicar el efecto si es este segmento el que se desbloquea
+      if (customEvent.detail.segmentId === id) {
+        setIsNewlyUnlocked(true);
+        setTimeout(() => {
+          setIsNewlyUnlocked(false);
+        }, 1500);
+      }
+    };
+    
+    // Registrar el listener para el evento personalizado
+    window.addEventListener('mapSegmentUnlocked', handleMapSegmentUnlock);
+    
+    // Limpiar el listener cuando el componente se desmonte
+    return () => {
+      window.removeEventListener('mapSegmentUnlocked', handleMapSegmentUnlock);
+    };
   }, [id]);
   
   const loadSegmentAsset = async () => {
@@ -66,6 +99,7 @@ const MapSegment = ({ id, imageUrl, altText, unlocked, className }: MapSegmentPr
       className={cn(
         "segment rounded-lg overflow-hidden cursor-pointer transition-all duration-300 transform hover:scale-105", 
         unlocked && asset?.redirectUrl && "hover:shadow-lg",
+        isNewlyUnlocked && "animate-pulse ring-4 ring-green-500 scale-105",
         className
       )} 
       data-segment-id={id}
@@ -143,10 +177,37 @@ const MapSegment = ({ id, imageUrl, altText, unlocked, className }: MapSegmentPr
               />
             </svg>
           </div>
-        ) : asset?.redirectUrl && (
-          <div className="absolute top-2 right-2 bg-black/60 text-white p-1 rounded-full">
-            <ExternalLink className="h-4 w-4" />
-          </div>
+        ) : (
+          <>
+            {/* Efecto de desbloqueo reciente */}
+            {isNewlyUnlocked && (
+              <div className="absolute inset-0 bg-green-500 bg-opacity-30 flex items-center justify-center">
+                <div className="bg-white rounded-full p-2 animate-bounce">
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className="h-8 w-8 text-green-500" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
+                    />
+                  </svg>
+                </div>
+              </div>
+            )}
+            
+            {/* Icono de enlace externo si hay URL de redirección */}
+            {asset?.redirectUrl && (
+              <div className="absolute top-2 right-2 bg-black/60 text-white p-1 rounded-full">
+                <ExternalLink className="h-4 w-4" />
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
