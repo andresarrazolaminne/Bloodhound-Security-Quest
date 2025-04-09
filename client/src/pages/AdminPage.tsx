@@ -93,6 +93,8 @@ const AdminPage = () => {
     prize: { id: number; userId: number; redeemed: boolean; redemptionCode: string | null; redeemedAt: string | null } | null;
   }>>([]);
   const [loadingRanking, setLoadingRanking] = useState(false);
+  const [documentFilter, setDocumentFilter] = useState("");
+  const [filteredRanking, setFilteredRanking] = useState<typeof userRanking>([]);
   const [formData, setFormData] = useState<MapAssetFormData>({
     segmentId: 1,
     imageUrl: "",
@@ -164,6 +166,20 @@ const AdminPage = () => {
     fetchSystemConfig();
     fetchUserRanking();
   }, []);
+  
+  // Filtrar los usuarios cuando cambia el filtro o los datos
+  useEffect(() => {
+    if (documentFilter.trim() === '') {
+      setFilteredRanking(userRanking);
+    } else {
+      setFilteredRanking(
+        userRanking.filter(item => 
+          item.user.documentNumber.toLowerCase().includes(documentFilter.toLowerCase()) ||
+          item.user.name.toLowerCase().includes(documentFilter.toLowerCase())
+        )
+      );
+    }
+  }, [userRanking, documentFilter]);
 
   // Función para cargar los assets de segmentos del mapa
   const fetchMapAssets = async () => {
@@ -669,6 +685,15 @@ const AdminPage = () => {
             </CardHeader>
 
             <CardContent className="pt-6">
+              <div className="mb-4">
+                <Input
+                  placeholder="Filtrar por Cédula o Nombre"
+                  value={documentFilter}
+                  onChange={(e) => setDocumentFilter(e.target.value)}
+                  className="max-w-sm"
+                />
+              </div>
+              
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
@@ -677,6 +702,7 @@ const AdminPage = () => {
                       <TableHead className="w-40">Documento</TableHead>
                       <TableHead>Nombre</TableHead>
                       <TableHead className="w-32 text-center">Progreso</TableHead>
+                      <TableHead className="w-32 text-center">Premio</TableHead>
                       <TableHead className="w-32 text-center">Segmentos</TableHead>
                       <TableHead className="w-32 text-center">Estado</TableHead>
                     </TableRow>
@@ -684,18 +710,18 @@ const AdminPage = () => {
                   <TableBody>
                     {loadingRanking ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-10">
+                        <TableCell colSpan={7} className="text-center py-10">
                           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
                         </TableCell>
                       </TableRow>
-                    ) : userRanking.length === 0 ? (
+                    ) : filteredRanking.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-6 text-gray-500">
-                          No hay usuarios registrados
+                        <TableCell colSpan={7} className="text-center py-6 text-gray-500">
+                          No hay usuarios registrados o que coincidan con el filtro
                         </TableCell>
                       </TableRow>
                     ) : (
-                      userRanking.map((item, index) => (
+                      filteredRanking.map((item, index) => (
                         <TableRow key={item.user.id}>
                           <TableCell className="font-medium">{index + 1}</TableCell>
                           <TableCell>{item.user.documentNumber}</TableCell>
@@ -710,6 +736,26 @@ const AdminPage = () => {
                                 {Math.round(item.completionPercentage)}%
                               </span>
                             </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {item.completionPercentage === 100 ? (
+                              item.prize && item.prize.redeemed ? (
+                                <Badge variant="success" className="gap-1">
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                  Reclamado
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="gap-1">
+                                  <Clock className="h-3.5 w-3.5" />
+                                  Pendiente
+                                </Badge>
+                              )
+                            ) : (
+                              <Badge variant="outline" className="gap-1">
+                                <AlertCircle className="h-3.5 w-3.5" />
+                                No disponible
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell className="text-center">
                             {item.unlockedSegments}/{item.totalSegments}
