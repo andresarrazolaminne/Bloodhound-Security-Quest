@@ -27,7 +27,7 @@ const RegistrationPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!name.trim() || !documentNumber.trim()) {
       toast({
         title: "Error",
@@ -41,20 +41,20 @@ const RegistrationPage = () => {
       setIsLoading(true);
       console.log("Enviando datos:", { documentNumber, name });
       const response = await register(documentNumber, name);
-      
+
       setCurrentUser(response.user);
       setLocation("/map");
-      
+
       toast({
         title: "Bienvenido",
         description: "Tu cuenta ha sido creada exitosamente",
       });
     } catch (error: any) {
       console.error("Error en registro:", error);
-      
+
       // Intentar extraer el mensaje de error detallado
       let errorMessage = "No pudimos registrar tu cuenta. Inténtalo de nuevo.";
-      
+
       if (error?.json) {
         try {
           const errorData = await error.json();
@@ -65,7 +65,7 @@ const RegistrationPage = () => {
           // Si no podemos parsear el error, usamos el mensaje genérico
         }
       }
-      
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -84,10 +84,10 @@ const RegistrationPage = () => {
             <h1 className="text-3xl font-bold text-primary mb-2">Bienvenido</h1>
             <p className="text-gray-600">Es tu primera vez, por favor ingresa tu nombre</p>
           </div>
-          
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <input type="hidden" name="documentNumber" value={documentNumber} />
-            
+
             <div className="space-y-2">
               <div className="mb-4">
                 <label htmlFor="document-number" className="block text-sm font-medium text-gray-700">
@@ -104,7 +104,7 @@ const RegistrationPage = () => {
                   readOnly={documentNumber !== ""}
                 />
               </div>
-            
+
               <label htmlFor="user-name" className="block text-sm font-medium text-gray-700">
                 Nombre Completo
               </label>
@@ -118,30 +118,40 @@ const RegistrationPage = () => {
                 required
               />
             </div>
-            
-            <Button 
-              type="submit"
-              className="w-full flex items-center justify-center bg-orange-500 hover:bg-orange-600"
-              disabled={isLoading}
-            >
-              <span>Registrarme</span>
-              {!isLoading && (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 ml-2"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
-              )}
-            </Button>
+
+            <div className="space-y-3">
+              <Button 
+                type="submit"
+                className="w-full flex items-center justify-center bg-orange-500 hover:bg-orange-600"
+                disabled={isLoading}
+              >
+                <span>Registrarme</span>
+                {!isLoading && (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 ml-2"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                )}
+              </Button>
+              <Button 
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => setLocation("/")}
+              >
+                Atrás
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>
