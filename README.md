@@ -1,6 +1,18 @@
 
 # Mapa de Logros - Instrucciones de Uso
 
+## ¡Bienvenido a la Búsqueda del Kit de Stickers! 🎯
+
+¡Prepárate para una emocionante aventura! En este desafío, deberás:
+
+1. Visitar todas las actividades del mapa
+2. Encontrar los códigos QR ocultos en cada actividad
+3. Escanear los códigos usando la aplicación
+4. ¡Completa el reto desbloqueando los 9 segmentos!
+5. Reclama tu espectacular kit de stickers al terminar
+
+🎁 **Premio**: Un increíble kit de stickers te espera al completar el desafío.
+
 ## Para Usuarios
 
 ### Inicio de Sesión
