@@ -54,6 +54,10 @@ const AdminPage = () => {
   const [selectedAsset, setSelectedAsset] = useState<MapSegmentAsset | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [systemConfig, setSystemConfig] = useState({
+    instructionsText: "",
+    siteMapImageUrl: ""
+  });
   const [formData, setFormData] = useState<MapAssetFormData>({
     segmentId: 1,
     imageUrl: "",
@@ -81,9 +85,30 @@ const AdminPage = () => {
     setLocation("/admin-login");
   };
 
-  // Cargar assets de segmentos del mapa al iniciar
+  // Función para cargar la configuración del sistema
+  const fetchSystemConfig = async () => {
+    try {
+      const response = await apiRequest("GET", "/api/system-config");
+      const data = await response.json();
+      
+      // La respuesta contiene un objeto 'config' que contiene la configuración
+      const config = data.config || {};
+      
+      // Establecer la configuración actual
+      setSystemConfig({
+        instructionsText: config.instructionsText || "",
+        siteMapImageUrl: config.siteMapImageUrl || ""
+      });
+    } catch (error) {
+      console.error("Error loading system config:", error);
+      // No mostramos un toast para no molestar al usuario si no hay config
+    }
+  };
+
+  // Cargar assets de segmentos del mapa y configuración del sistema al iniciar
   useEffect(() => {
     fetchMapAssets();
+    fetchSystemConfig();
   }, []);
 
   // Función para cargar los assets de segmentos del mapa
