@@ -1,24 +1,26 @@
-import { useMemo } from "react";
+import React from "react";
 import MapSegment from "./MapSegment";
-import { MAP_SEGMENTS } from "@/lib/mapSegmentsData";
 
 interface MapGridProps {
   unlockedSegments: number[];
 }
 
 const MapGrid = ({ unlockedSegments }: MapGridProps) => {
+  // Los 9 segmentos del mapa
+  const segmentIds = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  
   return (
     <div className="bg-white rounded-lg shadow-md p-4 mb-6">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Tu Mapa de Logros</h2>
       
       <div className="grid grid-cols-3 gap-4">
-        {MAP_SEGMENTS.map((segment) => (
+        {segmentIds.map((id) => (
           <MapSegment
-            key={segment.id}
-            id={segment.id}
-            imageUrl={segment.imageUrl}
-            altText={segment.altText}
-            unlocked={unlockedSegments.includes(segment.id)}
+            key={id}
+            id={id}
+            imageUrl=""
+            altText={`Segmento del mapa ${id}`}
+            unlocked={unlockedSegments.includes(id)}
           />
         ))}
       </div>
