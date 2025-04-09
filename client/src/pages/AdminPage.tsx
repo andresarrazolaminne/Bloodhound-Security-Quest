@@ -12,7 +12,7 @@ import {
   TabsList, 
   TabsTrigger 
 } from "@/components/ui/tabs";
-import { Loader2, PlusCircle, Pencil, Trash2, ExternalLink, Download } from "lucide-react";
+import { Loader2, PlusCircle, Pencil, Trash2, ExternalLink, Download, AlertTriangle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { MapSegmentAsset } from "@shared/schema";
 import {
@@ -41,6 +41,7 @@ const AdminPage = () => {
     success: boolean;
     message: string;
     redeemedAt?: string;
+    alreadyRedeemed?: boolean;
   } | null>(null);
   
   // Gestión de segmentos del mapa
@@ -211,11 +212,12 @@ const AdminPage = () => {
       const errorResponse = await (error as Response).json();
       
       if (errorResponse.redeemedAt) {
-        // Already redeemed
+        // Already redeemed - Mostrar como validado pero ya reclamado
         setResult({
-          success: false,
-          message: "Premio ya reclamado",
-          redeemedAt: errorResponse.redeemedAt
+          success: true, // Cambio a true para mostrar como válido pero ya reclamado
+          message: "Premio ya reclamado anteriormente",
+          redeemedAt: errorResponse.redeemedAt,
+          alreadyRedeemed: true // Nuevo flag para indicar que ya fue reclamado
         });
       } else {
         // Invalid code or other error
@@ -281,10 +283,17 @@ const AdminPage = () => {
               </form>
               
               {result && (
-                <div className={`mt-6 p-4 rounded-md ${result.success ? 'bg-green-50' : 'bg-red-50'}`}>
+                <div className={`mt-6 p-4 rounded-md ${result.success ? (result.alreadyRedeemed ? 'bg-yellow-50' : 'bg-green-50') : 'bg-red-50'}`}>
                   <div className="flex items-center mb-2">
-                    <Badge variant={result.success ? "success" : "destructive"} className="mr-2">
-                      {result.success ? "Válido" : "Inválido"}
+                    <Badge 
+                      variant={result.success 
+                        ? (result.alreadyRedeemed ? "secondary" : "success") 
+                        : "destructive"} 
+                      className="mr-2"
+                    >
+                      {result.success 
+                        ? (result.alreadyRedeemed ? "Ya Reclamado" : "Válido") 
+                        : "Inválido"}
                     </Badge>
                     <p className="font-medium">{result.message}</p>
                   </div>
@@ -300,12 +309,19 @@ const AdminPage = () => {
                   )}
                   
                   {result.redeemedAt && (
-                    <p className="text-sm text-gray-600">
-                      Reclamado el: {new Date(result.redeemedAt).toLocaleString()}
-                    </p>
+                    <div className="mt-2 mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                      <div className="flex items-center text-yellow-800">
+                        <AlertTriangle className="h-4 w-4 mr-2" />
+                        <p className="font-medium">Premio ya entregado</p>
+                      </div>
+                      <p className="text-sm text-yellow-700 mt-1">
+                        Código reclamado el: {new Date(result.redeemedAt).toLocaleString()}
+                      </p>
+                    </div>
                   )}
                   
-                  {result.success && (
+                  {/* Solo mostrar el botón si el premio no ha sido reclamado aún */}
+                  {result.success && !result.alreadyRedeemed && (
                     <div className="flex justify-end mt-4">
                       <Button 
                         variant="default" 

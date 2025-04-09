@@ -73,5 +73,9 @@ export const getUserPrize = async (documentNumber: string): Promise<PrizeRespons
 // Redeem prize
 export const redeemPrize = async (redemptionCode: string): Promise<RedeemPrizeResponse> => {
   const response = await apiRequest("POST", "/api/redeem-prize", { redemptionCode });
+  // If the response is not ok, throw the response object so we can check status codes
+  if (!response.ok) {
+    throw response;
+  }
   return response.json();
 };
