@@ -286,11 +286,11 @@ const MapPage = () => {
 
       {/* Instructions Modal */}
       <Dialog open={showInstructionsModal} onOpenChange={setShowInstructionsModal}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Instrucciones</DialogTitle>
           </DialogHeader>
-          <div className="prose prose-sm max-w-none">
+          <div className="prose prose-sm max-w-none overflow-y-auto max-h-[60vh] pr-2">
             {systemConfig.instructionsText ? (
               <HtmlContent html={systemConfig.instructionsText} />
             ) : (
