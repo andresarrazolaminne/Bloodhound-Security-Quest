@@ -395,38 +395,27 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
   
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogChange}>
-      <DialogContent className="max-w-[95vw] w-full sm:max-w-md p-4 sm:p-6 overflow-hidden">
-        <DialogHeader className="pb-2 space-y-1">
+      <DialogContent className="max-w-[95vw] w-full sm:max-w-md p-3 sm:p-4 overflow-hidden">
+        <DialogHeader className="pb-1 sm:pb-2">
           <DialogTitle className="flex items-center text-base sm:text-lg gap-2">
             <QrCode className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
             <span className="truncate">Escanear Código QR</span>
           </DialogTitle>
-          <DialogDescription className="text-xs sm:text-sm">
-            Apunta la cámara al código QR del segmento
+          <DialogDescription className="flex items-center text-xs sm:text-sm text-blue-700 mt-1 gap-1.5">
+            <Camera className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
+            <span>Apunta al código QR para escanearlo automáticamente</span>
           </DialogDescription>
         </DialogHeader>
         
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3 text-xs sm:text-sm">
-          <div className="flex gap-2 items-start">
-            <Camera className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-blue-800 font-medium mb-0.5 text-sm">Escanear Código</p>
-              <p className="text-blue-700 text-xs">
-                Apunta con la cámara al código QR para escanearlo automáticamente.
-              </p>
-            </div>
-          </div>
-        </div>
-        
         {/* Selector de cámara - siempre mostrar si hay cámaras disponibles */}
-        {availableCameras.length > 0 && (
-          <div className="mb-3">
-            <div className="flex items-center gap-2 mb-1.5">
-              <Camera className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium">Seleccionar cámara:</span>
+        {availableCameras.length > 1 && (
+          <div className="mb-2">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Camera className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs font-medium">Cámaras disponibles:</span>
             </div>
             
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {availableCameras.map((device, index) => {
                 // Determinar si parece ser cámara trasera o frontal
                 const label = device.label || `Cámara ${index + 1}`;
@@ -468,7 +457,7 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
                 return (
                   <button
                     key={device.deviceId}
-                    className={`text-xs px-3 py-2 rounded-full flex-shrink-0 
+                    className={`text-xs px-2 py-1.5 rounded-md flex-shrink-0 
                                ${device.deviceId === deviceId 
                                  ? 'bg-primary text-white font-medium' 
                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
@@ -487,9 +476,9 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
         
         {/* Área de visualización de la cámara */}
         <div className="relative bg-black rounded-lg overflow-hidden mb-2" style={{ 
-          minHeight: "250px", 
-          height: "50vh",
-          maxHeight: "400px" 
+          minHeight: "220px", 
+          height: "45vh",
+          maxHeight: "350px" 
         }}>
           {hasCamera ? (
             <>
@@ -549,8 +538,8 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
           )}
         </div>
         
-        <DialogFooter className="flex justify-end mt-2 pt-2 border-t">
-          <Button variant="outline" size="sm" onClick={onClose} className="w-full sm:w-auto">
+        <DialogFooter className="flex justify-end mt-1 pt-1 border-t">
+          <Button variant="outline" size="sm" onClick={onClose} className="w-full sm:w-auto text-xs">
             Cancelar
           </Button>
         </DialogFooter>
