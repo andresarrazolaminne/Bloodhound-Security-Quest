@@ -37,6 +37,16 @@ export interface IStorage {
   createMapSegmentAsset(asset: InsertMapSegmentAsset): Promise<MapSegmentAsset>;
   updateMapSegmentAsset(segmentId: number, asset: Partial<InsertMapSegmentAsset>): Promise<MapSegmentAsset>;
   deleteMapSegmentAsset(segmentId: number): Promise<void>;
+  
+  // Admin statistics
+  getAllUsersWithProgress(): Promise<Array<{
+    user: User;
+    segments: MapSegment[];
+    totalSegments: number;
+    unlockedSegments: number;
+    completionPercentage: number;
+    prize: Prize | null;
+  }>>;
 }
 
 export class MemStorage implements IStorage {
@@ -204,6 +214,39 @@ export class MemStorage implements IStorage {
 
   async deleteMapSegmentAsset(segmentId: number): Promise<void> {
     this.mapAssets.delete(segmentId);
+  }
+  
+  // Admin statistics
+  async getAllUsersWithProgress(): Promise<Array<{
+    user: User;
+    segments: MapSegment[];
+    totalSegments: number;
+    unlockedSegments: number;
+    completionPercentage: number;
+    prize: Prize | null;
+  }>> {
+    const result = [];
+    const totalSegments = 9; // Total de segmentos fijos en el mapa
+    
+    // Recorrer todos los usuarios
+    for (const user of this.users.values()) {
+      const segments = this.segments.get(user.id) || [];
+      const unlockedSegments = segments.filter(s => s.unlocked).length;
+      const completionPercentage = (unlockedSegments / totalSegments) * 100;
+      const prize = this.prizes.get(user.id) || null;
+      
+      result.push({
+        user,
+        segments,
+        totalSegments,
+        unlockedSegments,
+        completionPercentage,
+        prize
+      });
+    }
+    
+    // Ordenar por mayor porcentaje de completación
+    return result.sort((a, b) => b.completionPercentage - a.completionPercentage);
   }
 }
 
@@ -392,6 +435,47 @@ export class DatabaseStorage implements IStorage {
       console.error("Error al actualizar la configuración:", error);
       throw error;
     }
+  }
+  
+  // Admin statistics
+  async getAllUsersWithProgress(): Promise<Array<{
+    user: User;
+    segments: MapSegment[];
+    totalSegments: number;
+    unlockedSegments: number;
+    completionPercentage: number;
+    prize: Prize | null;
+  }>> {
+    const result = [];
+    const totalSegments = 9; // Total de segmentos fijos en el mapa
+    
+    // Obtener todos los usuarios
+    const allUsers = await db.select().from(users);
+    
+    // Para cada usuario, recopilamos su progreso
+    for (const user of allUsers) {
+      // Obtener segmentos del usuario
+      const segments = await this.getSegmentsByUserId(user.id);
+      
+      // Calcular segmentos desbloqueados
+      const unlockedSegments = segments.filter(s => s.unlocked).length;
+      const completionPercentage = (unlockedSegments / totalSegments) * 100;
+      
+      // Obtener premio (si existe)
+      const prize = await this.getPrizeByUserId(user.id);
+      
+      result.push({
+        user,
+        segments,
+        totalSegments,
+        unlockedSegments,
+        completionPercentage,
+        prize: prize || null
+      });
+    }
+    
+    // Ordenar por mayor porcentaje de completación
+    return result.sort((a, b) => b.completionPercentage - a.completionPercentage);
   }
 }
 

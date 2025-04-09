@@ -501,6 +501,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para obtener estadísticas de usuarios (Administrador)
+  apiRouter.get("/admin/users-progress", async (_req, res) => {
+    try {
+      // Obtener todos los usuarios con su progreso
+      const users = await storage.getAllUsersWithProgress();
+      
+      res.json({ users });
+    } catch (error) {
+      console.error("Error getting user stats:", error);
+      res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

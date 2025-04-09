@@ -7,6 +7,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { redeemPrize } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
+import { 
+  Table, 
+  TableBody, 
+  TableCaption, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { Progress } from "@/components/ui/progress";
 import RichTextEditor from "@/components/RichTextEditor";
 import HtmlContent from "@/components/HtmlContent";
 import { 
@@ -15,7 +25,19 @@ import {
   TabsList, 
   TabsTrigger 
 } from "@/components/ui/tabs";
-import { Loader2, PlusCircle, Pencil, Trash2, ExternalLink, Download, AlertTriangle, LogOut } from "lucide-react";
+import { 
+  Loader2, 
+  PlusCircle, 
+  Pencil, 
+  Trash2, 
+  ExternalLink, 
+  Download, 
+  AlertTriangle, 
+  LogOut,
+  CheckCircle2,
+  Clock,
+  AlertCircle
+} from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { MapSegmentAsset } from "@shared/schema";
 import {
@@ -60,6 +82,17 @@ const AdminPage = () => {
     instructionsText: "",
     siteMapImageUrl: ""
   });
+  
+  // Ranking de usuarios
+  const [userRanking, setUserRanking] = useState<Array<{
+    user: { id: number; documentNumber: string; name: string };
+    segments: Array<{ id: number; userId: number; segmentId: number; unlocked: boolean }>;
+    totalSegments: number;
+    unlockedSegments: number;
+    completionPercentage: number;
+    prize: { id: number; userId: number; redeemed: boolean; redemptionCode: string | null; redeemedAt: string | null } | null;
+  }>>([]);
+  const [loadingRanking, setLoadingRanking] = useState(false);
   const [formData, setFormData] = useState<MapAssetFormData>({
     segmentId: 1,
     imageUrl: "",
@@ -107,10 +140,29 @@ const AdminPage = () => {
     }
   };
 
+  // Función para cargar datos del ranking de usuarios
+  const fetchUserRanking = async () => {
+    try {
+      setLoadingRanking(true);
+      const response = await apiRequest("GET", "/api/admin/users-progress");
+      const data = await response.json();
+      setUserRanking(data.users || []);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Error al cargar el ranking de usuarios",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingRanking(false);
+    }
+  };
+
   // Cargar assets de segmentos del mapa y configuración del sistema al iniciar
   useEffect(() => {
     fetchMapAssets();
     fetchSystemConfig();
+    fetchUserRanking();
   }, []);
 
   // Función para cargar los assets de segmentos del mapa
@@ -306,9 +358,10 @@ const AdminPage = () => {
       </div>
 
       <Tabs defaultValue="prizes" className="max-w-5xl mx-auto">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 mb-6">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
           <TabsTrigger value="prizes">Validación de Premios</TabsTrigger>
           <TabsTrigger value="segments">Segmentos del Mapa</TabsTrigger>
+          <TabsTrigger value="ranking">Ranking de Usuarios</TabsTrigger>
           <TabsTrigger value="config">Configuración</TabsTrigger>
         </TabsList>
 
@@ -602,6 +655,91 @@ const AdminPage = () => {
                   Guardar Configuración
                 </Button>
               </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ranking">
+          <Card className="w-full">
+            <CardHeader className="bg-primary text-white">
+              <CardTitle className="text-xl">Ranking de Usuarios</CardTitle>
+              <CardDescription className="text-white/80">
+                Consulta el progreso de los usuarios en la aplicación
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="pt-6">
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10">#</TableHead>
+                      <TableHead className="w-40">Documento</TableHead>
+                      <TableHead>Nombre</TableHead>
+                      <TableHead className="w-32 text-center">Progreso</TableHead>
+                      <TableHead className="w-32 text-center">Segmentos</TableHead>
+                      <TableHead className="w-32 text-center">Estado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loadingRanking ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-10">
+                          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                        </TableCell>
+                      </TableRow>
+                    ) : userRanking.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-6 text-gray-500">
+                          No hay usuarios registrados
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      userRanking.map((item, index) => (
+                        <TableRow key={item.user.id}>
+                          <TableCell className="font-medium">{index + 1}</TableCell>
+                          <TableCell>{item.user.documentNumber}</TableCell>
+                          <TableCell>{item.user.name}</TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center">
+                              <Progress 
+                                value={item.completionPercentage} 
+                                className="w-20 h-2" 
+                              />
+                              <span className="ml-2 text-sm">
+                                {Math.round(item.completionPercentage)}%
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {item.unlockedSegments}/{item.totalSegments}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-center">
+                              {item.completionPercentage === 100 ? (
+                                <Badge variant="success" className="gap-1">
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                  Completado
+                                </Badge>
+                              ) : item.completionPercentage > 0 ? (
+                                <Badge variant="secondary" className="gap-1">
+                                  <Clock className="h-3.5 w-3.5" />
+                                  En progreso
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="gap-1">
+                                  <AlertCircle className="h-3.5 w-3.5" />
+                                  Sin iniciar
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
