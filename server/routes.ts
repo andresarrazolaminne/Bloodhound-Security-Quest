@@ -345,6 +345,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para limpiar la base de datos (solo para pruebas)
+  apiRouter.post("/admin/reset-data", async (_req, res) => {
+    try {
+      await storage.resetAllUserData();
+      return res.status(200).json({ message: "Datos de usuarios reiniciados exitosamente" });
+    } catch (error) {
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
   // Health check endpoint
   // System configuration routes
   apiRouter.get("/system-config", async (_req, res) => {

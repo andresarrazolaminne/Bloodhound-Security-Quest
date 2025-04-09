@@ -26,6 +26,9 @@ export interface IStorage {
   // Map segment operations
   getSegmentsByUserId(userId: number): Promise<MapSegment[]>;
   unlockSegment(userId: number, segmentId: number): Promise<MapSegment>;
+  
+  // Reset all user data (for testing)
+  resetAllUserData(): Promise<void>;
 
   // Prize operations
   getPrizeByUserId(userId: number): Promise<Prize | undefined>;
@@ -234,6 +237,17 @@ export class MemStorage implements IStorage {
 
   async deleteMapSegmentAsset(segmentId: number): Promise<void> {
     this.mapAssets.delete(segmentId);
+  }
+  
+  // Reset user data for testing
+  async resetAllUserData(): Promise<void> {
+    this.users.clear();
+    this.segments.clear();
+    this.prizes.clear();
+    this.redemptionCodes.clear();
+    this.currentUserId = 1;
+    this.currentSegmentId = 1;
+    this.currentPrizeId = 1;
   }
   
   // Admin statistics
@@ -502,6 +516,20 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(mapSegmentAssets)
       .where(eq(mapSegmentAssets.segmentId, segmentId));
+  }
+  
+  // Reset all user data for testing
+  async resetAllUserData(): Promise<void> {
+    // Eliminar todos los premios
+    await db.delete(prizes);
+    
+    // Eliminar todos los segmentos del mapa
+    await db.delete(mapSegments);
+    
+    // Eliminar todos los usuarios
+    await db.delete(users);
+    
+    console.log("Todos los datos de usuarios han sido eliminados");
   }
   
   async getSystemConfig() {

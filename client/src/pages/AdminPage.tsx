@@ -36,7 +36,8 @@ import {
   LogOut,
   CheckCircle2,
   Clock,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { MapSegmentAsset } from "@shared/schema";
@@ -95,6 +96,7 @@ const AdminPage = () => {
   const [loadingRanking, setLoadingRanking] = useState(false);
   const [documentFilter, setDocumentFilter] = useState("");
   const [filteredRanking, setFilteredRanking] = useState<typeof userRanking>([]);
+  const [resettingData, setResettingData] = useState(false);
   const [formData, setFormData] = useState<MapAssetFormData>({
     segmentId: 1,
     imageUrl: "",
@@ -678,10 +680,57 @@ const AdminPage = () => {
         <TabsContent value="ranking">
           <Card className="w-full">
             <CardHeader className="bg-primary text-white">
-              <CardTitle className="text-xl">Ranking de Usuarios</CardTitle>
-              <CardDescription className="text-white/80">
-                Consulta el progreso de los usuarios en la aplicación
-              </CardDescription>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-xl">Ranking de Usuarios</CardTitle>
+                  <CardDescription className="text-white/80">
+                    Consulta el progreso de los usuarios en la aplicación
+                  </CardDescription>
+                </div>
+                <Button 
+                  variant="secondary"
+                  size="sm"
+                  onClick={async () => {
+                    if (confirm("¿Estás seguro de reiniciar todos los datos de usuarios?\nEsta acción no se puede deshacer.")) {
+                      try {
+                        setResettingData(true);
+                        const response = await apiRequest("POST", "/api/admin/reset-data");
+                        const data = await response.json();
+                        
+                        toast({
+                          title: "Datos reiniciados",
+                          description: "Todos los datos de usuarios han sido eliminados"
+                        });
+                        
+                        // Recargar el ranking
+                        fetchUserRanking();
+                      } catch (error) {
+                        toast({
+                          title: "Error",
+                          description: "Error al reiniciar los datos",
+                          variant: "destructive"
+                        });
+                      } finally {
+                        setResettingData(false);
+                      }
+                    }
+                  }}
+                  disabled={resettingData}
+                  className="text-white"
+                >
+                  {resettingData ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Reiniciando...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Reiniciar datos
+                    </>
+                  )}
+                </Button>
+              </div>
             </CardHeader>
 
             <CardContent className="pt-6">
