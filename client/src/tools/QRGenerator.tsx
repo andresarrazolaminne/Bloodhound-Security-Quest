@@ -11,9 +11,14 @@ import QRCode from 'qrcode';
 const generateQRCode = async (data: string): Promise<string> => {
   try {
     return await QRCode.toDataURL(data, {
-      width: 250,
-      margin: 1,
-      errorCorrectionLevel: 'M'
+      width: 300,          // Aumentar tamaño para mejor legibilidad
+      margin: 2,           // Más margen blanco alrededor del código
+      errorCorrectionLevel: 'L',  // Nivel más bajo de corrección (L en lugar de M)
+      scale: 8,            // Escala más grande para mejor reconocimiento
+      color: {
+        dark: '#000000FF', // Color negro sólido para los puntos
+        light: '#FFFFFFFF' // Fondo blanco puro
+      }
     });
   } catch (err) {
     console.error('Error generating QR code:', err);
@@ -44,7 +49,7 @@ const QRGenerator = () => {
   const [qrCodes, setQrCodes] = useState<QRCodeData[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isLoadingAssets, setIsLoadingAssets] = useState<boolean>(false);
-  const [qrFormat, setQrFormat] = useState<string>("json");
+  const [qrFormat, setQrFormat] = useState<string>("text");
   const [mapAssets, setMapAssets] = useState<any[]>([]);
 
   // Cargar assets del mapa al inicio para obtener códigos de seguridad existentes

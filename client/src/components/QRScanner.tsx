@@ -59,6 +59,12 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
     // Limpieza al desmontar el componente
     return () => {
       stopCamera();
+      
+      // Limpiamos cualquier timeout pendiente para evitar memory leaks
+      if (successTimeoutRef.current) {
+        clearTimeout(successTimeoutRef.current);
+        successTimeoutRef.current = null;
+      }
     };
   }, [isOpen]);
   
@@ -238,7 +244,12 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
     setScanning(false);
   };
   
-  // Escanear continuamente códigos QR
+  // Referencia para control de tiempo entre escaneos
+  const lastScanRef = useRef<number>(0);
+  const scanIntervalRef = useRef<number>(100); // milisegundos entre escaneos
+  const successTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Escanear continuamente códigos QR con optimización de rendimiento
   const scanQRCode = () => {
     if (!scanning) return;
     
@@ -251,20 +262,35 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
       return;
     }
     
+    // Control de frecuencia de escaneo para reducir carga de CPU
+    const now = Date.now();
+    if (now - lastScanRef.current < scanIntervalRef.current) {
+      requestAnimationFrame(scanQRCode);
+      return;
+    }
+    lastScanRef.current = now;
+    
     // Configurar el canvas para capturar el frame actual
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
     
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // Usar dimensiones más pequeñas para el procesamiento - mejora rendimiento
+    const scaleFactor = 0.7; // Escalar al 70% para procesamiento más rápido
+    const captureWidth = video.videoWidth * scaleFactor;
+    const captureHeight = video.videoHeight * scaleFactor;
+    
+    canvas.width = captureWidth;
+    canvas.height = captureHeight;
+    
+    // Dibujar el video en un canvas más pequeño para procesamiento más rápido
+    ctx.drawImage(video, 0, 0, captureWidth, captureHeight);
     
     // Obtener los datos de la imagen
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const imageData = ctx.getImageData(0, 0, captureWidth, captureHeight);
     
-    // Analizar la imagen en busca de un código QR
+    // Analizar la imagen en busca de un código QR con configuración optimizada
     const code = jsQR(imageData.data, imageData.width, imageData.height, {
-      inversionAttempts: "dontInvert",
+      inversionAttempts: "dontInvert", // Más rápido que intentar invertir
     });
     
     if (code) {
@@ -317,9 +343,19 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
         
         // Verificar que el segmentId está en el rango correcto (1-9)
         if (segmentId >= 1 && segmentId <= 9) {
-          // Detener el escáner y notificar éxito
-          stopCamera();
-          onSuccess(segmentId, securityCode);
+          // Detener repetición en caso de encontrar un código válido
+          if (successTimeoutRef.current) {
+            clearTimeout(successTimeoutRef.current);
+          }
+          
+          // Notificar éxito después de una pequeña pausa para evitar escaneos duplicados
+          setScanning(false); // Detenemos el escaneo inmediatamente
+          
+          successTimeoutRef.current = setTimeout(() => {
+            // Detener el escáner y notificar éxito
+            stopCamera();
+            onSuccess(segmentId, securityCode);
+          }, 300);
         } else {
           throw new Error(`Segmento ${segmentId} fuera de rango (1-9)`);
         }
@@ -388,7 +424,15 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
   // Cerrar el diálogo
   const handleDialogChange = (open: boolean) => {
     if (!open) {
+      // Detener la cámara
       stopCamera();
+      
+      // Limpiar timeout si existe
+      if (successTimeoutRef.current) {
+        clearTimeout(successTimeoutRef.current);
+        successTimeoutRef.current = null;
+      }
+      
       onClose();
     }
   };
