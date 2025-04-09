@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { redeemPrize } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
+import RichTextEditor from "@/components/RichTextEditor";
+import HtmlContent from "@/components/HtmlContent";
 import { 
   Tabs, 
   TabsContent, 
@@ -554,19 +556,27 @@ const AdminPage = () => {
                   <label htmlFor="instructions" className="block text-sm font-medium text-gray-700">
                     Texto de Instrucciones
                   </label>
-                  <Textarea
-                    id="instructions"
+                  
+                  <RichTextEditor
                     value={systemConfig.instructionsText}
-                    onChange={(e) => setSystemConfig({
+                    onChange={(value) => setSystemConfig({
                       ...systemConfig,
-                      instructionsText: e.target.value
+                      instructionsText: value
                     })}
-                    placeholder="Ingresa las instrucciones para los usuarios"
-                    className="min-h-[200px]"
+                    className="min-h-[300px]"
                   />
+                  
                   <p className="text-sm text-gray-500">
-                    Este texto se mostrará en el modal de instrucciones. Puedes usar HTML básico.
+                    Este texto se mostrará en el modal de instrucciones. 
+                    Usa el editor para dar formato a las instrucciones.
                   </p>
+                  
+                  {systemConfig.instructionsText && (
+                    <div className="mt-4 border rounded-md p-4">
+                      <p className="text-sm font-medium mb-2">Vista previa:</p>
+                      <HtmlContent html={systemConfig.instructionsText} />
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">

@@ -8,6 +8,7 @@ import { getUserSegments, unlockSegment as apiUnlockSegment, getUserPrize } from
 import MapGrid from "@/components/MapGrid";
 import ProgressBar from "@/components/ProgressBar";
 import QRScanner from "@/components/QRScanner";
+import HtmlContent from "@/components/HtmlContent";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
@@ -291,7 +292,7 @@ const MapPage = () => {
           </DialogHeader>
           <div className="prose prose-sm max-w-none">
             {systemConfig.instructionsText ? (
-              <div dangerouslySetInnerHTML={{ __html: systemConfig.instructionsText }} />
+              <HtmlContent html={systemConfig.instructionsText} />
             ) : (
               <p>Cargando instrucciones...</p>
             )}
