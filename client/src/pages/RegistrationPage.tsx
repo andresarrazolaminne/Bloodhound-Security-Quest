@@ -101,7 +101,6 @@ const RegistrationPage = () => {
                   placeholder="Ingresa tu número de cédula"
                   className="w-full"
                   required
-                  readOnly={documentNumber !== ""}
                 />
               </div>
 
