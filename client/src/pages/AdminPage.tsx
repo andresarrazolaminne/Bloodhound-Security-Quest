@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,7 @@ import {
   TabsList, 
   TabsTrigger 
 } from "@/components/ui/tabs";
-import { Loader2, PlusCircle, Pencil, Trash2, ExternalLink, Download, AlertTriangle } from "lucide-react";
+import { Loader2, PlusCircle, Pencil, Trash2, ExternalLink, Download, AlertTriangle, LogOut } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { MapSegmentAsset } from "@shared/schema";
 import {
@@ -60,6 +61,21 @@ const AdminPage = () => {
   });
   
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  
+  // Función para cerrar sesión
+  const handleLogout = () => {
+    // Eliminar la autenticación de la sesión
+    sessionStorage.removeItem("adminAuthenticated");
+    
+    toast({
+      title: "Sesión cerrada",
+      description: "Has salido del panel de administración",
+    });
+    
+    // Redirigir a la página de login
+    setLocation("/admin-login");
+  };
   
   // Cargar assets de segmentos del mapa al iniciar
   useEffect(() => {
@@ -239,7 +255,17 @@ const AdminPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <h1 className="text-3xl font-bold mb-6 text-center">Panel de Administración</h1>
+      <div className="flex justify-between items-center mb-6 max-w-5xl mx-auto">
+        <h1 className="text-3xl font-bold">Panel de Administración</h1>
+        <Button 
+          variant="outline" 
+          onClick={handleLogout}
+          className="flex items-center gap-2"
+        >
+          <LogOut className="h-4 w-4" />
+          Cerrar Sesión
+        </Button>
+      </div>
       
       <Tabs defaultValue="prizes" className="max-w-5xl mx-auto">
         <TabsList className="grid w-full grid-cols-2 mb-6">

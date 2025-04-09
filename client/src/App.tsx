@@ -8,8 +8,10 @@ import AuthPage from "@/pages/AuthPage";
 import MapPage from "@/pages/MapPage";
 import RegistrationPage from "@/pages/RegistrationPage";
 import AdminPage from "@/pages/AdminPage";
+import AdminLoginPage from "@/pages/AdminLoginPage";
 import QRGeneratorPage from "@/pages/QRGeneratorPage";
 import { Loader2 } from "lucide-react";
+import AdminProtectedRoute from "@/components/AdminProtectedRoute";
 
 // Componente para redirigir usuarios ya logueados
 const ProtectedLoginRoute = () => {
@@ -30,7 +32,10 @@ function Router() {
       <Route path="/" component={ProtectedLoginRoute} />
       <Route path="/register" component={RegistrationPage} />
       <Route path="/map" component={MapPage} />
-      <Route path="/admin" component={AdminPage} />
+      <Route path="/admin-login" component={AdminLoginPage} />
+      <Route path="/admin">
+        <AdminProtectedRoute component={AdminPage} />
+      </Route>
       <Route path="/qr-generator" component={QRGeneratorPage} />
       <Route component={NotFound} />
     </Switch>
