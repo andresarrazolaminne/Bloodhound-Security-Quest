@@ -3,12 +3,19 @@ import MapSegment from "./MapSegment";
 
 interface MapGridProps {
   unlockedSegments: number[];
-  gapSize?: 'x-small' | 'small' | 'medium' | 'large'; // Tamaño de la separación entre imágenes
+  gapSize?: 'none' | 'x-small' | 'small' | 'medium' | 'large'; // Tamaño de la separación entre imágenes
+  gridSize?: '3x3' | '3x2' | '2x3' | '4x2' | '2x4'; // Tamaño de la cuadrícula (columnas x filas)
 }
 
-const MapGrid = ({ unlockedSegments, gapSize = 'medium' }: MapGridProps) => {
-  // Los 9 segmentos del mapa
-  const segmentIds = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+const MapGrid = ({ unlockedSegments, gapSize = 'medium', gridSize = '3x3' }: MapGridProps) => {
+  // Los segmentos del mapa basados en el tamaño de la cuadrícula seleccionada
+  const getSegmentIds = () => {
+    const [columns, rows] = gridSize.split('x').map(Number);
+    const totalSegments = columns * rows;
+    return Array.from({ length: totalSegments }, (_, i) => i + 1);
+  };
+  
+  const segmentIds = getSegmentIds();
   
   // Mantener una referencia de los segmentos actuales para comparar con los nuevos
   const previousUnlockedRef = useRef<number[]>([]);
@@ -59,6 +66,8 @@ const MapGrid = ({ unlockedSegments, gapSize = 'medium' }: MapGridProps) => {
   // Determinar la clase de espaciado según el tamaño solicitado
   const getGapClass = () => {
     switch (gapSize) {
+      case 'none':
+        return 'gap-0'; // Sin espaciado
       case 'x-small':
         return 'gap-1'; // Espaciado extra pequeño - 0.25rem (4px)
       case 'small':
@@ -70,12 +79,19 @@ const MapGrid = ({ unlockedSegments, gapSize = 'medium' }: MapGridProps) => {
         return 'gap-4'; // Espaciado mediano - 1rem (16px)
     }
   };
+  
+  // Determinar la clase de columnas según el tamaño de la cuadrícula
+  const getColumnsClass = () => {
+    // Extraer el número de columnas del formato "AxB"
+    const columns = parseInt(gridSize.split('x')[0]);
+    return `grid-cols-${columns}`;
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4 mb-6">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Tu Mapa de Logros</h2>
       
-      <div className={`grid grid-cols-3 ${getGapClass()} ${updatingSegments ? 'opacity-50 transition-opacity' : ''}`}>
+      <div className={`grid ${getColumnsClass()} ${getGapClass()} ${updatingSegments ? 'opacity-50 transition-opacity' : ''}`}>
         {segmentIds.map((id) => (
           <MapSegment
             key={id}

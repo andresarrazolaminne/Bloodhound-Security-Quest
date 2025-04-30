@@ -368,7 +368,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         config: {
           instructionsText: "Bienvenido a nuestra aplicación. Sigue las instrucciones para participar.",
           siteMapImageUrl: "https://placehold.co/1200x800/e2e8f0/64748b?text=Mapa+del+Sitio",
-          mapGapSize: "medium"
+          mapGapSize: "medium",
+          mapGridSize: "3x3"
         }
       });
     }
