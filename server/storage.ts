@@ -260,7 +260,18 @@ export class MemStorage implements IStorage {
     prize: Prize | null;
   }>> {
     const result = [];
-    const totalSegments = 9; // Total de segmentos fijos en el mapa
+    
+    // Calcular el total de segmentos basado en la configuración del sistema
+    let totalSegments = 9; // Valor predeterminado (3x3)
+    try {
+      const config = this.getSystemConfig();
+      if (config && config.mapGridSize) {
+        const [columns, rows] = config.mapGridSize.split('x').map(Number);
+        totalSegments = columns * rows;
+      }
+    } catch (error) {
+      console.error("Error al obtener la configuración para calcular segmentos:", error);
+    }
     
     // Recorrer todos los usuarios
     for (const user of this.users.values()) {
