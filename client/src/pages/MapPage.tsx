@@ -282,7 +282,10 @@ const MapPage = () => {
               </Button>
             </div>
             
-            <MapGrid unlockedSegments={unlockedSegments} />
+            <MapGrid 
+              unlockedSegments={unlockedSegments} 
+              gapSize="small" // Puedes usar 'small', 'medium' o 'large'
+            />
           </>
         )}
       </main>

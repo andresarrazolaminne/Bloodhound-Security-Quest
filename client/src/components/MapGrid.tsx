@@ -3,9 +3,10 @@ import MapSegment from "./MapSegment";
 
 interface MapGridProps {
   unlockedSegments: number[];
+  gapSize?: 'small' | 'medium' | 'large'; // Tamaño de la separación entre imágenes
 }
 
-const MapGrid = ({ unlockedSegments }: MapGridProps) => {
+const MapGrid = ({ unlockedSegments, gapSize = 'medium' }: MapGridProps) => {
   // Los 9 segmentos del mapa
   const segmentIds = [1, 2, 3, 4, 5, 6, 7, 8, 9];
   
@@ -55,11 +56,24 @@ const MapGrid = ({ unlockedSegments }: MapGridProps) => {
     };
   }, []);
   
+  // Determinar la clase de espaciado según el tamaño solicitado
+  const getGapClass = () => {
+    switch (gapSize) {
+      case 'small':
+        return 'gap-2';
+      case 'large':
+        return 'gap-6';
+      case 'medium':
+      default:
+        return 'gap-4';
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-md p-4 mb-6">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Tu Mapa de Logros</h2>
       
-      <div className={`grid grid-cols-3 gap-4 ${updatingSegments ? 'opacity-50 transition-opacity' : ''}`}>
+      <div className={`grid grid-cols-3 ${getGapClass()} ${updatingSegments ? 'opacity-50 transition-opacity' : ''}`}>
         {segmentIds.map((id) => (
           <MapSegment
             key={id}
