@@ -128,7 +128,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if all segments are completed
       const allSegments = await storage.getSegmentsByUserId(user.id);
-      const totalSegments = 9; // Total number of segments in the map
+      
+      // Obtener la configuración del sistema para determinar el número total de segmentos
+      const config = await storage.getSystemConfig();
+      let totalSegments = 9; // Valor predeterminado (3x3)
+      
+      if (config && config.mapGridSize) {
+        // Calcular el total de segmentos basados en el tamaño de la cuadrícula (columnas x filas)
+        const [columns, rows] = config.mapGridSize.split('x').map(Number);
+        totalSegments = columns * rows;
+      }
+      
       const unlockedSegments = allSegments.filter(s => s.unlocked).length;
       
       let redemptionCode = null;
@@ -173,7 +183,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if user has unlocked all segments
       const segments = await storage.getSegmentsByUserId(user.id);
-      const totalSegments = 9;
+      
+      // Obtener la configuración del sistema para determinar el número total de segmentos
+      const config = await storage.getSystemConfig();
+      let totalSegments = 9; // Valor predeterminado (3x3)
+      
+      if (config && config.mapGridSize) {
+        // Calcular el total de segmentos basados en el tamaño de la cuadrícula (columnas x filas)
+        const [columns, rows] = config.mapGridSize.split('x').map(Number);
+        totalSegments = columns * rows;
+      }
+      
       const unlockedSegments = segments.filter(s => s.unlocked).length;
       const completed = unlockedSegments === totalSegments;
       
@@ -240,9 +260,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const segmentId = parseInt(req.params.segmentId);
       
       // Validar que el ID de segmento sea válido
-      if (isNaN(segmentId) || segmentId < 1 || segmentId > 9) {
+      if (isNaN(segmentId) || segmentId < 1) {
         return res.status(400).json({ 
-          message: "ID de segmento inválido, debe estar entre 1 y 9"
+          message: "ID de segmento inválido, debe ser un número positivo"
+        });
+      }
+      
+      // Obtener la configuración para verificar el tamaño máximo del mapa
+      const config = await storage.getSystemConfig();
+      let maxSegments = 9; // Valor predeterminado (3x3)
+      
+      if (config && config.mapGridSize) {
+        // Calcular el total de segmentos basados en el tamaño de la cuadrícula
+        const [columns, rows] = config.mapGridSize.split('x').map(Number);
+        maxSegments = columns * rows;
+      }
+      
+      if (segmentId > maxSegments) {
+        return res.status(400).json({ 
+          message: `ID de segmento inválido, debe estar entre 1 y ${maxSegments} según la configuración actual`
         });
       }
       
