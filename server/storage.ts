@@ -533,16 +533,35 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getSystemConfig() {
-    const [config] = await db
-      .select()
-      .from(systemConfig);
-    
-    return config || null;
+    try {
+      const [config] = await db
+        .select()
+        .from(systemConfig);
+      
+      // Si el campo mapGapSize no existe en la base de datos, lo añadimos en memoria
+      if (config && !('mapGapSize' in config)) {
+        config.mapGapSize = 'medium';
+      }
+      
+      return config || null;
+    } catch (error) {
+      console.error('Error getting system config:', error);
+      
+      // Devolver valores predeterminados si hay error de base de datos
+      return {
+        id: 1,
+        instructionsText: "Bienvenido a nuestra aplicación. Sigue las instrucciones para participar.",
+        siteMapImageUrl: "https://placehold.co/1200x800/e2e8f0/64748b?text=Mapa+del+Sitio",
+        mapGapSize: "medium",
+        updatedAt: new Date()
+      };
+    }
   }
   
   async updateSystemConfig(configData: {
     instructionsText?: string;
     siteMapImageUrl?: string;
+    mapGapSize?: 'x-small' | 'small' | 'medium' | 'large';
   }): Promise<SystemConfig> {
     try {
       // Validar los datos 

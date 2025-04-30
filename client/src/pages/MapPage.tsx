@@ -37,9 +37,11 @@ const MapPage = () => {
   const [systemConfig, setSystemConfig] = useState<{
     instructionsText: string;
     siteMapImageUrl: string;
+    mapGapSize: 'x-small' | 'small' | 'medium' | 'large';
   }>({
     instructionsText: '',
-    siteMapImageUrl: 'https://i.pinimg.com/736x/df/93/10/df93101fdd1057543ae9a6bf2ff16b1c.jpg'
+    siteMapImageUrl: 'https://i.pinimg.com/736x/df/93/10/df93101fdd1057543ae9a6bf2ff16b1c.jpg',
+    mapGapSize: 'medium'
   });
 
   // Redirect if not logged in
@@ -284,7 +286,7 @@ const MapPage = () => {
             
             <MapGrid 
               unlockedSegments={unlockedSegments} 
-              gapSize="x-small" // Ahora usamos el espaciado más pequeño
+              gapSize={systemConfig.mapGapSize} // Usar el tamaño configurado en el sistema
             />
           </>
         )}
