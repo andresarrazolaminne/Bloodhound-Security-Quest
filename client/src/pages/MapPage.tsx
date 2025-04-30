@@ -37,11 +37,13 @@ const MapPage = () => {
   const [systemConfig, setSystemConfig] = useState<{
     instructionsText: string;
     siteMapImageUrl: string;
-    mapGapSize: 'x-small' | 'small' | 'medium' | 'large';
+    mapGapSize: 'none' | 'x-small' | 'small' | 'medium' | 'large';
+    mapGridSize: '3x3' | '3x2' | '2x3' | '4x2' | '2x4';
   }>({
     instructionsText: '',
     siteMapImageUrl: 'https://i.pinimg.com/736x/df/93/10/df93101fdd1057543ae9a6bf2ff16b1c.jpg',
-    mapGapSize: 'medium'
+    mapGapSize: 'medium',
+    mapGridSize: '3x3'
   });
 
   // Redirect if not logged in
@@ -236,7 +238,10 @@ const MapPage = () => {
           <>
             <ProgressBar 
               progress={unlockedSegments.length} 
-              total={9} 
+              total={(() => {
+                const [columns, rows] = systemConfig.mapGridSize.split('x').map(Number);
+                return columns * rows;
+              })()} 
             />
             
             <div className="flex justify-between items-center mb-4">
@@ -286,7 +291,8 @@ const MapPage = () => {
             
             <MapGrid 
               unlockedSegments={unlockedSegments} 
-              gapSize={systemConfig.mapGapSize} // Usar el tamaño configurado en el sistema
+              gapSize={systemConfig.mapGapSize} // Usar el tamaño de separación configurado en el sistema
+              gridSize={systemConfig.mapGridSize} // Usar el tamaño de cuadrícula configurado
             />
           </>
         )}
