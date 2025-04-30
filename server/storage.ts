@@ -261,17 +261,9 @@ export class MemStorage implements IStorage {
   }>> {
     const result = [];
     
-    // Calcular el total de segmentos basado en la configuración del sistema
-    let totalSegments = 9; // Valor predeterminado (3x3)
-    try {
-      const config = this.getSystemConfig();
-      if (config && config.mapGridSize) {
-        const [columns, rows] = config.mapGridSize.split('x').map(Number);
-        totalSegments = columns * rows;
-      }
-    } catch (error) {
-      console.error("Error al obtener la configuración para calcular segmentos:", error);
-    }
+    // Para MemStorage, usamos valor fijo de 9 segmentos (3x3 estándar)
+    // Esto es porque MemStorage no tiene acceso a la configuración del sistema
+    let totalSegments = 9;
     
     // Recorrer todos los usuarios
     for (const user of this.users.values()) {
@@ -339,8 +331,18 @@ export class DatabaseStorage implements IStorage {
       .values(insertUser)
       .returning();
     
+    // Obtener la configuración del sistema para determinar el número de segmentos
+    const config = await this.getSystemConfig();
+    let totalSegments = 9; // Valor predeterminado (3x3)
+    
+    if (config && config.mapGridSize) {
+      // Calcular el total de segmentos basados en el tamaño de la cuadrícula (columnas x filas)
+      const [columns, rows] = config.mapGridSize.split('x').map(Number);
+      totalSegments = columns * rows;
+    }
+    
     // Crear segmentos para el usuario (inicialmente bloqueados)
-    for (let i = 1; i <= 9; i++) {
+    for (let i = 1; i <= totalSegments; i++) {
       await db
         .insert(mapSegments)
         .values({
@@ -628,7 +630,16 @@ export class DatabaseStorage implements IStorage {
     prize: Prize | null;
   }>> {
     const result = [];
-    const totalSegments = 9; // Total de segmentos fijos en el mapa
+    
+    // Obtener la configuración del sistema para calcular el total de segmentos
+    const config = await this.getSystemConfig();
+    let totalSegments = 9; // Valor predeterminado (3x3)
+    
+    if (config && config.mapGridSize) {
+      // Calcular el total de segmentos basados en el tamaño de la cuadrícula (columnas x filas)
+      const [columns, rows] = config.mapGridSize.split('x').map(Number);
+      totalSegments = columns * rows;
+    }
     
     // Obtener todos los usuarios
     const allUsers = await db.select().from(users);
