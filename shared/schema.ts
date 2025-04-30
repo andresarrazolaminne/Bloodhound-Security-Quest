@@ -8,6 +8,7 @@ export const systemConfig = pgTable("system_config", {
   instructionsText: text("instructions_text").notNull(),
   siteMapImageUrl: text("site_map_image_url").notNull(),
   mapGapSize: text("map_gap_size").notNull().default('medium'),
+  mapGridSize: text("map_grid_size").notNull().default('3x3'),
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 });
 
@@ -16,7 +17,8 @@ export const systemConfigSchema = z.object({
   id: z.number(),
   instructionsText: z.string(),
   siteMapImageUrl: z.string(),
-  mapGapSize: z.enum(['x-small', 'small', 'medium', 'large']).default('medium'),
+  mapGapSize: z.enum(['none', 'x-small', 'small', 'medium', 'large']).default('medium'),
+  mapGridSize: z.enum(['3x3', '3x2', '2x3', '4x2', '2x4']).default('3x3'),
   updatedAt: z.date()
 });
 

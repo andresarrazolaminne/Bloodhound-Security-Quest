@@ -538,9 +538,14 @@ export class DatabaseStorage implements IStorage {
         .select()
         .from(systemConfig);
       
-      // Si el campo mapGapSize no existe en la base de datos, lo añadimos en memoria
-      if (config && !('mapGapSize' in config)) {
-        config.mapGapSize = 'medium';
+      // Si los campos de configuración no existen en la base de datos, los añadimos en memoria
+      if (config) {
+        if (!('mapGapSize' in config)) {
+          config.mapGapSize = 'medium';
+        }
+        if (!('mapGridSize' in config)) {
+          config.mapGridSize = '3x3';
+        }
       }
       
       return config || null;
@@ -553,6 +558,7 @@ export class DatabaseStorage implements IStorage {
         instructionsText: "Bienvenido a nuestra aplicación. Sigue las instrucciones para participar.",
         siteMapImageUrl: "https://placehold.co/1200x800/e2e8f0/64748b?text=Mapa+del+Sitio",
         mapGapSize: "medium",
+        mapGridSize: "3x3",
         updatedAt: new Date()
       };
     }
@@ -561,7 +567,8 @@ export class DatabaseStorage implements IStorage {
   async updateSystemConfig(configData: {
     instructionsText?: string;
     siteMapImageUrl?: string;
-    mapGapSize?: 'x-small' | 'small' | 'medium' | 'large';
+    mapGapSize?: 'none' | 'x-small' | 'small' | 'medium' | 'large';
+    mapGridSize?: '3x3' | '3x2' | '2x3' | '4x2' | '2x4';
   }): Promise<SystemConfig> {
     try {
       // Validar los datos 

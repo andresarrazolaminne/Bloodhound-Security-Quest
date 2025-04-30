@@ -83,7 +83,8 @@ const AdminPage = () => {
   const [systemConfig, setSystemConfig] = useState({
     instructionsText: "",
     siteMapImageUrl: "",
-    mapGapSize: "medium" as 'x-small' | 'small' | 'medium' | 'large'
+    mapGapSize: "medium" as 'none' | 'x-small' | 'small' | 'medium' | 'large',
+    mapGridSize: "3x3" as '3x3' | '3x2' | '2x3' | '4x2' | '2x4'
   });
   
   // Ranking de usuarios
@@ -139,7 +140,8 @@ const AdminPage = () => {
       setSystemConfig({
         instructionsText: config.instructionsText || "",
         siteMapImageUrl: config.siteMapImageUrl || "",
-        mapGapSize: config.mapGapSize || "medium"
+        mapGapSize: config.mapGapSize || "medium",
+        mapGridSize: config.mapGridSize || "3x3"
       });
     } catch (error) {
       console.error("Error loading system config:", error);
@@ -627,7 +629,8 @@ const AdminPage = () => {
                   await apiRequest("POST", "/api/admin/system-config", {
                     instructionsText: systemConfig.instructionsText,
                     siteMapImageUrl: systemConfig.siteMapImageUrl,
-                    mapGapSize: systemConfig.mapGapSize
+                    mapGapSize: systemConfig.mapGapSize,
+                    mapGridSize: systemConfig.mapGridSize
                   });
                   
                   toast({
@@ -692,7 +695,23 @@ const AdminPage = () => {
                   <label htmlFor="map-gap-size" className="block text-sm font-medium text-gray-700">
                     Espaciado entre Imágenes del Mapa
                   </label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <Button
+                      type="button"
+                      variant={systemConfig.mapGapSize === 'none' ? 'default' : 'outline'}
+                      className="flex flex-col items-center py-3"
+                      onClick={() => setSystemConfig({
+                        ...systemConfig,
+                        mapGapSize: 'none'
+                      })}
+                    >
+                      <div className="flex items-center gap-0 mb-1">
+                        <div className="w-3 h-3 bg-primary rounded-sm"></div>
+                        <div className="w-3 h-3 bg-primary rounded-sm"></div>
+                      </div>
+                      <span className="text-xs">Sin Separación</span>
+                    </Button>
+                    
                     <Button
                       type="button"
                       variant={systemConfig.mapGapSize === 'x-small' ? 'default' : 'outline'}
@@ -759,6 +778,123 @@ const AdminPage = () => {
                   </div>
                   <p className="text-sm text-gray-500">
                     Controla la separación entre las imágenes del mapa en la cuadrícula
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <label htmlFor="map-grid-size" className="block text-sm font-medium text-gray-700">
+                    Tamaño de la Cuadrícula del Mapa
+                  </label>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <Button
+                      type="button"
+                      variant={systemConfig.mapGridSize === '3x3' ? 'default' : 'outline'}
+                      className="flex flex-col items-center py-3"
+                      onClick={() => setSystemConfig({
+                        ...systemConfig,
+                        mapGridSize: '3x3'
+                      })}
+                    >
+                      <div className="grid grid-cols-3 gap-[2px] mb-1">
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                      </div>
+                      <span className="text-xs">3x3 (9 Imágenes)</span>
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant={systemConfig.mapGridSize === '3x2' ? 'default' : 'outline'}
+                      className="flex flex-col items-center py-3"
+                      onClick={() => setSystemConfig({
+                        ...systemConfig,
+                        mapGridSize: '3x2'
+                      })}
+                    >
+                      <div className="grid grid-cols-3 gap-[2px] mb-1">
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                      </div>
+                      <span className="text-xs">3x2 (6 Imágenes)</span>
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant={systemConfig.mapGridSize === '2x3' ? 'default' : 'outline'}
+                      className="flex flex-col items-center py-3"
+                      onClick={() => setSystemConfig({
+                        ...systemConfig,
+                        mapGridSize: '2x3'
+                      })}
+                    >
+                      <div className="grid grid-cols-2 gap-[2px] mb-1">
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                      </div>
+                      <span className="text-xs">2x3 (6 Imágenes)</span>
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant={systemConfig.mapGridSize === '4x2' ? 'default' : 'outline'}
+                      className="flex flex-col items-center py-3"
+                      onClick={() => setSystemConfig({
+                        ...systemConfig,
+                        mapGridSize: '4x2'
+                      })}
+                    >
+                      <div className="grid grid-cols-4 gap-[2px] mb-1">
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                      </div>
+                      <span className="text-xs">4x2 (8 Imágenes)</span>
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant={systemConfig.mapGridSize === '2x4' ? 'default' : 'outline'}
+                      className="flex flex-col items-center py-3"
+                      onClick={() => setSystemConfig({
+                        ...systemConfig,
+                        mapGridSize: '2x4'
+                      })}
+                    >
+                      <div className="grid grid-cols-2 gap-[2px] mb-1">
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                      </div>
+                      <span className="text-xs">2x4 (8 Imágenes)</span>
+                    </Button>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Selecciona el tamaño de la cuadrícula para el mapa (número de filas y columnas)
                   </p>
                 </div>
 
