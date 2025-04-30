@@ -82,7 +82,8 @@ const AdminPage = () => {
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [systemConfig, setSystemConfig] = useState({
     instructionsText: "",
-    siteMapImageUrl: ""
+    siteMapImageUrl: "",
+    mapGapSize: "medium" as 'x-small' | 'small' | 'medium' | 'large'
   });
   
   // Ranking de usuarios
@@ -137,7 +138,8 @@ const AdminPage = () => {
       // Establecer la configuración actual
       setSystemConfig({
         instructionsText: config.instructionsText || "",
-        siteMapImageUrl: config.siteMapImageUrl || ""
+        siteMapImageUrl: config.siteMapImageUrl || "",
+        mapGapSize: config.mapGapSize || "medium"
       });
     } catch (error) {
       console.error("Error loading system config:", error);
@@ -624,7 +626,8 @@ const AdminPage = () => {
                 try {
                   await apiRequest("POST", "/api/admin/system-config", {
                     instructionsText: systemConfig.instructionsText,
-                    siteMapImageUrl: systemConfig.siteMapImageUrl
+                    siteMapImageUrl: systemConfig.siteMapImageUrl,
+                    mapGapSize: systemConfig.mapGapSize
                   });
                   
                   toast({
@@ -682,6 +685,80 @@ const AdminPage = () => {
                   />
                   <p className="text-sm text-gray-500">
                     URL de la imagen del mapa del sitio que se mostrará en el modal correspondiente
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <label htmlFor="map-gap-size" className="block text-sm font-medium text-gray-700">
+                    Espaciado entre Imágenes del Mapa
+                  </label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <Button
+                      type="button"
+                      variant={systemConfig.mapGapSize === 'x-small' ? 'default' : 'outline'}
+                      className="flex flex-col items-center py-3"
+                      onClick={() => setSystemConfig({
+                        ...systemConfig,
+                        mapGapSize: 'x-small'
+                      })}
+                    >
+                      <div className="flex items-center gap-[2px] mb-1">
+                        <div className="w-3 h-3 bg-primary rounded"></div>
+                        <div className="w-3 h-3 bg-primary rounded"></div>
+                      </div>
+                      <span className="text-xs">Mínimo</span>
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant={systemConfig.mapGapSize === 'small' ? 'default' : 'outline'}
+                      className="flex flex-col items-center py-3"
+                      onClick={() => setSystemConfig({
+                        ...systemConfig,
+                        mapGapSize: 'small'
+                      })}
+                    >
+                      <div className="flex items-center gap-1 mb-1">
+                        <div className="w-3 h-3 bg-primary rounded"></div>
+                        <div className="w-3 h-3 bg-primary rounded"></div>
+                      </div>
+                      <span className="text-xs">Pequeño</span>
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant={systemConfig.mapGapSize === 'medium' ? 'default' : 'outline'}
+                      className="flex flex-col items-center py-3"
+                      onClick={() => setSystemConfig({
+                        ...systemConfig,
+                        mapGapSize: 'medium'
+                      })}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-3 h-3 bg-primary rounded"></div>
+                        <div className="w-3 h-3 bg-primary rounded"></div>
+                      </div>
+                      <span className="text-xs">Medio</span>
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant={systemConfig.mapGapSize === 'large' ? 'default' : 'outline'}
+                      className="flex flex-col items-center py-3"
+                      onClick={() => setSystemConfig({
+                        ...systemConfig,
+                        mapGapSize: 'large'
+                      })}
+                    >
+                      <div className="flex items-center gap-3 mb-1">
+                        <div className="w-3 h-3 bg-primary rounded"></div>
+                        <div className="w-3 h-3 bg-primary rounded"></div>
+                      </div>
+                      <span className="text-xs">Grande</span>
+                    </Button>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Controla la separación entre las imágenes del mapa en la cuadrícula
                   </p>
                 </div>
 
