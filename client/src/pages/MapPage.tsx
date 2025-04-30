@@ -284,7 +284,7 @@ const MapPage = () => {
             
             <MapGrid 
               unlockedSegments={unlockedSegments} 
-              gapSize="small" // Puedes usar 'small', 'medium' o 'large'
+              gapSize="x-small" // Ahora usamos el espaciado más pequeño
             />
           </>
         )}

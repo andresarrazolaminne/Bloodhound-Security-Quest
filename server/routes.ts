@@ -367,7 +367,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(200).json({ 
         config: {
           instructionsText: "Bienvenido a nuestra aplicación. Sigue las instrucciones para participar.",
-          siteMapImageUrl: "https://placehold.co/1200x800/e2e8f0/64748b?text=Mapa+del+Sitio"
+          siteMapImageUrl: "https://placehold.co/1200x800/e2e8f0/64748b?text=Mapa+del+Sitio",
+          mapGapSize: "medium"
         }
       });
     }

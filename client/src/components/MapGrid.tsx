@@ -3,7 +3,7 @@ import MapSegment from "./MapSegment";
 
 interface MapGridProps {
   unlockedSegments: number[];
-  gapSize?: 'small' | 'medium' | 'large'; // Tamaño de la separación entre imágenes
+  gapSize?: 'x-small' | 'small' | 'medium' | 'large'; // Tamaño de la separación entre imágenes
 }
 
 const MapGrid = ({ unlockedSegments, gapSize = 'medium' }: MapGridProps) => {
@@ -59,13 +59,15 @@ const MapGrid = ({ unlockedSegments, gapSize = 'medium' }: MapGridProps) => {
   // Determinar la clase de espaciado según el tamaño solicitado
   const getGapClass = () => {
     switch (gapSize) {
+      case 'x-small':
+        return 'gap-1'; // Espaciado extra pequeño - 0.25rem (4px)
       case 'small':
-        return 'gap-2';
+        return 'gap-2'; // Espaciado pequeño - 0.5rem (8px)
       case 'large':
-        return 'gap-6';
+        return 'gap-6'; // Espaciado grande - 1.5rem (24px)
       case 'medium':
       default:
-        return 'gap-4';
+        return 'gap-4'; // Espaciado mediano - 1rem (16px)
     }
   };
 
