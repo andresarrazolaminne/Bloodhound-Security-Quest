@@ -342,8 +342,11 @@ const MapPage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* QR Scanner Button */}
-      <div className="fixed bottom-6 right-6 z-10">
+      {/* QR Scanner Button with Call to Action */}
+      <div className="fixed bottom-6 right-6 z-10 flex flex-col items-center">
+        <div className="bg-white/80 text-orange-600 font-semibold px-3 py-1 rounded-full text-sm mb-2 shadow-md">
+          ¡Escanea aquí!
+        </div>
         <Button 
           onClick={() => setShowQRScanner(true)}
           className="w-16 h-16 bg-orange-500 hover:bg-orange-600 text-white rounded-full shadow-lg flex items-center justify-center transition-transform transform hover:scale-110"
