@@ -313,9 +313,9 @@ const MapPage = () => {
             )}
           </div>
           <DialogFooter>
-            <Button onClick={() => setShowInstructionsModal(false)}>
+            <BoxButton onClick={() => setShowInstructionsModal(false)}>
               Entendido
-            </Button>
+            </BoxButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
