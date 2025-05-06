@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { apiRequest } from '@/lib/queryClient';
 import QRCode from 'qrcode';
+import { Download } from 'lucide-react';
 
 // Function to generate QR code as data URL
 const generateQRCode = async (data: string): Promise<string> => {
@@ -41,6 +42,7 @@ interface QRCodeData {
   securityCode: string;
   url: string;
   format: string;
+  rawData: string; // Contenido completo del QR
 }
 
 const QRGenerator = () => {
@@ -112,11 +114,23 @@ const QRGenerator = () => {
       
       // Add to the list, avoid duplicates
       if (!qrCodes.some(code => code.id === segmentId)) {
-        setQrCodes([...qrCodes, { id: segmentId, securityCode, url: qrUrl, format }]);
+        setQrCodes([...qrCodes, { 
+          id: segmentId, 
+          securityCode, 
+          url: qrUrl, 
+          format,
+          rawData: qrData 
+        }]);
       } else {
         // Update existing QR code
         setQrCodes(qrCodes.map(code => 
-          code.id === segmentId ? { id: segmentId, securityCode, url: qrUrl, format } : code
+          code.id === segmentId ? { 
+            id: segmentId, 
+            securityCode, 
+            url: qrUrl, 
+            format,
+            rawData: qrData
+          } : code
         ));
       }
     } catch (error) {
@@ -156,7 +170,7 @@ const QRGenerator = () => {
         }
         
         const url = await generateQRCode(qrData);
-        return { id, securityCode: code, url, format };
+        return { id, securityCode: code, url, format, rawData: qrData };
       });
       
       const newCodes = await Promise.all(newCodesPromises);
@@ -265,17 +279,62 @@ const QRGenerator = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col items-center pt-2">
-                <img 
-                  src={code.url} 
-                  alt={`QR Code for segment ${code.id}`} 
-                  className="mb-3 border border-gray-200 p-2 rounded-lg" 
-                  style={{ width: '180px', height: '180px' }}
-                />
-                <div className="text-xs text-gray-500 px-2 py-1 bg-gray-50 rounded-md w-full text-center">
-                  <p className="mb-1">Formato: {code.format}</p>
-                  <p className="font-semibold">
-                    Escanea este QR para desbloquear el segmento {code.id}
-                  </p>
+                <div className="relative mb-3">
+                  <img 
+                    src={code.url} 
+                    alt={`QR Code for segment ${code.id}`} 
+                    className="border border-gray-200 p-2 rounded-lg" 
+                    style={{ width: '180px', height: '180px' }}
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="absolute bottom-2 right-2 rounded-full h-8 w-8 p-0"
+                    onClick={() => {
+                      // Crear un enlace temporal y simular clic para descargar
+                      const link = document.createElement('a');
+                      link.href = code.url;
+                      link.download = `qr-segmento-${code.id}.png`;
+                      link.click();
+                    }}
+                    title="Descargar código QR"
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                <div className="w-full space-y-2">
+                  {/* Mostrar el texto completo del QR */}
+                  <div className="relative">
+                    <Input 
+                      value={code.rawData}
+                      readOnly
+                      className="pr-10 font-mono text-xs"
+                      title="Contenido del código QR"
+                    />
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="absolute right-0 top-0 h-full rounded-l-none"
+                      onClick={() => {
+                        navigator.clipboard.writeText(code.rawData);
+                        // No usamos toast aquí para mantener la interfaz simple
+                      }}
+                      title="Copiar"
+                    >
+                      <span className="sr-only">Copiar</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                      </svg>
+                    </Button>
+                  </div>
+                  
+                  <div className="text-xs text-gray-500 px-2 py-1 bg-gray-50 rounded-md w-full text-center">
+                    <p className="mb-1">Formato: {code.format}</p>
+                    <p className="font-semibold">
+                      Escanea este QR para desbloquear el segmento {code.id}
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
