@@ -323,15 +323,15 @@ const MapPage = () => {
 
       {/* Site Map Modal */}
       <Dialog open={showSiteMapModal} onOpenChange={setShowSiteMapModal}>
-        <DialogContent className="sm:max-w-4xl">
+        <DialogContent className="sm:max-w-5xl w-[95vw] max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Mapa del Sitio</DialogTitle>
           </DialogHeader>
-          <div className="relative w-full aspect-video">
+          <div className="relative w-full flex-1 overflow-hidden flex items-center justify-center p-2">
             <img 
               src={systemConfig.siteMapImageUrl} 
               alt="Mapa del sitio"
-              className="w-full h-full object-contain"
+              className="max-w-full max-h-[70vh] object-contain border border-gray-200 rounded-lg shadow-sm"
             />
           </div>
           <DialogFooter>
