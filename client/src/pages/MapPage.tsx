@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { HelpCircle, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { OutlineBoxButton, BoxButton } from "@/components/ui/custom-button";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/context/UserContext";
 import { getUserSegments, unlockSegment as apiUnlockSegment, getUserPrize } from "@/lib/api";
@@ -250,9 +251,8 @@ const MapPage = () => {
             <div className="flex justify-between items-center mb-4">
               <div>
                 {isMapCompleted && (
-                  <Button 
-                    variant="outline" 
-                    className="flex items-center gap-2 border-primary text-primary hover:bg-primary/5"
+                  <BoxButton 
+                    className="flex items-center gap-2 font-medium"
                     onClick={() => setShowCompletionModal(true)}
                   >
                     <svg 
@@ -265,31 +265,29 @@ const MapPage = () => {
                       <path d="M9.5 14.25l-3.22 2.092a.75.75 0 01-1.035-.229.75.75 0 01-.054-.789L7.099 11.5l-3.22-2.092a.75.75 0 01.4-1.357l3.98-.326 1.483-3.918a.75.75 0 011.437 0l1.483 3.918 3.98.326a.75.75 0 01.4 1.357L13.773 11.5l1.906 3.824a.75.75 0 01-.837 1.003L11 14.25l-1.5-.375zm4.5 9.75h-3c-4.416 0-8-3.584-8-8v-2.909l.112.063 2.094 1.371-.6 1.199A1.75 1.75 0 004.917 16 6.3 6.3 0 008.48 17.38l1.733.78.429.195-.518 3.053a1.75 1.75 0 003.462.32L14 16.5l1.265.57a6.3 6.3 0 003.539 1a1.75 1.75 0 001.21-2.89l-.493-.986 1.207-.794a1.75 1.75 0 00.625-2.31l-.516-1.24a44.84 44.84 0 00-.742-.628A1.76 1.76 0 0018.65 8.75l-2.436.607-.469-1.152a1.75 1.75 0 00-1.587-1.014h-.358A7.555 7.555 0 0012 7c-.596 0-1.176.07-1.735.2h-.691a1.75 1.75 0 00-1.594 1.065l-.413 1.011-2.145-.53a1.75 1.75 0 00-1.45.301 1.69 1.69 0 00-.618-.99h-.002L4 8.364v-1.45l.062-.028c.719-.32 1.437-.605 2.156-.855L13.933 4c2.848 0 5.67.285 8.426.847l.64.152.063.028v.242A48.476 48.476 0 0118 6v1.636l.114.062c.284.156.568.319.85.491l.262.159.176.103.06.036.042.028.027.02.011.009L20 9l-.024-.04-.043-.066-.064-.092-.086-.119-.106-.147-.127-.173-.145-.199-.141-.188L19.17 8l-.3.5c-.242.396-.46.796-.653 1.2-.155.325-.282.657-.38.997-.09.33-.149.67-.175 1.018l.334.006.743.014 1.497.045 1.952.09c-.244-4.422-3.906-7.87-8.355-7.87-4.624 0-8.372 3.748-8.372 8.372 0 4.582 3.7 8.294 8.281 8.37l.09-.012z" />
                     </svg>
                     Ver Código Premio
-                  </Button>
+                  </BoxButton>
                 )}
               </div>
 
             </div>
             
             <div className="flex gap-2 mb-4">
-              <Button
-                variant="outline"
+              <OutlineBoxButton
                 size="sm"
                 onClick={() => setShowInstructionsModal(true)}
-                className="flex items-center gap-2 bg-white/90 hover:bg-white"
+                className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
               >
                 <HelpCircle className="h-4 w-4" />
-                Ayuda
-              </Button>
-              <Button
-                variant="outline"
+                <span>Ayuda</span>
+              </OutlineBoxButton>
+              <OutlineBoxButton
                 size="sm"
                 onClick={() => setShowSiteMapModal(true)}
-                className="flex items-center gap-2 bg-white/90 hover:bg-white"
+                className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
               >
                 <Map className="h-4 w-4" />
-                Mapa del Sitio
-              </Button>
+                <span>Mapa del Sitio</span>
+              </OutlineBoxButton>
             </div>
             
             <MapGrid 
@@ -474,19 +472,18 @@ const MapPage = () => {
           </div>
           
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button
-              variant="outline"
+            <OutlineBoxButton
               onClick={() => setShowCompletionModal(false)}
               className="w-full sm:w-auto order-2 sm:order-1"
             >
               Cerrar
-            </Button>
-            <Button
+            </OutlineBoxButton>
+            <BoxButton
               onClick={() => window.print()}
               className="w-full sm:w-auto order-1 sm:order-2"
             >
               Guardar Premio
-            </Button>
+            </BoxButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
