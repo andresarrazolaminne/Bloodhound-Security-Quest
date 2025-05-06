@@ -88,8 +88,8 @@ const MapGrid = ({ unlockedSegments, gapSize = 'medium', gridSize = '3x3' }: Map
   };
 
   return (
-    <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-md p-4 mb-6">
-      <div className={`grid ${getColumnsClass()} ${getGapClass()} ${updatingSegments ? 'opacity-50 transition-opacity' : ''}`}>
+    <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-md p-4 mb-6 flex items-center justify-center min-h-[300px]">
+      <div className={`grid ${getColumnsClass()} ${getGapClass()} ${updatingSegments ? 'opacity-50 transition-opacity' : ''} w-full`}>
         {segmentIds.map((id) => (
           <MapSegment
             key={id}
