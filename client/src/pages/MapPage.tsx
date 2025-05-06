@@ -342,12 +342,12 @@ const MapPage = () => {
 
       {/* QR Scanner Button with Call to Action */}
       <div className="fixed bottom-6 right-6 z-10 flex flex-col items-center">
-        <div className="bg-white/80 text-orange-600 font-semibold px-3 py-1 rounded-full text-sm mb-2 shadow-md">
+        <div className="bg-white/80 text-amber-600 font-semibold px-3 py-1 rounded-full text-sm mb-2 shadow-md">
           ¡Escanea aquí!
         </div>
-        <Button 
+        <BoxButton 
           onClick={() => setShowQRScanner(true)}
-          className="w-16 h-16 bg-orange-500 hover:bg-orange-600 text-white rounded-full shadow-lg flex items-center justify-center transition-transform transform hover:scale-110"
+          className="w-16 h-16 rounded-full flex items-center justify-center"
         >
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
@@ -363,7 +363,7 @@ const MapPage = () => {
               d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
             />
           </svg>
-        </Button>
+        </BoxButton>
       </div>
 
       {/* QR Scanner Modal */}
@@ -401,9 +401,9 @@ const MapPage = () => {
           </div>
           
           <DialogFooter>
-            <Button onClick={() => setShowSuccessModal(false)}>
+            <BoxButton onClick={() => setShowSuccessModal(false)}>
               Continuar
-            </Button>
+            </BoxButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

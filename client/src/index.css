@@ -78,6 +78,14 @@ video::-webkit-media-controls-panel {
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply font-sans bg-background text-foreground;
+    /* Mantener antialiasing para el texto general pero especificar render-pixelated para elementos pixel art */
   }
+}
+
+/* Clase para estilo pixel art */
+.pixel-art {
+  /* Desactivar suavizado para los bordes tipo pixel */
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
