@@ -193,7 +193,9 @@ const MapPage = () => {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen" style={{
+      background: `url('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png') repeat, linear-gradient(175deg, #bb2558 0%, #bb2558 75%, #e8cf00 100%)`
+    }}>
       {/* Header */}
       <header className="bg-primary text-white shadow-md">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
@@ -273,7 +275,7 @@ const MapPage = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowInstructionsModal(true)}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-white/90 hover:bg-white"
               >
                 <HelpCircle className="h-4 w-4" />
                 Ayuda
@@ -282,7 +284,7 @@ const MapPage = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowSiteMapModal(true)}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-white/90 hover:bg-white"
               >
                 <Map className="h-4 w-4" />
                 Mapa del Sitio

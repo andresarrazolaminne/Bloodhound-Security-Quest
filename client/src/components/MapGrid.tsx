@@ -88,7 +88,7 @@ const MapGrid = ({ unlockedSegments, gapSize = 'medium', gridSize = '3x3' }: Map
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+    <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-md p-4 mb-6">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Tu Mapa de Logros</h2>
       
       <div className={`grid ${getColumnsClass()} ${getGapClass()} ${updatingSegments ? 'opacity-50 transition-opacity' : ''}`}>
