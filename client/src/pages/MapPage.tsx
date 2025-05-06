@@ -432,7 +432,7 @@ const MapPage = () => {
               
               <div className="text-left">
                 <p className="text-gray-800 text-lg font-medium">
-                  ¡Felicidades, has completado el reto!
+                  ¡Reto completado!
                 </p>
                 <p className="text-gray-600 text-sm">
                   Con el siguiente código puedes reclamar tu premio.
