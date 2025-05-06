@@ -201,7 +201,7 @@ const MapPage = () => {
       {/* Header */}
       <header className="bg-primary text-white shadow-md">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <h1 className="text-xl font-bold">Mapa de Logros</h1>
+          <h1 className="text-xl font-bold">Lanzamiento 2025</h1>
           <div className="flex items-center">
             <div className="mr-3">
               <p className="text-sm font-medium">{currentUser.name}</p>
