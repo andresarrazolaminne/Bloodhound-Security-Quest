@@ -324,12 +324,15 @@ const MapPage = () => {
       {/* Site Map Modal - Full Screen optimized */}
       <Dialog open={showSiteMapModal} onOpenChange={setShowSiteMapModal}>
         <DialogContent className="sm:max-w-5xl w-[95vw] max-h-[95vh] p-4">
-          {/* Removed the DialogHeader to gain more space */}
+          {/* Hidden title for accessibility */}
+          <DialogHeader className="sr-only">
+            <DialogTitle>Mapa del Sitio</DialogTitle>
+          </DialogHeader>
           <div className="relative w-full h-full flex-1 overflow-hidden flex items-center justify-center">
             <img 
               src={systemConfig.siteMapImageUrl} 
               alt="Mapa del sitio"
-              className="max-w-full max-h-[80vh] object-contain border border-gray-200 rounded-lg shadow-sm"
+              className="max-w-full max-h-[85vh] object-contain border border-gray-200 rounded-lg shadow-sm"
             />
             {/* Close button positioned over image */}
             <Button 
