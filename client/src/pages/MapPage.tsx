@@ -9,6 +9,7 @@ import MapGrid from "@/components/MapGrid";
 import ProgressBar from "@/components/ProgressBar";
 import QRScanner from "@/components/QRScanner";
 import HtmlContent from "@/components/HtmlContent";
+import BrainLoader from "@/components/BrainLoader";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 
@@ -234,7 +235,7 @@ const MapPage = () => {
       <main className="flex-grow container mx-auto px-4 py-6">
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <BrainLoader size="large" text="Cargando tu mapa..." />
           </div>
         ) : (
           <>
@@ -454,7 +455,7 @@ const MapPage = () => {
                       className="max-w-full max-h-full"
                     />
                   ) : (
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    <BrainLoader size="medium" />
                   )}
                 </div>
                 
