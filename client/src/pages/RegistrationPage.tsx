@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { register } from "@/lib/api";
 import { useUser } from "@/context/UserContext";
+import BrainLoader from "@/components/BrainLoader";
 
 const RegistrationPage = () => {
   const [name, setName] = useState("");
@@ -77,20 +78,32 @@ const RegistrationPage = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gradient-to-b from-primary to-primary/80 text-white">
-      <Card className="w-full max-w-md">
-        <CardContent className="pt-6">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-primary mb-2">Bienvenido</h1>
-            <p className="text-gray-600">Es tu primera vez, por favor ingresa tu nombre</p>
+    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gradient-to-br from-blue-600 to-blue-900 bg-[url('/assets/texture-bg.webp')] bg-blend-overlay text-white">
+      <Card className="w-full max-w-md bg-white/90 backdrop-blur-sm shadow-xl border-0">
+        <CardContent className="pt-8 pb-8 px-6">
+          <div className="flex flex-col items-center justify-center mb-8">
+            {/* Imagen de luz */}
+            <div className="relative mb-4">
+              <img 
+                src="https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png" 
+                alt="Luz" 
+                className="w-24 h-24 object-contain animate-pulse"
+              />
+              <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-3/4 h-1 bg-yellow-300/20 rounded-full blur-md"></div>
+            </div>
+            
+            <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">Bienvenido</h1>
+            <p className="text-gray-600 text-center max-w-xs">
+              Es tu primera vez, por favor completa tus datos para acceder al mapa
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <input type="hidden" name="documentNumber" value={documentNumber} />
 
-            <div className="space-y-2">
-              <div className="mb-4">
-                <label htmlFor="document-number" className="block text-sm font-medium text-gray-700">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="document-number" className="block text-base font-medium text-gray-700">
                   Número de Documento
                 </label>
                 <Input
@@ -99,33 +112,37 @@ const RegistrationPage = () => {
                   value={documentNumber}
                   onChange={(e) => setDocumentNumber(e.target.value)}
                   placeholder="Ingresa tu número de cédula"
-                  className="w-full"
+                  className="w-full py-6 text-lg bg-white/80"
                   required
                 />
               </div>
 
-              <label htmlFor="user-name" className="block text-sm font-medium text-gray-700">
-                Nombre Completo
-              </label>
-              <Input
-                id="user-name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Ingresa tu nombre completo"
-                className="w-full"
-                required
-              />
+              <div className="space-y-2">
+                <label htmlFor="user-name" className="block text-base font-medium text-gray-700">
+                  Nombre Completo
+                </label>
+                <Input
+                  id="user-name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Ingresa tu nombre completo"
+                  className="w-full py-6 text-lg bg-white/80"
+                  required
+                />
+              </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 pt-4">
               <Button 
                 type="submit"
-                className="w-full flex items-center justify-center bg-orange-500 hover:bg-orange-600"
+                className="w-full flex items-center justify-center py-6 text-base"
                 disabled={isLoading}
               >
-                <span>Registrarme</span>
-                {!isLoading && (
+                <span>{isLoading ? "Registrando..." : "Crear mi cuenta"}</span>
+                {isLoading ? (
+                  <BrainLoader size="small" className="ml-2" />
+                ) : (
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-5 w-5 ml-2"
@@ -145,10 +162,10 @@ const RegistrationPage = () => {
               <Button 
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="w-full py-6 text-base"
                 onClick={() => setLocation("/")}
               >
-                Atrás
+                Volver al inicio
               </Button>
             </div>
           </form>
