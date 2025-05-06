@@ -240,6 +240,15 @@ const MapPage = () => {
           </div>
         ) : (
           <>
+            {/* Cobranding Logo */}
+            <div className="flex justify-center mb-6 bg-white/20 py-3 rounded-lg">
+              <img 
+                src="https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Cobranding_blanco.png" 
+                alt="Cobranding" 
+                className="h-12 object-contain"
+              />
+            </div>
+
             <ProgressBar 
               progress={unlockedSegments.length} 
               total={(() => {
