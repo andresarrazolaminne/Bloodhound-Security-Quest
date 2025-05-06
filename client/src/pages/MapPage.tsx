@@ -10,7 +10,7 @@ import ProgressBar from "@/components/ProgressBar";
 import QRScanner from "@/components/QRScanner";
 import HtmlContent from "@/components/HtmlContent";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 
 const MapPage = () => {
   const [, setLocation] = useLocation();
@@ -323,30 +323,20 @@ const MapPage = () => {
 
       {/* Site Map Modal - Full Screen optimized */}
       <Dialog open={showSiteMapModal} onOpenChange={setShowSiteMapModal}>
-        <DialogContent className="sm:max-w-5xl w-[95vw] max-h-[95vh] p-4">
+        <DialogContent className="sm:max-w-5xl w-[95vw] max-h-[95vh] p-4 data-[state=open]:shadow-lg">
           {/* Hidden title for accessibility */}
           <DialogHeader className="sr-only">
             <DialogTitle>Mapa del Sitio</DialogTitle>
           </DialogHeader>
+          <DialogDescription className="sr-only">
+            Vista ampliada del mapa del sitio
+          </DialogDescription>
           <div className="relative w-full h-full flex-1 overflow-hidden flex items-center justify-center">
             <img 
               src={systemConfig.siteMapImageUrl} 
               alt="Mapa del sitio"
               className="max-w-full max-h-[85vh] object-contain border border-gray-200 rounded-lg shadow-sm"
             />
-            {/* Close button positioned over image */}
-            <Button 
-              className="absolute top-2 right-2 h-8 w-8 p-0 rounded-full bg-white/80 hover:bg-white text-gray-600"
-              size="sm"
-              variant="ghost"
-              onClick={() => setShowSiteMapModal(false)}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-              <span className="sr-only">Cerrar</span>
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
