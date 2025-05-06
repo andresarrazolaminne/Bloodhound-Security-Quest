@@ -414,7 +414,7 @@ const MapPage = () => {
       <Dialog open={showCompletionModal} onOpenChange={setShowCompletionModal}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-center text-lg sm:text-xl">¡Felicidades! ¡Mapa Completo!</DialogTitle>
+            <DialogTitle className="text-center text-lg sm:text-xl">¡Felicidades, has completado el reto!</DialogTitle>
           </DialogHeader>
           
           <div className="py-3 px-4 flex flex-col items-center">
@@ -432,10 +432,10 @@ const MapPage = () => {
               
               <div className="text-left">
                 <p className="text-gray-800 text-lg font-medium">
-                  ¡Misión cumplida!
+                  ¡Felicidades, has completado el reto!
                 </p>
                 <p className="text-gray-600 text-sm">
-                  Has completado el mapa y desbloqueado tu premio.
+                  Con el siguiente código puedes reclamar tu premio.
                 </p>
               </div>
             </div>
