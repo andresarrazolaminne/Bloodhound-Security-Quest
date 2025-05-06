@@ -99,7 +99,10 @@ const AuthPage = () => {
   // Mostrar pantalla de carga mientras verificamos si hay un usuario guardado
   if (isLoadingLastUser) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gradient-to-br from-blue-600 to-blue-900 bg-[url('/assets/texture-bg.webp')] bg-blend-overlay text-white">
+      <div className="flex flex-col items-center justify-center min-h-screen p-4" 
+        style={{
+          background: "url('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png') repeat, linear-gradient(175deg, #bb2558 0%, #bb2558 75%, #e8cf00 100%)"
+        }}>
         <Card className="w-full max-w-md bg-white/90 backdrop-blur-sm shadow-xl">
           <CardContent className="pt-6 flex flex-col items-center justify-center py-12">
             <BrainLoader size="large" text="Iniciando sesión automáticamente..." />
@@ -111,7 +114,10 @@ const AuthPage = () => {
   
   // Mostrar interfaz normal de login
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gradient-to-br from-blue-600 to-blue-900 bg-[url('/assets/texture-bg.webp')] bg-blend-overlay text-white">
+    <div className="flex flex-col items-center justify-center min-h-screen p-4 text-white" 
+      style={{
+        background: "url('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png') repeat, linear-gradient(175deg, #bb2558 0%, #bb2558 75%, #e8cf00 100%)"
+      }}>
       <Card className="w-full max-w-md bg-white/90 backdrop-blur-sm shadow-xl border-0">
         <CardContent className="pt-8 pb-8 px-6">
           <div className="flex flex-col items-center justify-center mb-8">
