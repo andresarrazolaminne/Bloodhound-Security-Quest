@@ -29,12 +29,12 @@ const ProgressBar = ({ progress, total, className }: ProgressBarProps) => {
   return (
     <div className={cn("mb-6", className)}>
       <div className="flex justify-between items-center mb-2">
-        <h2 className="text-lg font-medium text-gray-800">Tu Progreso</h2>
+        <h2 className="text-lg font-medium text-white">Tu Progreso</h2>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700">
+          <span className="text-sm font-medium text-white">
             {progress}/{total} completados
           </span>
-          <div className="bg-gray-100 rounded-full px-2 py-0.5 text-xs font-bold text-gray-800">
+          <div className="bg-white rounded-full px-2 py-0.5 text-xs font-bold text-gray-800">
             {percentage}%
           </div>
         </div>
