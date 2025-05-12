@@ -352,8 +352,8 @@ const MapPage = () => {
       </Dialog>
 
       {/* QR Scanner Button with Call to Action */}
-      <div className="fixed bottom-6 right-6 z-10 flex flex-col items-center">
-        <div className="bg-white/80 text-amber-600 font-semibold px-3 py-1 rounded-full text-sm mb-2 shadow-md">
+      <div className="fixed bottom-24 right-6 z-10 flex flex-col items-center">
+        <div className="bg-white/80 text-amber-600 font-semibold px-3 py-1 rounded-full text-sm mb-2 shadow-md animate-pulse">
           ¡Escanea aquí!
         </div>
         <BoxButton 
@@ -498,6 +498,19 @@ const MapPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Footer con logos de patrocinadores */}
+      <footer className="mt-auto pb-6 pt-8 px-4">
+        <div className="container mx-auto flex justify-center">
+          <div className="bg-white/95 rounded-lg shadow-lg p-4 max-w-full">
+            <img 
+              src={systemConfig.footerLogoUrl} 
+              alt="Logos patrocinadores" 
+              className="h-16 md:h-20 object-contain max-w-full"
+            />
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

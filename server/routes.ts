@@ -404,6 +404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         config: {
           instructionsText: "Bienvenido a nuestra aplicación. Sigue las instrucciones para participar.",
           siteMapImageUrl: "https://placehold.co/1200x800/e2e8f0/64748b?text=Mapa+del+Sitio",
+          footerLogoUrl: "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png",
           mapGapSize: "medium",
           mapGridSize: "3x3"
         }
