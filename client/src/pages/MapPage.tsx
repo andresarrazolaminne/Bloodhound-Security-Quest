@@ -245,7 +245,7 @@ const MapPage = () => {
             {/* Cobranding Logo */}
             <div className="flex justify-center mb-6 bg-white/20 py-3 rounded-lg">
               <img 
-                src="https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Cobranding_blanco.png" 
+                src={systemConfig.cobrandingImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png"} 
                 alt="Cobranding" 
                 className="h-12 object-contain"
               />
