@@ -502,11 +502,12 @@ const MapPage = () => {
       {/* Footer con logos de patrocinadores */}
       <footer className="mt-auto pb-6 pt-8 px-4">
         <div className="container mx-auto">
-          <div className="bg-white/95 rounded-lg shadow-lg p-4 w-full">
+          <div className="bg-white/95 rounded-lg shadow-lg p-2 w-full flex items-center justify-center">
             <img 
               src={systemConfig.footerLogoUrl} 
               alt="Logos patrocinadores" 
-              className="w-full h-auto object-contain mx-auto max-h-20"
+              style={{ width: '100%', objectFit: 'scale-down', height: '100px' }}
+              className="max-w-none"
             />
           </div>
         </div>
