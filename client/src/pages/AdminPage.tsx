@@ -630,6 +630,7 @@ const AdminPage = () => {
                   await apiRequest("POST", "/api/admin/system-config", {
                     instructionsText: systemConfig.instructionsText,
                     siteMapImageUrl: systemConfig.siteMapImageUrl,
+                    footerLogoUrl: systemConfig.footerLogoUrl,
                     mapGapSize: systemConfig.mapGapSize,
                     mapGridSize: systemConfig.mapGridSize
                   });
