@@ -506,7 +506,7 @@ const MapPage = () => {
             <img 
               src={systemConfig.footerLogoUrl} 
               alt="Logos patrocinadores" 
-              className="h-16 md:h-20 object-contain mx-auto w-full"
+              className="w-full h-auto object-contain mx-auto max-h-20"
             />
           </div>
         </div>
