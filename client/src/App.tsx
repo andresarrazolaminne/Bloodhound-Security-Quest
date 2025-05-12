@@ -29,6 +29,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={ProtectedLoginRoute} />
+      <Route path="/auth" component={ProtectedLoginRoute} />
       <Route path="/register" component={RegistrationPage} />
       <Route path="/map" component={MapPage} />
       <Route path="/admin-login" component={AdminLoginPage} />
