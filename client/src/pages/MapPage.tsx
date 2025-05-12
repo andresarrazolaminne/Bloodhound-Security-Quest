@@ -352,7 +352,7 @@ const MapPage = () => {
       </Dialog>
 
       {/* QR Scanner Button with Call to Action */}
-      <div className="fixed bottom-24 right-6 z-10 flex flex-col items-center">
+      <div className="fixed bottom-32 right-6 z-10 flex flex-col items-center">
         <div className="bg-white/80 text-amber-600 font-semibold px-3 py-1 rounded-full text-sm mb-2 shadow-md animate-pulse">
           ¡Escanea aquí!
         </div>
@@ -501,12 +501,12 @@ const MapPage = () => {
       
       {/* Footer con logos de patrocinadores */}
       <footer className="mt-auto pb-6 pt-8 px-4">
-        <div className="container mx-auto flex justify-center">
-          <div className="bg-white/95 rounded-lg shadow-lg p-4 max-w-full">
+        <div className="container mx-auto">
+          <div className="bg-white/95 rounded-lg shadow-lg p-4 w-full">
             <img 
               src={systemConfig.footerLogoUrl} 
               alt="Logos patrocinadores" 
-              className="h-16 md:h-20 object-contain max-w-full"
+              className="h-16 md:h-20 object-contain mx-auto w-full"
             />
           </div>
         </div>
