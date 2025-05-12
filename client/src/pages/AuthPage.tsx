@@ -131,7 +131,8 @@ const AuthPage = () => {
               <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-3/4 h-1 bg-yellow-300/20 rounded-full blur-md"></div>
             </div>
             
-            <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">Mapa de Logros</h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">Lanzamiento</h1>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">Smartfilms 2025</h2>
             <p className="text-gray-600 text-center max-w-xs">
               {lastDocument 
                 ? "Continuar con tu cuenta o cambiar de usuario" 
