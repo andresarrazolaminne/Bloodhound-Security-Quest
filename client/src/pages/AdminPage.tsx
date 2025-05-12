@@ -83,6 +83,7 @@ const AdminPage = () => {
   const [systemConfig, setSystemConfig] = useState({
     instructionsText: "",
     siteMapImageUrl: "",
+    footerLogoUrl: "",
     mapGapSize: "medium" as 'none' | 'x-small' | 'small' | 'medium' | 'large',
     mapGridSize: "3x3" as '3x3' | '3x2' | '2x3' | '4x2' | '2x4'
   });

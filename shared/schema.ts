@@ -7,6 +7,7 @@ export const systemConfig = pgTable("system_config", {
   id: serial("id").primaryKey(),
   instructionsText: text("instructions_text").notNull(),
   siteMapImageUrl: text("site_map_image_url").notNull(),
+  footerLogoUrl: text("footer_logo_url").default('https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png'),
   mapGapSize: text("map_gap_size").notNull().default('medium'),
   mapGridSize: text("map_grid_size").notNull().default('3x3'),
   updatedAt: timestamp("updated_at").notNull().defaultNow()
@@ -17,6 +18,7 @@ export const systemConfigSchema = z.object({
   id: z.number(),
   instructionsText: z.string(),
   siteMapImageUrl: z.string(),
+  footerLogoUrl: z.string().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png'),
   mapGapSize: z.enum(['none', 'x-small', 'small', 'medium', 'large']).default('medium'),
   mapGridSize: z.enum(['3x3', '3x2', '2x3', '4x2', '2x4']).default('3x3'),
   updatedAt: z.date()
