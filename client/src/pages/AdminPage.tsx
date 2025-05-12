@@ -84,6 +84,7 @@ const AdminPage = () => {
     instructionsText: "",
     siteMapImageUrl: "",
     footerLogoUrl: "",
+    cobrandingImageUrl: "",
     mapGapSize: "medium" as 'none' | 'x-small' | 'small' | 'medium' | 'large',
     mapGridSize: "3x3" as '3x3' | '3x2' | '2x3' | '4x2' | '2x4'
   });
@@ -712,6 +713,25 @@ const AdminPage = () => {
                   />
                   <p className="text-sm text-gray-500">
                     URL de la imagen con los logos de patrocinadores que se mostrará en el pie de página
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="cobranding-image-url" className="block text-sm font-medium text-gray-700">
+                    URL de la Imagen de Cobranding
+                  </label>
+                  <Input
+                    id="cobranding-image-url"
+                    type="url"
+                    value={systemConfig.cobrandingImageUrl}
+                    onChange={(e) => setSystemConfig({
+                      ...systemConfig,
+                      cobrandingImageUrl: e.target.value
+                    })}
+                    placeholder="https://ejemplo.com/cobranding.png"
+                  />
+                  <p className="text-sm text-gray-500">
+                    URL de la imagen de cobranding que se mostrará en el encabezado de la aplicación
                   </p>
                 </div>
                 

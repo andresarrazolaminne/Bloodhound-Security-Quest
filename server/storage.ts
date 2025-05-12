@@ -562,6 +562,9 @@ export class DatabaseStorage implements IStorage {
         if (!('footerLogoUrl' in config)) {
           config.footerLogoUrl = 'https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png';
         }
+        if (!('cobrandingImageUrl' in config)) {
+          config.cobrandingImageUrl = 'https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png';
+        }
       }
       
       return config || null;
@@ -573,6 +576,8 @@ export class DatabaseStorage implements IStorage {
         id: 1,
         instructionsText: "Bienvenido a nuestra aplicación. Sigue las instrucciones para participar.",
         siteMapImageUrl: "https://placehold.co/1200x800/e2e8f0/64748b?text=Mapa+del+Sitio",
+        footerLogoUrl: "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png",
+        cobrandingImageUrl: "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png",
         mapGapSize: "medium",
         mapGridSize: "3x3",
         updatedAt: new Date()
@@ -584,6 +589,7 @@ export class DatabaseStorage implements IStorage {
     instructionsText?: string;
     siteMapImageUrl?: string;
     footerLogoUrl?: string;
+    cobrandingImageUrl?: string;
     mapGapSize?: 'none' | 'x-small' | 'small' | 'medium' | 'large';
     mapGridSize?: '3x3' | '3x2' | '2x3' | '4x2' | '2x4';
   }): Promise<SystemConfig> {
