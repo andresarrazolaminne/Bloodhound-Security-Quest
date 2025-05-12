@@ -141,6 +141,7 @@ const AdminPage = () => {
       setSystemConfig({
         instructionsText: config.instructionsText || "",
         siteMapImageUrl: config.siteMapImageUrl || "",
+        footerLogoUrl: config.footerLogoUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png",
         mapGapSize: config.mapGapSize || "medium",
         mapGridSize: config.mapGridSize || "3x3"
       });
@@ -690,6 +691,25 @@ const AdminPage = () => {
                   />
                   <p className="text-sm text-gray-500">
                     URL de la imagen del mapa del sitio que se mostrará en el modal correspondiente
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <label htmlFor="footer-logo-url" className="block text-sm font-medium text-gray-700">
+                    URL del Logo del Pie de Página
+                  </label>
+                  <Input
+                    id="footer-logo-url"
+                    type="url"
+                    value={systemConfig.footerLogoUrl}
+                    onChange={(e) => setSystemConfig({
+                      ...systemConfig,
+                      footerLogoUrl: e.target.value
+                    })}
+                    placeholder="https://ejemplo.com/logos.png"
+                  />
+                  <p className="text-sm text-gray-500">
+                    URL de la imagen con los logos de patrocinadores que se mostrará en el pie de página
                   </p>
                 </div>
                 

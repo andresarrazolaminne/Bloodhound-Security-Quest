@@ -559,6 +559,9 @@ export class DatabaseStorage implements IStorage {
         if (!('mapGridSize' in config)) {
           config.mapGridSize = '3x3';
         }
+        if (!('footerLogoUrl' in config)) {
+          config.footerLogoUrl = 'https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png';
+        }
       }
       
       return config || null;
@@ -580,6 +583,7 @@ export class DatabaseStorage implements IStorage {
   async updateSystemConfig(configData: {
     instructionsText?: string;
     siteMapImageUrl?: string;
+    footerLogoUrl?: string;
     mapGapSize?: 'none' | 'x-small' | 'small' | 'medium' | 'large';
     mapGridSize?: '3x3' | '3x2' | '2x3' | '4x2' | '2x4';
   }): Promise<SystemConfig> {
