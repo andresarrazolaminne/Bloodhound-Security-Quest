@@ -76,9 +76,18 @@ export async function fetchReplitAnalytics(timeRange: '7d' | '30d' | '90d'): Pro
     const start = startDate.toISOString().split('T')[0];
     const end = endDate.toISOString().split('T')[0];
     
-    // URL de la API de Replit Analytics - Usando la API v1
-    // La API v1 es más estable y está mejor documentada
-    const apiUrl = `https://replit.com/api/v1/data/replAnalytics?repl_id=${replId}&from=${start}&to=${end}`;
+    // Intentamos con diferentes endpoints posibles ya que la API de Replit puede cambiar
+    // Algunas versiones del endpoint han dejado de funcionar o requieren autenticación especial
+    const apiBaseUrl = "https://replit.com";
+    
+    // Posibles puntos finales a intentar
+    const endpoints = [
+      `/api/v1/data/replAnalytics?repl_id=${replId}&from=${start}&to=${end}`,
+      `/api/v0/repls/${replId}/stats?start=${start}&end=${end}`,
+      `/api/data/repls/${replId}/analytics?period=custom&from=${start}&to=${end}`
+    ];
+    
+    const apiUrl = apiBaseUrl + endpoints[0]; // Usamos el primer endpoint por ahora
     
     console.log(`Intentando conectar a la API en: ${apiUrl}`);
     
@@ -117,9 +126,15 @@ export async function fetchReplitAnalytics(timeRange: '7d' | '30d' | '90d'): Pro
     
     if (error instanceof Error) {
       // Agregamos información de contexto para ayudar a diagnosticar el problema
-      errorMessage = error.message.includes('403') 
-        ? 'Acceso denegado (403) - El token no tiene permisos suficientes o ha expirado'
-        : error.message;
+      if (error.message.includes('404')) {
+        errorMessage = 'API no encontrada (404) - Es posible que la API de Analytics no esté disponible en este plan de Replit o la URL ha cambiado';
+      } else if (error.message.includes('403')) {
+        errorMessage = 'Acceso denegado (403) - El token no tiene permisos suficientes o no está correctamente configurado';
+      } else if (error.message.includes('401')) {
+        errorMessage = 'No autorizado (401) - El token de autenticación es inválido o ha expirado';
+      } else {
+        errorMessage = error.message;
+      }
     }
     
     // Creamos una versión extendida del objeto ReplitAnalyticsData

@@ -111,17 +111,25 @@ const AnalyticsTab: React.FC = () => {
         </div>
         
         <div className="bg-blue-50 p-4 rounded border border-blue-100 text-left mb-4">
-          <p className="text-blue-800 font-medium mb-2">Pasos para configurar Replit Analytics:</p>
-          <ol className="list-decimal pl-5 space-y-1 text-blue-700">
-            <li>Inicia sesión en tu cuenta de Replit</li>
-            <li>Ve a Configuración &gt; API Keys (desde el menú de tu cuenta)</li>
-            <li>Crea un nuevo token con permisos de <code className="bg-blue-100 px-1 rounded">read:repls</code> y <code className="bg-blue-100 px-1 rounded">read:analytics</code></li>
-            <li>Configura el token como secreto en el Repl con el nombre <code className="bg-blue-100 px-1 rounded">REPLIT_ANALYTICS_TOKEN</code></li>
+          <p className="text-blue-800 font-medium mb-2">Pasos para solucionar este problema:</p>
+          <ol className="list-decimal pl-5 space-y-2 text-blue-700">
+            <li>
+              Utilizar directamente los Secrets del Repl:
+              <ul className="list-disc pl-5 mt-1 text-blue-600">
+                <li>Ve a la pestaña "Secrets" (o "Secretos") en tu Repl</li>
+                <li>Añade un nuevo secreto con el nombre <code className="bg-blue-100 px-1 rounded">REPLIT_ANALYTICS_TOKEN</code></li>
+                <li>Como valor, usa el token de Replit (por ejemplo: tu token de autenticación)</li>
+              </ul>
+            </li>
+            <li className="mt-2">
+              Alternativa: Actualizar a un plan pagado de Replit para acceder a Analytics
+              <div className="text-xs mt-1 text-blue-500">Algunas funciones de Analytics pueden estar limitadas en cuentas gratuitas</div>
+            </li>
           </ol>
         </div>
         
         <p className="text-gray-600 text-sm">
-          Para resolver este problema, sigue los pasos indicados para generar y configurar un token de API con los permisos correctos.
+          La API de Analytics de Replit está en constante evolución. Si sigues teniendo problemas, considera usar otras alternativas para analíticas como Google Analytics o implementar un sistema de seguimiento propio.
         </p>
       </div>
     );
