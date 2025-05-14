@@ -34,6 +34,10 @@ export interface ReplitAnalyticsData {
     name: string;
     value: number;
   }[];
+  
+  // Campo opcional para mensajes de error
+  // (No es parte de la respuesta normal de la API, solo se usa cuando hay errores)
+  _error?: string;
 }
 
 /**
@@ -103,9 +107,20 @@ export async function fetchReplitAnalytics(timeRange: '7d' | '30d' | '90d'): Pro
   } catch (error) {
     console.error('Error al obtener datos de Replit Analytics:', error);
     
-    // Si hay un error, devolvemos datos de muestra 
-    // En producción, deberías manejar esto de manera más robusta
-    return {
+    // En caso de error, devolvemos un objeto vacío con una estructura predecible
+    // pero también incluimos información del error para que el cliente pueda manejarlo
+    let errorMessage = 'Error desconocido';
+    
+    if (error instanceof Error) {
+      // Agregamos información de contexto para ayudar a diagnosticar el problema
+      errorMessage = error.message.includes('403') 
+        ? 'Acceso denegado (403) - El token no tiene permisos suficientes o ha expirado'
+        : error.message;
+    }
+    
+    // Creamos una versión extendida del objeto ReplitAnalyticsData
+    // con un campo adicional para el error
+    const emptyData = {
       totalVisits: 0,
       totalUsers: 0,
       newUsers: 0,
@@ -113,8 +128,11 @@ export async function fetchReplitAnalytics(timeRange: '7d' | '30d' | '90d'): Pro
       visitsByDay: [],
       deviceData: [],
       browserData: [],
-      countryData: []
+      countryData: [],
+      _error: errorMessage  // Campo adicional que no es parte del tipo ReplitAnalyticsData
     };
+    
+    return emptyData;
   }
 }
 

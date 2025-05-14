@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import BrainLoader from './BrainLoader';
+import { AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 // Colores para gráficos
@@ -38,6 +39,10 @@ interface ReplitAnalyticsData {
     name: string;
     value: number;
   }[];
+  
+  // Campo opcional para mensajes de error
+  // (No es parte de la respuesta normal de la API, solo se usa cuando hay errores)
+  _error?: string;
 }
 
 const AnalyticsTab: React.FC = () => {
@@ -59,7 +64,14 @@ const AnalyticsTab: React.FC = () => {
         }
         
         const data = await response.json();
-        setAnalyticsData(data);
+        
+        // Verificamos si la respuesta contiene un mensaje de error
+        if (data._error) {
+          setError(data._error);
+          setAnalyticsData(data); // Aún así guardamos los datos vacíos para evitar errores
+        } else {
+          setAnalyticsData(data);
+        }
       } catch (err) {
         setError('No se pudieron cargar los datos de analíticas');
         console.error(err);
@@ -83,10 +95,22 @@ const AnalyticsTab: React.FC = () => {
   // Si hay error, mostrar mensaje
   if (error) {
     return (
-      <div className="bg-red-50 p-4 rounded-md border border-red-200 text-center">
-        <p className="text-red-600 mb-2">{error}</p>
+      <div className="bg-red-50 p-6 rounded-md border border-red-200 text-center">
+        <div className="flex justify-center mb-4">
+          <AlertTriangle className="h-10 w-10 text-red-500" />
+        </div>
+        <h3 className="text-lg font-medium text-red-800 mb-2">No se pudieron cargar las analíticas</h3>
+        <p className="text-red-600 mb-4">{error}</p>
+        <div className="bg-white p-4 rounded border border-red-100 text-left mb-4">
+          <p className="text-gray-700 font-medium mb-2">Posibles causas:</p>
+          <ul className="list-disc pl-5 space-y-1 text-gray-600">
+            <li>El token de Replit Analytics no tiene los permisos necesarios</li>
+            <li>La API de Replit Analytics ha cambiado o requiere configuración adicional</li>
+            <li>El Repl ID no está configurado correctamente</li>
+          </ul>
+        </div>
         <p className="text-gray-600 text-sm">
-          Las analíticas de Replit requieren configuración adicional. Por favor, contacta al administrador.
+          Para resolver este problema, verifica la configuración del token de Replit Analytics o contacta al soporte técnico.
         </p>
       </div>
     );
