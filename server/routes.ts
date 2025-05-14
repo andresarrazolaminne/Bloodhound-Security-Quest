@@ -6,6 +6,7 @@ import { insertUserSchema, insertMapSegmentAssetsSchema, insertSystemConfigSchem
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { fetchReplitAnalytics } from "./analytics";
 
 // Función para generar un código de seguridad alfanumérico aleatorio
 function generateSecurityCode(length: number = 5): string {
