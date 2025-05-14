@@ -37,11 +37,13 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  BarChart
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { MapSegmentAsset } from "@shared/schema";
 import QRGenerator from '@/tools/QRGenerator';
+import AnalyticsTab from '@/components/AnalyticsTab';
 import {
   Dialog,
   DialogContent,
