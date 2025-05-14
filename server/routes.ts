@@ -429,6 +429,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para obtener analíticas de Replit
+  apiRouter.get("/admin/analytics", async (req, res) => {
+    try {
+      const timeRange = req.query.timeRange as '7d' | '30d' | '90d' || '7d';
+      
+      // Validar que el rango de tiempo sea válido
+      if (!['7d', '30d', '90d'].includes(timeRange)) {
+        return res.status(400).json({ 
+          message: "Rango de tiempo inválido. Debe ser '7d', '30d' o '90d'" 
+        });
+      }
+      
+      // Obtener datos de analíticas desde la API de Replit
+      const analyticsData = await fetchReplitAnalytics(timeRange);
+      
+      return res.status(200).json(analyticsData);
+    } catch (error) {
+      console.error("Error al obtener analíticas:", error);
+      return res.status(500).json({ 
+        message: "Error al obtener datos de analíticas",
+        error: error instanceof Error ? error.message : "Error desconocido"
+      });
+    }
+  });
+
   apiRouter.get("/health", (req, res) => {
     res.status(200).json({ status: "ok" });
   });
