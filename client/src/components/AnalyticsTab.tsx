@@ -109,8 +109,19 @@ const AnalyticsTab: React.FC = () => {
             <li>El Repl ID no está configurado correctamente</li>
           </ul>
         </div>
+        
+        <div className="bg-blue-50 p-4 rounded border border-blue-100 text-left mb-4">
+          <p className="text-blue-800 font-medium mb-2">Pasos para configurar Replit Analytics:</p>
+          <ol className="list-decimal pl-5 space-y-1 text-blue-700">
+            <li>Inicia sesión en tu cuenta de Replit</li>
+            <li>Ve a Configuración &gt; API Keys (desde el menú de tu cuenta)</li>
+            <li>Crea un nuevo token con permisos de <code className="bg-blue-100 px-1 rounded">read:repls</code> y <code className="bg-blue-100 px-1 rounded">read:analytics</code></li>
+            <li>Configura el token como secreto en el Repl con el nombre <code className="bg-blue-100 px-1 rounded">REPLIT_ANALYTICS_TOKEN</code></li>
+          </ol>
+        </div>
+        
         <p className="text-gray-600 text-sm">
-          Para resolver este problema, verifica la configuración del token de Replit Analytics o contacta al soporte técnico.
+          Para resolver este problema, sigue los pasos indicados para generar y configurar un token de API con los permisos correctos.
         </p>
       </div>
     );

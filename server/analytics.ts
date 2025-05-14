@@ -76,15 +76,19 @@ export async function fetchReplitAnalytics(timeRange: '7d' | '30d' | '90d'): Pro
     const start = startDate.toISOString().split('T')[0];
     const end = endDate.toISOString().split('T')[0];
     
-    // URL de la API de Replit Analytics
-    const apiUrl = `https://replit.com/api/v0/analytics/${replId}?start=${start}&end=${end}`;
+    // URL de la API de Replit Analytics - Usando la API v1
+    // La API v1 es más estable y está mejor documentada
+    const apiUrl = `https://replit.com/api/v1/data/replAnalytics?repl_id=${replId}&from=${start}&to=${end}`;
     
-    // Realizamos la petición a la API
+    console.log(`Intentando conectar a la API en: ${apiUrl}`);
+    
+    // Realizamos la petición a la API con el formato correcto de token
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${replitToken}`,
         'Accept': 'application/json',
+        'X-Replit-Api-Key': replitToken,
+        'User-Agent': 'QRCodeQuest-App/1.0',
       },
     });
     
@@ -141,50 +145,72 @@ export async function fetchReplitAnalytics(timeRange: '7d' | '30d' | '90d'): Pro
  */
 function processAnalyticsData(rawData: any, timeRange: string): ReplitAnalyticsData {
   try {
-    // En un caso real, aquí procesaríamos los datos de la API
-    // Como no tenemos acceso directo a la API en este momento, 
-    // esto es una aproximación de cómo procesaríamos los datos.
+    console.log('Procesando datos de la API Replit:', JSON.stringify(rawData, null, 2).substring(0, 500) + '...');
     
-    // NOTA: Esta función debe adaptarse cuando se tenga acceso real a la API
+    // Adaptación para el formato de la API v1 de Replit
+    // La estructura puede variar, por lo que añadimos comprobaciones para evitar errores
     
-    // Generamos datos de muestra basados en el timeRange
-    // En un entorno real, esto vendría de la API de Replit
-    
-    // Ejemplo de procesamiento (debe adaptarse)
+    // Inicializamos con datos vacíos
     const processedData: ReplitAnalyticsData = {
-      totalVisits: rawData.totalVisits || 0,
-      totalUsers: rawData.uniqueUsers || 0,
-      newUsers: rawData.newUsers || 0,
-      returningUsers: rawData.returningUsers || 0,
-      
-      // Procesamiento de visitas por día
-      visitsByDay: (rawData.dailyData || []).map((day: any) => ({
-        date: day.date,
-        visits: day.visits || 0,
-        uniqueUsers: day.uniqueUsers || 0
-      })),
-      
-      // Procesamiento de datos de dispositivos
-      deviceData: Object.entries(rawData.devices || {}).map(([name, value]: [string, any]) => ({
-        name,
-        value: Number(value)
-      })),
-      
-      // Procesamiento de datos de navegadores
-      browserData: Object.entries(rawData.browsers || {}).map(([name, value]: [string, any]) => ({
-        name,
-        value: Number(value)
-      })),
-      
-      // Procesamiento de datos de países
-      countryData: Object.entries(rawData.countries || {})
-        .map(([name, value]: [string, any]) => ({
-          name,
-          value: Number(value)
-        }))
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 10)
+      totalVisits: 0,
+      totalUsers: 0,
+      newUsers: 0,
+      returningUsers: 0,
+      visitsByDay: [],
+      deviceData: [],
+      browserData: [],
+      countryData: []
     };
+    
+    // Si tenemos datos en la respuesta
+    if (rawData && typeof rawData === 'object') {
+      // Procesamiento para API v1
+      if (rawData.data) {
+        // Extraer métricas totales
+        processedData.totalVisits = rawData.data.totalViews || 0;
+        processedData.totalUsers = rawData.data.uniqueUsers || 0;
+        processedData.newUsers = rawData.data.newUsers || 0;
+        processedData.returningUsers = processedData.totalUsers - processedData.newUsers;
+        
+        // Procesar datos por día
+        if (Array.isArray(rawData.data.timeSeriesData)) {
+          processedData.visitsByDay = rawData.data.timeSeriesData.map((day: any) => ({
+            date: day.date || day.timestamp || 'Unknown',
+            visits: day.views || 0,
+            uniqueUsers: day.uniqueUsers || 0
+          }));
+        }
+        
+        // Procesar datos de dispositivos
+        if (rawData.data.deviceData) {
+          processedData.deviceData = Object.entries(rawData.data.deviceData)
+            .map(([name, value]: [string, any]) => ({
+              name: name === 'unknown' ? 'Desconocido' : name,
+              value: typeof value === 'number' ? value : 0
+            }));
+        }
+        
+        // Procesar datos de navegadores
+        if (rawData.data.browserData) {
+          processedData.browserData = Object.entries(rawData.data.browserData)
+            .map(([name, value]: [string, any]) => ({
+              name: name === 'unknown' ? 'Desconocido' : name,
+              value: typeof value === 'number' ? value : 0
+            }));
+        }
+        
+        // Procesar datos de países
+        if (rawData.data.countryData) {
+          processedData.countryData = Object.entries(rawData.data.countryData)
+            .map(([name, value]: [string, any]) => ({
+              name: name === 'unknown' ? 'Desconocido' : name,
+              value: typeof value === 'number' ? value : 0
+            }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 10);
+        }
+      }
+    }
     
     return processedData;
     
