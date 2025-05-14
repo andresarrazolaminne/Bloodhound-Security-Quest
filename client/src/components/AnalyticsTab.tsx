@@ -2,8 +2,119 @@ import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import BrainLoader from './BrainLoader';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Users } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+
+// Componente para mostrar estadísticas internas de usuarios
+const UsersInternalStats = () => {
+  const [usersData, setUsersData] = useState<{users: any[]} | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch('/api/admin/users-progress');
+        if (!response.ok) {
+          throw new Error('Error fetching user progress data');
+        }
+        const data = await response.json();
+        setUsersData(data);
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchUserData();
+  }, []);
+  
+  if (isLoading) return <span className="text-gray-400">Cargando...</span>;
+  if (!usersData) return <span className="text-red-500">Error</span>;
+  
+  return <>{usersData.users.length || 0}</>;
+};
+
+// Componente para mostrar estadísticas de progreso del mapa
+const MapProgressStats = () => {
+  const [usersData, setUsersData] = useState<{users: any[]} | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch('/api/admin/users-progress');
+        if (!response.ok) {
+          throw new Error('Error fetching user progress data');
+        }
+        const data = await response.json();
+        setUsersData(data);
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchUserData();
+  }, []);
+  
+  if (isLoading) return <div className="flex justify-center items-center h-full"><BrainLoader text="Cargando datos..." /></div>;
+  if (!usersData) return <div className="text-red-500">Error al cargar datos</div>;
+  
+  // Procesamos los datos para el gráfico
+  const users = usersData.users || [];
+  
+  // Agrupamos usuarios por porcentaje de completitud
+  const completionGroups = {
+    'No iniciado (0%)': 0,
+    'Inicial (1-25%)': 0,
+    'Medio (26-50%)': 0, 
+    'Avanzado (51-75%)': 0,
+    'Casi completo (76-99%)': 0,
+    'Completo (100%)': 0
+  };
+  
+  users.forEach(user => {
+    const percentage = user.completionPercentage || 0;
+    
+    if (percentage === 0) completionGroups['No iniciado (0%)']++;
+    else if (percentage <= 25) completionGroups['Inicial (1-25%)']++;
+    else if (percentage <= 50) completionGroups['Medio (26-50%)']++;
+    else if (percentage <= 75) completionGroups['Avanzado (51-75%)']++;
+    else if (percentage < 100) completionGroups['Casi completo (76-99%)']++;
+    else completionGroups['Completo (100%)']++;
+  });
+  
+  const chartData = Object.entries(completionGroups).map(([name, value]) => ({
+    name,
+    value
+  }));
+  
+  const PROGRESS_COLORS = ['#CCCCCC', '#FFE58F', '#FFD666', '#FFC53D', '#FAAD14', '#52C41A'];
+  
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <PieChart>
+        <Pie
+          data={chartData}
+          cx="50%"
+          cy="50%"
+          labelLine={false}
+          outerRadius={70}
+          fill="#8884d8"
+          dataKey="value"
+          label={({ name, percent }) => percent > 0 ? `${name}: ${(percent * 100).toFixed(0)}%` : ''}
+        >
+          {chartData.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={PROGRESS_COLORS[index % PROGRESS_COLORS.length]} />
+          ))}
+        </Pie>
+        <Tooltip formatter={(value) => [`${value} usuarios`, 'Cantidad']} />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+};
 
 // Colores para gráficos
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#BB2558', '#E8CF00'];
@@ -92,47 +203,78 @@ const AnalyticsTab: React.FC = () => {
     );
   }
   
-  // Si hay error, mostrar mensaje
-  if (error) {
+  // Si hay error en la API de Replit Analytics, mostramos estadísticas internas
+  // Esta es una mejor alternativa que solo mostrar un mensaje de error
+  // Crear un componente interno para el panel alternativo
+  const AlternativeAnalyticsPanel = () => {
+    // Si no hay error, no mostramos este panel
+    if (!error) return null;
+    
     return (
-      <div className="bg-red-50 p-6 rounded-md border border-red-200 text-center">
-        <div className="flex justify-center mb-4">
-          <AlertTriangle className="h-10 w-10 text-red-500" />
-        </div>
-        <h3 className="text-lg font-medium text-red-800 mb-2">No se pudieron cargar las analíticas</h3>
-        <p className="text-red-600 mb-4">{error}</p>
-        <div className="bg-white p-4 rounded border border-red-100 text-left mb-4">
-          <p className="text-gray-700 font-medium mb-2">Posibles causas:</p>
-          <ul className="list-disc pl-5 space-y-1 text-gray-600">
-            <li>El token de Replit Analytics no tiene los permisos necesarios</li>
-            <li>La API de Replit Analytics ha cambiado o requiere configuración adicional</li>
-            <li>El Repl ID no está configurado correctamente</li>
-          </ul>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-gray-800">Estadísticas de la aplicación</h2>
+          
+          <div className="bg-amber-100 px-3 py-1 rounded-md text-amber-800 text-sm flex items-center">
+            <AlertTriangle className="h-4 w-4 mr-1" />
+            API externa no disponible - Mostrando datos internos
+          </div>
         </div>
         
-        <div className="bg-blue-50 p-4 rounded border border-blue-100 text-left mb-4">
-          <p className="text-blue-800 font-medium mb-2">Pasos para solucionar este problema:</p>
-          <ol className="list-decimal pl-5 space-y-2 text-blue-700">
-            <li>
-              Utilizar directamente los Secrets del Repl:
-              <ul className="list-disc pl-5 mt-1 text-blue-600">
-                <li>Ve a la pestaña "Secrets" (o "Secretos") en tu Repl</li>
-                <li>Añade un nuevo secreto con el nombre <code className="bg-blue-100 px-1 rounded">REPLIT_ANALYTICS_TOKEN</code></li>
-                <li>Como valor, usa el token de Replit (por ejemplo: tu token de autenticación)</li>
-              </ul>
-            </li>
-            <li className="mt-2">
-              Alternativa: Actualizar a un plan pagado de Replit para acceder a Analytics
-              <div className="text-xs mt-1 text-blue-500">Algunas funciones de Analytics pueden estar limitadas en cuentas gratuitas</div>
-            </li>
-          </ol>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="overflow-hidden">
+            <CardHeader className="bg-primary text-white">
+              <CardTitle className="text-xl">Usuarios registrados</CardTitle>
+              <CardDescription className="text-white/80">
+                Personas que han creado una cuenta en la aplicación
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center">
+                <div className="text-5xl font-bold mb-2 text-primary">
+                  <UsersInternalStats />
+                </div>
+                <p className="text-gray-500 text-sm">Total de usuarios registrados</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="overflow-hidden">
+            <CardHeader className="bg-primary text-white">
+              <CardTitle className="text-xl">Progreso de Usuarios</CardTitle>
+              <CardDescription className="text-white/80">
+                Distribución del avance en el mapa
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="w-full h-[180px]">
+                <MapProgressStats />
+              </div>
+            </CardContent>
+          </Card>
         </div>
         
-        <p className="text-gray-600 text-sm">
-          La API de Analytics de Replit está en constante evolución. Si sigues teniendo problemas, considera usar otras alternativas para analíticas como Google Analytics o implementar un sistema de seguimiento propio.
-        </p>
+        <div className="mt-8 px-4 py-3 bg-blue-50 rounded-md text-blue-800 text-sm">
+          <details>
+            <summary className="font-medium cursor-pointer">¿Por qué no puedo ver todas las analíticas?</summary>
+            <div className="mt-2 pl-4 text-blue-700 space-y-2">
+              <p>La API de Analytics de Replit no está disponible actualmente. Error: {error}</p>
+              <p>Puedes intentar seguir estos pasos para habilitar las analíticas avanzadas:</p>
+              <ol className="list-decimal pl-5 space-y-1">
+                <li>Ve a la pestaña "Secrets" en tu Repl</li>
+                <li>Añade un token de Replit como <code className="bg-blue-100 px-1 rounded">REPLIT_ANALYTICS_TOKEN</code></li>
+                <li>Considera usar una solución alternativa como Google Analytics para estadísticas más detalladas</li>
+              </ol>
+            </div>
+          </details>
+        </div>
       </div>
     );
+  };
+  
+  // Si hay error, mostrar panel alternativo
+  if (error) {
+    return <AlternativeAnalyticsPanel />;
   }
   
   // Si no hay datos, mostrar estado vacío
