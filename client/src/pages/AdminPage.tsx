@@ -387,11 +387,17 @@ const AdminPage = () => {
       </div>
 
       <Tabs defaultValue="prizes" className="max-w-5xl mx-auto">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 mb-6">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 mb-6">
           <TabsTrigger value="prizes">Validación de Premios</TabsTrigger>
           <TabsTrigger value="segments">Segmentos del Mapa</TabsTrigger>
           <TabsTrigger value="qrgenerator">Generador de QR</TabsTrigger>
           <TabsTrigger value="ranking">Ranking de Usuarios</TabsTrigger>
+          <TabsTrigger value="analytics">
+            <div className="flex items-center gap-1">
+              <BarChart className="h-4 w-4" />
+              <span>Analíticas</span>
+            </div>
+          </TabsTrigger>
           <TabsTrigger value="config">Configuración</TabsTrigger>
         </TabsList>
 
@@ -1126,6 +1132,20 @@ const AdminPage = () => {
                   </TableBody>
                 </Table>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <Card className="w-full">
+            <CardHeader className="bg-primary text-white">
+              <CardTitle className="text-xl">Analíticas de Uso</CardTitle>
+              <CardDescription className="text-white/80">
+                Métricas y estadísticas de uso de la aplicación
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <AnalyticsTab />
             </CardContent>
           </Card>
         </TabsContent>
