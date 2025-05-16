@@ -9,6 +9,7 @@ import MapPage from "@/pages/MapPage";
 import RegistrationPage from "@/pages/RegistrationPage";
 import AdminPage from "@/pages/AdminPage";
 import AdminLoginPage from "@/pages/AdminLoginPage";
+import InformeAnaliticaPage from "@/pages/InformeAnaliticaPage";
 import { Loader2 } from "lucide-react";
 import AdminProtectedRoute from "@/components/AdminProtectedRoute";
 
@@ -35,6 +36,9 @@ function Router() {
       <Route path="/admin-login" component={AdminLoginPage} />
       <Route path="/admin">
         <AdminProtectedRoute component={AdminPage} />
+      </Route>
+      <Route path="/admin/informe-analitica">
+        <AdminProtectedRoute component={InformeAnaliticaPage} />
       </Route>
       <Route component={NotFound} />
     </Switch>

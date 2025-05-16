@@ -142,7 +142,10 @@ const InformeAnaliticaPage: React.FC = () => {
       
       devices.forEach((device, index) => {
         if (index < 5) { // Limitar a 5
-          const percentage = device.percentage || Math.round((device.value / analyticsData.totalVisits) * 100);
+          // Calcular porcentaje incluso si no existe en el objeto original
+          const percentage = typeof device.percentage !== 'undefined' 
+            ? device.percentage 
+            : Math.round((device.value / analyticsData.totalVisits) * 100);
           
           // Dibujar barra base
           doc.setFillColor(220, 220, 220);
@@ -282,16 +285,22 @@ const InformeAnaliticaPage: React.FC = () => {
   
   // Calcular totales para dispositivos y países
   const totalDevices = analyticsData.deviceData.reduce((sum, device) => sum + device.value, 0);
-  const deviceDataWithPercentage = analyticsData.deviceData.map(device => ({
-    ...device,
-    percentage: Math.round((device.value / totalDevices) * 100)
-  }));
+  const deviceDataWithPercentage = analyticsData.deviceData.map(device => {
+    const percentage = Math.round((device.value / totalDevices) * 100);
+    return {
+      ...device,
+      percentage: percentage
+    };
+  });
   
   const totalCountries = analyticsData.countryData.reduce((sum, country) => sum + country.value, 0);
-  const countryDataWithPercentage = analyticsData.countryData.map(country => ({
-    ...country,
-    percentage: Math.round((country.value / totalCountries) * 100)
-  }));
+  const countryDataWithPercentage = analyticsData.countryData.map(country => {
+    const percentage = Math.round((country.value / totalCountries) * 100);
+    return {
+      ...country,
+      percentage: percentage
+    };
+  });
   
   return (
     <div className="container mx-auto p-6 max-w-7xl">
