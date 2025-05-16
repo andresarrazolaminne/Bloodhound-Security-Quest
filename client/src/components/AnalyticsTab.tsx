@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'wouter';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import BrainLoader from './BrainLoader';
-import { AlertTriangle, Users, Download, FileDown, Search, Filter } from 'lucide-react';
+import { AlertTriangle, Users, Download, FileDown, Search, Filter, ExternalLink, BarChart2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { jsPDF } from "jspdf";
 
@@ -523,9 +524,17 @@ const AnalyticsTab: React.FC = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-800">Estadísticas internas de la aplicación</h2>
-          <div className="bg-amber-100 px-3 py-1 rounded-md text-amber-800 text-sm flex items-center">
-            <AlertTriangle className="h-4 w-4 mr-1" />
-            API de Replit no disponible
+          <div className="flex items-center gap-3">
+            <Button asChild className="bg-primary hover:bg-primary/90">
+              <Link href="/admin/informe-analitica">
+                <BarChart2 className="h-4 w-4 mr-1" />
+                Ver informe completo
+              </Link>
+            </Button>
+            <div className="bg-amber-100 px-3 py-1 rounded-md text-amber-800 text-sm flex items-center">
+              <AlertTriangle className="h-4 w-4 mr-1" />
+              API de Replit no disponible
+            </div>
           </div>
         </div>
         
