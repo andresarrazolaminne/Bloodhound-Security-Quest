@@ -254,6 +254,100 @@ const AnalyticsTab: React.FC = () => {
           </Card>
         </div>
         
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Distribución por Dispositivos</CardTitle>
+              <CardDescription>
+                Principales dispositivos que utilizan la aplicación
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3">
+                <li className="flex justify-between items-center">
+                  <span className="font-medium">Android</span>
+                  <div className="flex items-center">
+                    <div className="w-32 bg-gray-200 rounded-full h-2.5 mr-2">
+                      <div className="bg-green-500 h-2.5 rounded-full" style={{width: '76%'}}></div>
+                    </div>
+                    <span className="text-gray-600 font-medium">45,608</span>
+                  </div>
+                </li>
+                <li className="flex justify-between items-center">
+                  <span className="font-medium">iOS</span>
+                  <div className="flex items-center">
+                    <div className="w-32 bg-gray-200 rounded-full h-2.5 mr-2">
+                      <div className="bg-blue-500 h-2.5 rounded-full" style={{width: '23%'}}></div>
+                    </div>
+                    <span className="text-gray-600 font-medium">14,051</span>
+                  </div>
+                </li>
+                <li className="flex justify-between items-center">
+                  <span className="font-medium">Windows</span>
+                  <div className="flex items-center">
+                    <div className="w-32 bg-gray-200 rounded-full h-2.5 mr-2">
+                      <div className="bg-purple-500 h-2.5 rounded-full" style={{width: '0.5%'}}></div>
+                    </div>
+                    <span className="text-gray-600 font-medium">216</span>
+                  </div>
+                </li>
+                <li className="flex justify-between items-center">
+                  <span className="font-medium">macOS</span>
+                  <div className="flex items-center">
+                    <div className="w-32 bg-gray-200 rounded-full h-2.5 mr-2">
+                      <div className="bg-yellow-500 h-2.5 rounded-full" style={{width: '0.3%'}}></div>
+                    </div>
+                    <span className="text-gray-600 font-medium">148</span>
+                  </div>
+                </li>
+                <li className="flex justify-between items-center">
+                  <span className="font-medium">Linux</span>
+                  <div className="flex items-center">
+                    <div className="w-32 bg-gray-200 rounded-full h-2.5 mr-2">
+                      <div className="bg-red-500 h-2.5 rounded-full" style={{width: '0.05%'}}></div>
+                    </div>
+                    <span className="text-gray-600 font-medium">24</span>
+                  </div>
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Estadísticas Geográficas</CardTitle>
+              <CardDescription>
+                Tráfico y alcance por ubicación
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center bg-gradient-to-r from-primary/10 to-primary/5 p-3 rounded-lg">
+                  <div>
+                    <h4 className="font-medium text-lg">Colombia</h4>
+                    <p className="text-sm text-gray-600">Principal ubicación</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-semibold text-primary">57.4k</p>
+                    <p className="text-xs text-gray-500">visitas totales</p>
+                  </div>
+                </div>
+                
+                <div className="pt-2">
+                  <div className="flex justify-between mb-1 text-sm">
+                    <span className="font-medium">Direcciones IP únicas</span>
+                    <span className="text-gray-600">1,418</span>
+                  </div>
+                  <div className="h-1.5 bg-gray-200 rounded-full">
+                    <div className="h-1.5 rounded-full bg-primary" style={{width: '100%'}}></div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Representa el total de dispositivos distintos que accedieron a la aplicación</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        
         <div className="mt-8 px-4 py-3 bg-blue-50 rounded-md text-blue-800 text-sm">
           <details>
             <summary className="font-medium cursor-pointer">¿Por qué no puedo ver todas las analíticas?</summary>
