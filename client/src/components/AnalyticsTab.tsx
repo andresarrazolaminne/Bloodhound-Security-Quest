@@ -1,9 +1,185 @@
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import BrainLoader from './BrainLoader';
-import { AlertTriangle, Users } from 'lucide-react';
+import { AlertTriangle, Users, Download, FileDown, Search, Filter } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { jsPDF } from "jspdf";
+import 'jspdf-autotable';
+
+// Interfaz para usuario con progreso
+interface UserWithProgress {
+  user: {
+    id: number;
+    documentNumber: string;
+    name: string;
+    createdAt: string;
+  };
+  segments: any[];
+  totalSegments: number;
+  unlockedSegments: number;
+  completionPercentage: number;
+  prize: any | null;
+}
+
+// Componente para mostrar la tabla de usuarios
+const UserListTable = () => {
+  const [usersData, setUsersData] = useState<{users: UserWithProgress[]} | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const usersPerPage = 5;
+  
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch('/api/admin/users-progress');
+        if (!response.ok) {
+          throw new Error('Error fetching user progress data');
+        }
+        const data = await response.json();
+        setUsersData(data);
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchUserData();
+  }, []);
+  
+  if (isLoading) return <div className="p-4 text-center"><BrainLoader text="Cargando usuarios..." /></div>;
+  if (!usersData) return <div className="p-4 text-center text-red-500">Error al cargar usuarios</div>;
+  
+  // Filtrar por término de búsqueda
+  const filteredUsers = usersData.users.filter(item => 
+    item.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.user.documentNumber.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  
+  // Paginación
+  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+  const indexOfLastUser = currentPage * usersPerPage;
+  const indexOfFirstUser = indexOfLastUser - usersPerPage;
+  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
+  
+  const nextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+  };
+  
+  const prevPage = () => {
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
+  };
+  
+  return (
+    <div>
+      <div className="flex items-center px-4 py-2 border-b">
+        <div className="relative flex-1">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Buscar por nombre o documento..."
+            className="pl-8 pr-4 py-2 w-full border rounded-md text-sm"
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1); // Reset to first page on search
+            }}
+          />
+        </div>
+        <div className="ml-4 text-sm text-gray-500">
+          Mostrando {filteredUsers.length} usuarios
+        </div>
+      </div>
+      
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[100px]">ID</TableHead>
+            <TableHead>Documento</TableHead>
+            <TableHead>Nombre</TableHead>
+            <TableHead>Progreso</TableHead>
+            <TableHead>Premio</TableHead>
+            <TableHead>Fecha registro</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {currentUsers.length > 0 ? (
+            currentUsers.map((item) => (
+              <TableRow key={item.user.id}>
+                <TableCell className="font-medium">{item.user.id}</TableCell>
+                <TableCell>{item.user.documentNumber}</TableCell>
+                <TableCell>{item.user.name}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <div className="w-24 bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-primary h-2 rounded-full" 
+                        style={{width: `${item.completionPercentage}%`}}
+                      ></div>
+                    </div>
+                    <span className="text-xs">{item.completionPercentage}%</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {item.prize ? (
+                    <span className={
+                      item.prize.redeemed 
+                        ? "text-green-600 bg-green-100 px-2 py-0.5 rounded text-xs font-medium"
+                        : "text-amber-600 bg-amber-100 px-2 py-0.5 rounded text-xs font-medium"
+                    }>
+                      {item.prize.redeemed ? 'Reclamado' : 'Pendiente'}
+                    </span>
+                  ) : (
+                    <span className="text-gray-600 bg-gray-100 px-2 py-0.5 rounded text-xs font-medium">
+                      No disponible
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell className="text-gray-500 text-sm">
+                  {new Date(item.user.createdAt).toLocaleDateString()}
+                </TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={6} className="text-center py-4 text-gray-500">
+                No se encontraron usuarios que coincidan con la búsqueda
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+      
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-2 border-t">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={prevPage} 
+            disabled={currentPage === 1}
+          >
+            Anterior
+          </Button>
+          <span className="text-sm text-gray-600">
+            Página {currentPage} de {totalPages}
+          </span>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={nextPage} 
+            disabled={currentPage === totalPages}
+          >
+            Siguiente
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // Componente para mostrar estadísticas internas de usuarios
 const UsersInternalStats = () => {
@@ -205,10 +381,214 @@ const AnalyticsTab: React.FC = () => {
   
   // Si hay error en la API de Replit Analytics, mostramos estadísticas internas
   // Esta es una mejor alternativa que solo mostrar un mensaje de error
+  // Función para generar y descargar el informe en PDF
+  const handleExportPDF = async () => {
+    try {
+      // Obtener los datos de usuarios
+      const response = await fetch('/api/admin/users-progress');
+      if (!response.ok) {
+        throw new Error('Error al obtener datos para el informe');
+      }
+      const data = await response.json();
+      const users = data.users || [];
+      
+      // Crear el documento PDF
+      const doc = new jsPDF();
+      
+      // Añadir título y fecha
+      doc.setFontSize(20);
+      doc.setTextColor(33, 37, 41);
+      doc.text('Informe de Análisis', 105, 15, { align: 'center' });
+      
+      doc.setFontSize(12);
+      doc.setTextColor(108, 117, 125);
+      const today = new Date().toLocaleDateString('es-ES', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      doc.text(`Generado el: ${today}`, 105, 22, { align: 'center' });
+      
+      // Añadir estadísticas generales
+      doc.setFontSize(16);
+      doc.setTextColor(33, 37, 41);
+      doc.text('Estadísticas Generales', 14, 35);
+      
+      // Cuadro de resumen
+      doc.setFillColor(248, 249, 250);
+      doc.roundedRect(14, 40, 182, 25, 3, 3, 'F');
+      
+      // Añadir datos generales
+      doc.setFontSize(11);
+      doc.setTextColor(33, 37, 41);
+      
+      const totalUsers = users.length;
+      const completedUsers = users.filter(u => u.completionPercentage === 100).length;
+      const pctComplete = totalUsers > 0 ? (completedUsers / totalUsers * 100).toFixed(1) : '0';
+      
+      doc.text(`Total de Usuarios: ${totalUsers}`, 24, 50);
+      doc.text(`Usuarios con 100% progreso: ${completedUsers} (${pctComplete}%)`, 110, 50);
+      doc.text(`Dispositivos principales: Android (76%), iOS (23%)`, 24, 58);
+      doc.text(`Ubicación principal: Colombia (57.4k visitas)`, 110, 58);
+      
+      // Tabla de usuarios
+      doc.setFontSize(16);
+      doc.setTextColor(33, 37, 41);
+      doc.text('Listado de Usuarios', 14, 80);
+      
+      // Cabeceras y datos para la tabla
+      const headers = [['ID', 'Documento', 'Nombre', 'Progreso', 'Estado Premio']];
+      const userData = users.map(item => [
+        item.user.id.toString(),
+        item.user.documentNumber,
+        item.user.name,
+        `${item.completionPercentage}%`,
+        item.prize 
+          ? (item.prize.redeemed ? 'Reclamado' : 'Pendiente') 
+          : 'No disponible'
+      ]);
+      
+      // Añadir la tabla con autoTable
+      (doc as any).autoTable({
+        startY: 85,
+        head: headers,
+        body: userData,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [187, 37, 88], // Color primario
+          textColor: 255,
+          fontStyle: 'bold'
+        },
+        alternateRowStyles: {
+          fillColor: [248, 249, 250]
+        },
+        styles: {
+          fontSize: 10
+        }
+      });
+      
+      // Añadir pie de página
+      const finalY = (doc as any).lastAutoTable.finalY + 15;
+      doc.setFontSize(10);
+      doc.setTextColor(108, 117, 125);
+      doc.text('© Smartfilms 2025 - Todos los derechos reservados', 105, finalY, { align: 'center' });
+      
+      // Guardar el PDF
+      doc.save('informe-analiticas-smartfilms.pdf');
+    } catch (error) {
+      console.error('Error al generar PDF:', error);
+      alert('Error al generar el informe PDF');
+    }
+  };
+  
   // Crear un componente interno para el panel alternativo
   const AlternativeAnalyticsPanel = () => {
     // Si no hay error, no mostramos este panel
     if (!error) return null;
+    
+    // Función para exportar los datos a PDF (dentro del componente)
+    const handleExportPDF = async () => {
+      try {
+        // Obtener los datos de usuarios
+        const response = await fetch('/api/admin/users-progress');
+        if (!response.ok) {
+          throw new Error('Error al obtener datos para el informe');
+        }
+        const data = await response.json();
+        const users = data.users || [];
+        
+        // Crear el documento PDF
+        const doc = new jsPDF();
+        
+        // Añadir título y fecha
+        doc.setFontSize(20);
+        doc.setTextColor(33, 37, 41);
+        doc.text('Informe de Análisis', 105, 15, { align: 'center' });
+        
+        doc.setFontSize(12);
+        doc.setTextColor(108, 117, 125);
+        const today = new Date().toLocaleDateString('es-ES', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        doc.text(`Generado el: ${today}`, 105, 22, { align: 'center' });
+        
+        // Añadir estadísticas generales
+        doc.setFontSize(16);
+        doc.setTextColor(33, 37, 41);
+        doc.text('Estadísticas Generales', 14, 35);
+        
+        // Cuadro de resumen
+        doc.setFillColor(248, 249, 250);
+        doc.roundedRect(14, 40, 182, 25, 3, 3, 'F');
+        
+        // Añadir datos generales
+        doc.setFontSize(11);
+        doc.setTextColor(33, 37, 41);
+        
+        const totalUsers = users.length;
+        const completedUsers = users.filter(u => u.completionPercentage === 100).length;
+        const pctComplete = totalUsers > 0 ? (completedUsers / totalUsers * 100).toFixed(1) : '0';
+        
+        doc.text(`Total de Usuarios: ${totalUsers}`, 24, 50);
+        doc.text(`Usuarios con 100% progreso: ${completedUsers} (${pctComplete}%)`, 110, 50);
+        doc.text(`Dispositivos principales: Android (76%), iOS (23%)`, 24, 58);
+        doc.text(`Ubicación principal: Colombia (57.4k visitas)`, 110, 58);
+        
+        // Tabla de usuarios
+        doc.setFontSize(16);
+        doc.setTextColor(33, 37, 41);
+        doc.text('Listado de Usuarios', 14, 80);
+        
+        // Cabeceras y datos para la tabla
+        const headers = [['ID', 'Documento', 'Nombre', 'Progreso', 'Estado Premio']];
+        const userData = users.map(item => [
+          item.user.id.toString(),
+          item.user.documentNumber,
+          item.user.name,
+          `${item.completionPercentage}%`,
+          item.prize 
+            ? (item.prize.redeemed ? 'Reclamado' : 'Pendiente') 
+            : 'No disponible'
+        ]);
+        
+        // Añadir la tabla con autoTable
+        (doc as any).autoTable({
+          startY: 85,
+          head: headers,
+          body: userData,
+          theme: 'grid',
+          headStyles: {
+            fillColor: [187, 37, 88], // Color primario
+            textColor: 255,
+            fontStyle: 'bold'
+          },
+          alternateRowStyles: {
+            fillColor: [248, 249, 250]
+          },
+          styles: {
+            fontSize: 10
+          }
+        });
+        
+        // Añadir pie de página
+        const finalY = (doc as any).lastAutoTable.finalY + 15;
+        doc.setFontSize(10);
+        doc.setTextColor(108, 117, 125);
+        doc.text('© Smartfilms 2025 - Todos los derechos reservados', 105, finalY, { align: 'center' });
+        
+        // Guardar el PDF
+        doc.save('informe-analiticas-smartfilms.pdf');
+      } catch (error) {
+        console.error('Error al generar PDF:', error);
+        alert('Error al generar el informe PDF');
+      }
+    };
     
     return (
       <div className="space-y-6">
@@ -348,6 +728,29 @@ const AnalyticsTab: React.FC = () => {
           </Card>
         </div>
         
+        <Card className="mt-6">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Lista de Usuarios</CardTitle>
+              <CardDescription>Información detallada sobre los usuarios registrados</CardDescription>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center gap-1"
+              onClick={handleExportPDF}
+            >
+              <FileDown className="h-4 w-4" />
+              Exportar PDF
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border">
+              <UserListTable />
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="mt-8 px-4 py-3 bg-blue-50 rounded-md text-blue-800 text-sm">
           <details>
             <summary className="font-medium cursor-pointer">¿Por qué no puedo ver todas las analíticas?</summary>
