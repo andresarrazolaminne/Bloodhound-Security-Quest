@@ -7,290 +7,6 @@ import BrainLoader from './BrainLoader';
 import { AlertTriangle, Users, Download, FileDown, Search, Filter } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { jsPDF } from "jspdf";
-import 'jspdf-autotable';
-
-// Interfaz para usuario con progreso
-interface UserWithProgress {
-  user: {
-    id: number;
-    documentNumber: string;
-    name: string;
-    createdAt: string;
-  };
-  segments: any[];
-  totalSegments: number;
-  unlockedSegments: number;
-  completionPercentage: number;
-  prize: any | null;
-}
-
-// Componente para mostrar la tabla de usuarios
-const UserListTable = () => {
-  const [usersData, setUsersData] = useState<{users: UserWithProgress[]} | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const usersPerPage = 5;
-  
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const response = await fetch('/api/admin/users-progress');
-        if (!response.ok) {
-          throw new Error('Error fetching user progress data');
-        }
-        const data = await response.json();
-        setUsersData(data);
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchUserData();
-  }, []);
-  
-  if (isLoading) return <div className="p-4 text-center"><BrainLoader text="Cargando usuarios..." /></div>;
-  if (!usersData) return <div className="p-4 text-center text-red-500">Error al cargar usuarios</div>;
-  
-  // Filtrar por término de búsqueda
-  const filteredUsers = usersData.users.filter(item => 
-    item.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.user.documentNumber.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  
-  // Paginación
-  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
-  const indexOfLastUser = currentPage * usersPerPage;
-  const indexOfFirstUser = indexOfLastUser - usersPerPage;
-  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
-  
-  const nextPage = () => {
-    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-  };
-  
-  const prevPage = () => {
-    if (currentPage > 1) setCurrentPage(currentPage - 1);
-  };
-  
-  return (
-    <div>
-      <div className="flex items-center px-4 py-2 border-b">
-        <div className="relative flex-1">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Buscar por nombre o documento..."
-            className="pl-8 pr-4 py-2 w-full border rounded-md text-sm"
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1); // Reset to first page on search
-            }}
-          />
-        </div>
-        <div className="ml-4 text-sm text-gray-500">
-          Mostrando {filteredUsers.length} usuarios
-        </div>
-      </div>
-      
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[100px]">ID</TableHead>
-            <TableHead>Documento</TableHead>
-            <TableHead>Nombre</TableHead>
-            <TableHead>Progreso</TableHead>
-            <TableHead>Premio</TableHead>
-            <TableHead>Fecha registro</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {currentUsers.length > 0 ? (
-            currentUsers.map((item) => (
-              <TableRow key={item.user.id}>
-                <TableCell className="font-medium">{item.user.id}</TableCell>
-                <TableCell>{item.user.documentNumber}</TableCell>
-                <TableCell>{item.user.name}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="w-24 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-primary h-2 rounded-full" 
-                        style={{width: `${item.completionPercentage}%`}}
-                      ></div>
-                    </div>
-                    <span className="text-xs">{item.completionPercentage}%</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {item.prize ? (
-                    <span className={
-                      item.prize.redeemed 
-                        ? "text-green-600 bg-green-100 px-2 py-0.5 rounded text-xs font-medium"
-                        : "text-amber-600 bg-amber-100 px-2 py-0.5 rounded text-xs font-medium"
-                    }>
-                      {item.prize.redeemed ? 'Reclamado' : 'Pendiente'}
-                    </span>
-                  ) : (
-                    <span className="text-gray-600 bg-gray-100 px-2 py-0.5 rounded text-xs font-medium">
-                      No disponible
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell className="text-gray-500 text-sm">
-                  {new Date(item.user.createdAt).toLocaleDateString()}
-                </TableCell>
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={6} className="text-center py-4 text-gray-500">
-                No se encontraron usuarios que coincidan con la búsqueda
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-      
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-2 border-t">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={prevPage} 
-            disabled={currentPage === 1}
-          >
-            Anterior
-          </Button>
-          <span className="text-sm text-gray-600">
-            Página {currentPage} de {totalPages}
-          </span>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={nextPage} 
-            disabled={currentPage === totalPages}
-          >
-            Siguiente
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Componente para mostrar estadísticas internas de usuarios
-const UsersInternalStats = () => {
-  const [usersData, setUsersData] = useState<{users: any[]} | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const response = await fetch('/api/admin/users-progress');
-        if (!response.ok) {
-          throw new Error('Error fetching user progress data');
-        }
-        const data = await response.json();
-        setUsersData(data);
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchUserData();
-  }, []);
-  
-  if (isLoading) return <span className="text-gray-400">Cargando...</span>;
-  if (!usersData) return <span className="text-red-500">Error</span>;
-  
-  return <>{usersData.users.length || 0}</>;
-};
-
-// Componente para mostrar estadísticas de progreso del mapa
-const MapProgressStats = () => {
-  const [usersData, setUsersData] = useState<{users: any[]} | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const response = await fetch('/api/admin/users-progress');
-        if (!response.ok) {
-          throw new Error('Error fetching user progress data');
-        }
-        const data = await response.json();
-        setUsersData(data);
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchUserData();
-  }, []);
-  
-  if (isLoading) return <div className="flex justify-center items-center h-full"><BrainLoader text="Cargando datos..." /></div>;
-  if (!usersData) return <div className="text-red-500">Error al cargar datos</div>;
-  
-  // Procesamos los datos para el gráfico
-  const users = usersData.users || [];
-  
-  // Agrupamos usuarios por porcentaje de completitud
-  const completionGroups = {
-    'No iniciado (0%)': 0,
-    'Inicial (1-25%)': 0,
-    'Medio (26-50%)': 0, 
-    'Avanzado (51-75%)': 0,
-    'Casi completo (76-99%)': 0,
-    'Completo (100%)': 0
-  };
-  
-  users.forEach(user => {
-    const percentage = user.completionPercentage || 0;
-    
-    if (percentage === 0) completionGroups['No iniciado (0%)']++;
-    else if (percentage <= 25) completionGroups['Inicial (1-25%)']++;
-    else if (percentage <= 50) completionGroups['Medio (26-50%)']++;
-    else if (percentage <= 75) completionGroups['Avanzado (51-75%)']++;
-    else if (percentage < 100) completionGroups['Casi completo (76-99%)']++;
-    else completionGroups['Completo (100%)']++;
-  });
-  
-  const chartData = Object.entries(completionGroups).map(([name, value]) => ({
-    name,
-    value
-  }));
-  
-  const PROGRESS_COLORS = ['#CCCCCC', '#FFE58F', '#FFD666', '#FFC53D', '#FAAD14', '#52C41A'];
-  
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <PieChart>
-        <Pie
-          data={chartData}
-          cx="50%"
-          cy="50%"
-          labelLine={false}
-          outerRadius={70}
-          fill="#8884d8"
-          dataKey="value"
-          label={({ name, percent }) => percent > 0 ? `${name}: ${(percent * 100).toFixed(0)}%` : ''}
-        >
-          {chartData.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={PROGRESS_COLORS[index % PROGRESS_COLORS.length]} />
-          ))}
-        </Pie>
-        <Tooltip formatter={(value) => [`${value} usuarios`, 'Cantidad']} />
-      </PieChart>
-    </ResponsiveContainer>
-  );
-};
 
 // Colores para gráficos
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#BB2558', '#E8CF00'];
@@ -328,7 +44,6 @@ interface ReplitAnalyticsData {
   }[];
   
   // Campo opcional para mensajes de error
-  // (No es parte de la respuesta normal de la API, solo se usa cuando hay errores)
   _error?: string;
 }
 
@@ -379,115 +94,8 @@ const AnalyticsTab: React.FC = () => {
     );
   }
   
-  // Si hay error en la API de Replit Analytics, mostramos estadísticas internas
-  // Esta es una mejor alternativa que solo mostrar un mensaje de error
-  // Función para generar y descargar el informe en PDF
-  const handleExportPDF = async () => {
-    try {
-      // Obtener los datos de usuarios
-      const response = await fetch('/api/admin/users-progress');
-      if (!response.ok) {
-        throw new Error('Error al obtener datos para el informe');
-      }
-      const data = await response.json();
-      const users = data.users || [];
-      
-      // Crear el documento PDF
-      const doc = new jsPDF();
-      
-      // Añadir título y fecha
-      doc.setFontSize(20);
-      doc.setTextColor(33, 37, 41);
-      doc.text('Informe de Análisis', 105, 15, { align: 'center' });
-      
-      doc.setFontSize(12);
-      doc.setTextColor(108, 117, 125);
-      const today = new Date().toLocaleDateString('es-ES', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      doc.text(`Generado el: ${today}`, 105, 22, { align: 'center' });
-      
-      // Añadir estadísticas generales
-      doc.setFontSize(16);
-      doc.setTextColor(33, 37, 41);
-      doc.text('Estadísticas Generales', 14, 35);
-      
-      // Cuadro de resumen
-      doc.setFillColor(248, 249, 250);
-      doc.roundedRect(14, 40, 182, 25, 3, 3, 'F');
-      
-      // Añadir datos generales
-      doc.setFontSize(11);
-      doc.setTextColor(33, 37, 41);
-      
-      const totalUsers = users.length;
-      const completedUsers = users.filter(u => u.completionPercentage === 100).length;
-      const pctComplete = totalUsers > 0 ? (completedUsers / totalUsers * 100).toFixed(1) : '0';
-      
-      doc.text(`Total de Usuarios: ${totalUsers}`, 24, 50);
-      doc.text(`Usuarios con 100% progreso: ${completedUsers} (${pctComplete}%)`, 110, 50);
-      doc.text(`Dispositivos principales: Android (76%), iOS (23%)`, 24, 58);
-      doc.text(`Ubicación principal: Colombia (57.4k visitas)`, 110, 58);
-      
-      // Tabla de usuarios
-      doc.setFontSize(16);
-      doc.setTextColor(33, 37, 41);
-      doc.text('Listado de Usuarios', 14, 80);
-      
-      // Cabeceras y datos para la tabla
-      const headers = [['ID', 'Documento', 'Nombre', 'Progreso', 'Estado Premio']];
-      const userData = users.map(item => [
-        item.user.id.toString(),
-        item.user.documentNumber,
-        item.user.name,
-        `${item.completionPercentage}%`,
-        item.prize 
-          ? (item.prize.redeemed ? 'Reclamado' : 'Pendiente') 
-          : 'No disponible'
-      ]);
-      
-      // Añadir la tabla con autoTable
-      (doc as any).autoTable({
-        startY: 85,
-        head: headers,
-        body: userData,
-        theme: 'grid',
-        headStyles: {
-          fillColor: [187, 37, 88], // Color primario
-          textColor: 255,
-          fontStyle: 'bold'
-        },
-        alternateRowStyles: {
-          fillColor: [248, 249, 250]
-        },
-        styles: {
-          fontSize: 10
-        }
-      });
-      
-      // Añadir pie de página
-      const finalY = (doc as any).lastAutoTable.finalY + 15;
-      doc.setFontSize(10);
-      doc.setTextColor(108, 117, 125);
-      doc.text('© Smartfilms 2025 - Todos los derechos reservados', 105, finalY, { align: 'center' });
-      
-      // Guardar el PDF
-      doc.save('informe-analiticas-smartfilms.pdf');
-    } catch (error) {
-      console.error('Error al generar PDF:', error);
-      alert('Error al generar el informe PDF');
-    }
-  };
-  
-  // Crear un componente interno para el panel alternativo
-  const AlternativeAnalyticsPanel = () => {
-    // Si no hay error, no mostramos este panel
-    if (!error) return null;
-    
+  // Componente para las estadísticas internas
+  const InternalStats = () => {
     // Función auxiliar para convertir colores hexadecimales a RGB
     const hexToRgb = (hex: string): [number, number, number] => {
       // Eliminar el carácter # si está presente
@@ -502,101 +110,86 @@ const AnalyticsTab: React.FC = () => {
       return [r, g, b];
     };
     
-    // Función simplificada para exportar los datos como PDF
+    // Función para exportar el informe como PDF
     const handleExportPDF = async () => {
       try {
-        // Obtener los datos de usuarios
+        // Obtener datos de usuarios
         const response = await fetch('/api/admin/users-progress');
         if (!response.ok) {
-          throw new Error('Error al obtener datos para el informe');
+          throw new Error('Error al obtener datos');
         }
         const data = await response.json();
         const users = data.users || [];
         
-        // Crear un documento PDF
+        // Crear nuevo documento PDF
         const doc = new jsPDF();
         
-        // ===== PORTADA Y ENCABEZADO =====
-        // Color de fondo del encabezado
-        doc.setFillColor(187, 37, 88); // Color primario (BB2558)
-        doc.rect(0, 0, 210, 35, 'F');
+        // Cabecera colorida
+        doc.setFillColor(187, 37, 88); // Color primario 
+        doc.rect(0, 0, 210, 40, 'F');
         
         // Barra decorativa
-        doc.setFillColor(232, 207, 0); // Color secundario (E8CF00)
-        doc.rect(0, 35, 210, 3, 'F');
+        doc.setFillColor(232, 207, 0);
+        doc.rect(0, 40, 210, 4, 'F');
         
-        // Título principal
+        // Título
+        doc.setTextColor(255, 255, 255);
         doc.setFontSize(22);
-        doc.setTextColor(255, 255, 255);
         doc.text('INFORME DE ANALÍTICAS', 105, 20, {align: 'center'});
+        doc.setFontSize(15);
+        doc.text('SMARTFILMS 2025', 105, 30, {align: 'center'});
         
-        // Subtítulo
-        doc.setFontSize(14);
-        doc.setTextColor(255, 255, 255);
-        doc.text('SMARTFILMS 2025 - Lanzamiento', 105, 30, {align: 'center'});
-        
-        // Fecha de generación
-        const today = new Date().toLocaleDateString('es-ES', { 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
+        // Fecha actual
+        const fecha = new Date().toLocaleDateString('es-ES');
         doc.setFontSize(10);
-        doc.setTextColor(80, 80, 80);
-        doc.text(`Informe generado el ${today}`, 105, 45, {align: 'center'});
-        
-        // ===== SECCIÓN 1: ESTADÍSTICAS GENERALES =====
-        // Fondo del panel
-        doc.setFillColor(248, 248, 248);
-        doc.roundedRect(15, 55, 180, 65, 5, 5, 'F');
-        
-        // Barra lateral decorativa
-        doc.setFillColor(187, 37, 88); // Color primario
-        doc.rect(15, 55, 5, 20, 'F');
-        
-        // Título de sección
-        doc.setFontSize(16);
-        doc.setTextColor(60, 60, 60);
-        doc.text('DATOS GENERALES', 25, 70);
-        
-        // Panel destacado para total de usuarios
-        doc.setFillColor(232, 207, 0, 0.2); // Color secundario con transparencia
-        doc.roundedRect(140, 60, 50, 45, 3, 3, 'F');
-        doc.setFontSize(24);
         doc.setTextColor(50, 50, 50);
-        doc.text(`${users.length}`, 165, 85, {align: 'center'});
-        doc.setFontSize(9);
-        doc.setTextColor(80, 80, 80);
-        doc.text('TOTAL DE USUARIOS', 165, 95, {align: 'center'});
-        doc.text('REGISTRADOS', 165, 100, {align: 'center'});
+        doc.text(`Generado el: ${fecha}`, 105, 50, {align: 'center'});
         
-        // Estadísticas con iconos
+        // Estadísticas generales
+        doc.setFontSize(16);
+        doc.text('Estadísticas Generales', 20, 65);
+        
+        // Destacar total de usuarios
+        doc.setFillColor(245, 245, 245);
+        doc.roundedRect(20, 70, 70, 35, 3, 3, 'F');
+        doc.setFontSize(24);
+        doc.setTextColor(187, 37, 88);
+        doc.text(`${users.length}`, 55, 90, {align: 'center'});
         doc.setFontSize(10);
-        doc.setTextColor(60, 60, 60);
+        doc.setTextColor(80, 80, 80);
+        doc.text('USUARIOS REGISTRADOS', 55, 100, {align: 'center'});
         
-        // Datos de dispositivos
-        doc.setFillColor(76, 175, 80); // Verde para Android
-        doc.circle(25, 85, 3, 'F');
-        doc.text(`Android: 45,608 usuarios (76%)`, 35, 85);
+        // Datos dispositivos
+        doc.setFontSize(12);
+        doc.setTextColor(50, 50, 50);
+        doc.text('Dispositivos', 120, 75);
         
-        doc.setFillColor(33, 150, 243); // Azul para iOS
-        doc.circle(25, 95, 3, 'F');
-        doc.text(`iOS: 14,051 usuarios (23%)`, 35, 95);
+        // Datos de Android e iOS
+        doc.setFontSize(10);
+        doc.setFillColor(76, 175, 80);
+        doc.circle(110, 85, 3, 'F');
+        doc.text('Android: 45,608 (76%)', 120, 85);
         
-        // Datos de ubicación
-        doc.setFillColor(233, 30, 99); // Rosa para ubicación
-        doc.circle(25, 105, 3, 'F');
-        doc.text(`Colombia: 57,400 visitas totales`, 35, 105);
+        doc.setFillColor(33, 150, 243);
+        doc.circle(110, 95, 3, 'F');
+        doc.text('iOS: 14,051 (23%)', 120, 95);
         
-        // Direcciones IP
-        doc.setFillColor(156, 39, 176); // Púrpura para IPs
-        doc.circle(25, 115, 3, 'F');
-        doc.text(`1,418 dispositivos únicos identificados`, 35, 115);
+        // Datos geográficos
+        doc.setFontSize(12);
+        doc.setTextColor(50, 50, 50);
+        doc.text('Ubicación', 120, 115);
         
-        // ===== SECCIÓN 2: PROGRESO DE USUARIOS =====
-        // Calcular estadísticas de progreso
+        doc.setFontSize(10);
+        doc.setFillColor(233, 30, 99);
+        doc.circle(110, 125, 3, 'F');
+        doc.text('Colombia: 57,400 visitas', 120, 125);
+        
+        // Progreso de usuarios
+        doc.setFontSize(16);
+        doc.setTextColor(50, 50, 50);
+        doc.text('Progreso de Usuarios', 20, 145);
+        
+        // Calcular progreso
         let completados = 0;
         let enProgreso = 0;
         let noIniciados = 0;
@@ -607,240 +200,323 @@ const AnalyticsTab: React.FC = () => {
           else noIniciados++;
         });
         
-        const totalUsers = completados + enProgreso + noIniciados;
-        
-        // Fondo para el panel de progreso
-        doc.setFillColor(248, 248, 248);
-        doc.roundedRect(15, 130, 180, 60, 5, 5, 'F');
-        
-        // Barra lateral decorativa
-        doc.setFillColor(187, 37, 88); // Color primario
-        doc.rect(15, 130, 5, 20, 'F');
-        
-        // Título de sección
-        doc.setFontSize(16);
-        doc.setTextColor(60, 60, 60);
-        doc.text('PROGRESO DE USUARIOS', 25, 145);
-        
-        // Gráficos de barras para mostrar el progreso
-        const barLength = 70;
-        const barHeight = 8;
-        const startX = 25;
-        let barY = 160;
-        
-        // Función para dibujar una barra de progreso
-        const drawProgressBar = (y: number, value: number, total: number, color: string, label: string) => {
-          const percentage = Math.round((value / total) * 100);
-          const width = (value / total) * barLength;
-          
-          // Barra de fondo (gris)
-          doc.setFillColor(220, 220, 220);
-          doc.roundedRect(startX, y, barLength, barHeight, 2, 2, 'F');
-          
-          // Barra de progreso (color)
-          if (width > 0) {
-            const rgb = hexToRgb(color);
-            doc.setFillColor(rgb[0], rgb[1], rgb[2]);
-            doc.roundedRect(startX, y, width, barHeight, 2, 2, 'F');
-          }
-          
-          // Etiqueta y valor
-          doc.setFontSize(9);
-          doc.setTextColor(60, 60, 60);
-          doc.text(`${label}:`, startX, y - 2);
+        // Barras de progreso
+        const drawBar = (y: number, label: string, value: number, total: number, color: string) => {
           doc.setFontSize(10);
           doc.setTextColor(50, 50, 50);
-          doc.text(`${value} (${percentage}%)`, startX + barLength + 5, y + barHeight/2);
+          doc.text(label, 20, y);
+          
+          const width = 100;
+          const percent = value / total;
+          
+          // Barra base (gris)
+          doc.setFillColor(220, 220, 220);
+          doc.rect(70, y-5, width, 7, 'F');
+          
+          // Barra de progreso
+          const rgb = hexToRgb(color);
+          doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+          doc.rect(70, y-5, width * percent, 7, 'F');
+          
+          // Valor y porcentaje
+          doc.text(`${value} (${Math.round(percent * 100)}%)`, 175, y);
         };
         
-        // Dibujar barras de progreso
-        drawProgressBar(barY, completados, totalUsers, '#52C41A', 'Completado');
-        barY += 15;
-        drawProgressBar(barY, enProgreso, totalUsers, '#FAAD14', 'En progreso');
-        barY += 15;
-        drawProgressBar(barY, noIniciados, totalUsers, '#CCCCCC', 'Sin iniciar');
+        // Dibujar barras
+        drawBar(160, 'Completado:', completados, users.length, '#52C41A');
+        drawBar(175, 'En progreso:', enProgreso, users.length, '#FAAD14');
+        drawBar(190, 'Sin iniciar:', noIniciados, users.length, '#CCCCCC');
         
-        // ===== SECCIÓN 3: LISTADO DE USUARIOS =====
-        // Título para la tabla de usuarios
-        barY += 25;
-        doc.setFillColor(248, 248, 248);
-        doc.roundedRect(15, barY - 10, 180, 15, 5, 5, 'F');
-        doc.setFillColor(187, 37, 88);
-        doc.rect(15, barY - 10, 5, 15, 'F');
-        doc.setFontSize(14);
-        doc.setTextColor(60, 60, 60);
-        doc.text('LISTADO DE USUARIOS', 25, barY);
+        // Lista de usuarios
+        doc.setFontSize(16);
+        doc.setTextColor(50, 50, 50);
+        doc.text('Listado de Usuarios', 20, 210);
         
         // Encabezados de tabla
-        barY += 10;
-        doc.setDrawColor(200, 200, 200);
-        doc.line(15, barY, 195, barY);
-        barY += 6;
-        
-        doc.setFontSize(9);
-        doc.setTextColor(100, 100, 100);
-        doc.text('ID', 20, barY);
-        doc.text('Documento', 40, barY);
-        doc.text('Nombre', 80, barY);
-        doc.text('Progreso', 160, barY);
-        doc.text('Premio', 180, barY);
-        
-        // Separador de encabezado
-        barY += 3;
-        doc.setDrawColor(220, 220, 220);
-        doc.line(15, barY, 195, barY);
-        barY += 6;
-        
-        // Mostrar filas de datos (limitado a 10 para simplicidad)
-        doc.setFontSize(8);
+        doc.setFontSize(10);
         doc.setTextColor(80, 80, 80);
+        doc.text('ID', 20, 220);
+        doc.text('Documento', 40, 220);
+        doc.text('Nombre', 80, 220);
+        doc.text('Progreso', 150, 220);
+        doc.text('Premio', 180, 220);
         
-        const maxRows = Math.min(10, users.length);
-        for (let i = 0; i < maxRows; i++) {
-          const user = users[i];
-          
-          // ID
-          doc.text(user.user.id.toString(), 20, barY);
-          
-          // Documento (truncado si es muy largo)
-          const docShort = user.user.documentNumber.length > 15 
-            ? user.user.documentNumber.substring(0, 15) + '...' 
-            : user.user.documentNumber;
-          doc.text(docShort, 40, barY);
-          
-          // Nombre (truncado si es muy largo)
-          const nameShort = user.user.name.length > 30
-            ? user.user.name.substring(0, 30) + '...'
-            : user.user.name;
-          doc.text(nameShort, 80, barY);
-          
-          // Progreso con barra mini
-          const progressWidth = 25 * (user.completionPercentage / 100);
-          doc.setFillColor(220, 220, 220);
-          doc.rect(160, barY - 3, 25, 3, 'F');
-          
-          // Color según nivel de progreso
-          if (user.completionPercentage === 100) {
-            doc.setFillColor(76, 175, 80); // Verde
-          } else if (user.completionPercentage > 50) {
-            doc.setFillColor(255, 193, 7); // Amarillo
-          } else {
-            doc.setFillColor(187, 37, 88); // Rojo
-          }
-          
-          if (progressWidth > 0) {
-            doc.rect(160, barY - 3, progressWidth, 3, 'F');
-          }
-          doc.setTextColor(60, 60, 60);
-          doc.text(`${user.completionPercentage}%`, 160, barY);
-          
-          // Estado del premio
-          const prizeStatus = user.prize 
-            ? (user.prize.redeemed ? 'Reclamado' : 'Pendiente') 
-            : 'No';
-          doc.text(prizeStatus, 180, barY);
-          
-          // Línea separadora
-          barY += 6;
-          doc.setDrawColor(240, 240, 240);
-          doc.line(20, barY - 3, 190, barY - 3);
-          barY += 1;
-          
-          // Nueva página si es necesario
-          if (barY > 270 && i < maxRows - 1) {
-            doc.addPage();
-            barY = 20;
-          }
-        }
-        
-        // Indicador de más usuarios si hay más de 10
-        if (users.length > 10) {
-          barY += 5;
-          doc.setFontSize(9);
-          doc.setTextColor(120, 120, 120);
-          doc.text(`... y ${users.length - 10} usuarios más`, 105, barY, {align: 'center'});
-        }
-        
-        // ===== PIE DE PÁGINA =====
-        doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.text("© Smartfilms 2025 - Informe generado automáticamente", 105, 285, {align: 'center'});
-        
-        // Guardar el PDF
-        doc.save("Smartfilms-Informe-Analiticas.pdf");
-      } catch (error) {
-        console.error("Error al generar PDF:", error);
-        alert("Error al generar el informe PDF. Por favor, inténtelo de nuevo.");
-      }
-    };
-        
-        // Línea divisoria
-        y += 2;
+        // Línea separadora
         doc.setDrawColor(200, 200, 200);
-        doc.line(20, y, 190, y);
-        y += 6;
+        doc.line(20, 223, 190, 223);
         
-        // Filas de datos (limitado a 10 para simplificar)
+        // Mostrar hasta 10 usuarios
+        let y = 230;
         const maxUsers = Math.min(users.length, 10);
+        
         for (let i = 0; i < maxUsers; i++) {
           const user = users[i];
           
+          doc.setFontSize(8);
+          doc.setTextColor(70, 70, 70);
+          
+          // Datos del usuario
           doc.text(user.user.id.toString(), 20, y);
-          // Acortar el documento para que quepa
-          const docShort = user.user.documentNumber.length > 12 
-            ? user.user.documentNumber.substring(0, 12) + '...' 
-            : user.user.documentNumber;
-          doc.text(docShort, 40, y);
+          doc.text(user.user.documentNumber.substring(0, 12), 40, y);
+          doc.text(user.user.name.substring(0, 25), 80, y);
+          doc.text(`${user.completionPercentage}%`, 150, y);
           
-          // Acortar el nombre si es muy largo
-          const nameShort = user.user.name.length > 28 
-            ? user.user.name.substring(0, 28) + '...' 
-            : user.user.name;
-          doc.text(nameShort, 90, y);
-          
-          doc.text(`${user.completionPercentage}%`, 160, y);
-          
-          const prizeStatus = user.prize 
+          const status = user.prize 
             ? (user.prize.redeemed ? 'Reclamado' : 'Pendiente') 
             : 'No';
-          doc.text(prizeStatus, 180, y);
+          doc.text(status, 180, y);
           
-          y += 8;
-          
-          // Si llegamos al final de la página, añadir una nueva
-          if (y > 270) {
-            doc.addPage();
-            y = 20;
-          }
+          y += 7;
         }
         
-        // Si hay más usuarios, indicar que hay más
+        // Si hay más usuarios
         if (users.length > 10) {
-          y += 5;
-          doc.text(`... y ${users.length - 10} usuarios más`, 105, y, {align: 'center'});
+          doc.setFontSize(9);
+          doc.setTextColor(100, 100, 100);
+          doc.text(`... y ${users.length - 10} usuarios más`, 105, y + 5, {align: 'center'});
         }
         
         // Pie de página
         doc.setFontSize(8);
-        doc.text('© Lanzamiento Smartfilms 2025', 105, 285, {align: 'center'});
+        doc.setTextColor(150, 150, 150);
+        doc.text('© Smartfilms 2025 - Documento generado automáticamente', 105, 285, {align: 'center'});
         
-        // Guardar el PDF con el nombre apropiado
+        // Guardar PDF
         doc.save('Smartfilms-Analiticas.pdf');
-        
       } catch (error) {
         console.error('Error al generar PDF:', error);
         alert('Error al generar el informe PDF. Revisa la consola para más detalles.');
       }
     };
     
+    // Componente para mostrar total de usuarios
+    const UsersCount = () => {
+      const [usersData, setUsersData] = useState<{users: any[]} | null>(null);
+      const [isLoading, setIsLoading] = useState(true);
+      
+      useEffect(() => {
+        const fetchUserData = async () => {
+          try {
+            const response = await fetch('/api/admin/users-progress');
+            if (!response.ok) {
+              throw new Error('Error al obtener datos de usuarios');
+            }
+            const data = await response.json();
+            setUsersData(data);
+          } catch (error) {
+            console.error('Error:', error);
+          } finally {
+            setIsLoading(false);
+          }
+        };
+        
+        fetchUserData();
+      }, []);
+      
+      if (isLoading) return <span className="text-gray-400">Cargando...</span>;
+      if (!usersData) return <span className="text-red-500">Error</span>;
+      
+      return <>{usersData.users.length}</>;
+    };
+    
+    // Componente para mostrar progreso de usuarios
+    const ProgressStats = () => {
+      const [usersData, setUsersData] = useState<{users: any[]} | null>(null);
+      const [isLoading, setIsLoading] = useState(true);
+      
+      useEffect(() => {
+        const fetchUserData = async () => {
+          try {
+            const response = await fetch('/api/admin/users-progress');
+            if (!response.ok) {
+              throw new Error('Error al obtener datos de usuarios');
+            }
+            const data = await response.json();
+            setUsersData(data);
+          } catch (error) {
+            console.error('Error:', error);
+          } finally {
+            setIsLoading(false);
+          }
+        };
+        
+        fetchUserData();
+      }, []);
+      
+      if (isLoading) return <div className="flex justify-center items-center h-full"><BrainLoader text="Cargando datos..." /></div>;
+      if (!usersData) return <div className="text-red-500">Error al cargar datos</div>;
+      
+      // Calcular progreso
+      let completados = 0;
+      let enProgreso = 0;
+      let noIniciados = 0;
+      
+      usersData.users.forEach(user => {
+        if (user.completionPercentage === 100) completados++;
+        else if (user.completionPercentage > 0) enProgreso++;
+        else noIniciados++;
+      });
+      
+      const chartData = [
+        { name: 'Completo (100%)', value: completados, color: '#52C41A' },
+        { name: 'En progreso (1-99%)', value: enProgreso, color: '#FAAD14' },
+        { name: 'No iniciado (0%)', value: noIniciados, color: '#CCCCCC' }
+      ];
+      
+      return (
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={chartData}
+              cx="50%"
+              cy="50%"
+              labelLine={true}
+              outerRadius={60}
+              fill="#8884d8"
+              dataKey="value"
+              label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
+            >
+              {chartData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color} />
+              ))}
+            </Pie>
+            <Tooltip formatter={(value) => [`${value} usuarios`, 'Cantidad']} />
+          </PieChart>
+        </ResponsiveContainer>
+      );
+    };
+    
+    // Componente para la tabla de usuarios
+    const UsersList = () => {
+      const [usersData, setUsersData] = useState<{users: any[]} | null>(null);
+      const [isLoading, setIsLoading] = useState(true);
+      const [searchTerm, setSearchTerm] = useState('');
+      
+      useEffect(() => {
+        const fetchUserData = async () => {
+          try {
+            const response = await fetch('/api/admin/users-progress');
+            if (!response.ok) {
+              throw new Error('Error al obtener datos de usuarios');
+            }
+            const data = await response.json();
+            setUsersData(data);
+          } catch (error) {
+            console.error('Error:', error);
+          } finally {
+            setIsLoading(false);
+          }
+        };
+        
+        fetchUserData();
+      }, []);
+      
+      if (isLoading) return <div className="flex justify-center items-center h-32"><BrainLoader text="Cargando usuarios..." /></div>;
+      if (!usersData) return <div className="text-red-500">Error al cargar datos</div>;
+      
+      // Filtrar usuarios según búsqueda
+      const filteredUsers = usersData.users.filter(user => 
+        user.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.user.documentNumber.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      
+      return (
+        <div>
+          <div className="flex items-center mb-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar usuario por nombre o documento..."
+                className="pl-8 pr-4 py-2 w-full border rounded-md text-sm"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Button 
+              onClick={handleExportPDF} 
+              className="ml-2 bg-primary"
+            >
+              <FileDown className="h-4 w-4 mr-1" />
+              Exportar PDF
+            </Button>
+          </div>
+          
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[60px]">ID</TableHead>
+                  <TableHead>Documento</TableHead>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead className="w-[100px]">Progreso</TableHead>
+                  <TableHead className="w-[100px]">Premio</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.length > 0 ? (
+                  filteredUsers.map((user) => (
+                    <TableRow key={user.user.id}>
+                      <TableCell className="font-medium">{user.user.id}</TableCell>
+                      <TableCell>{user.user.documentNumber}</TableCell>
+                      <TableCell>{user.user.name}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className={`h-2 rounded-full ${
+                                user.completionPercentage === 100
+                                  ? 'bg-green-500'
+                                  : user.completionPercentage > 50
+                                  ? 'bg-amber-500'
+                                  : 'bg-primary'
+                              }`}
+                              style={{ width: `${user.completionPercentage}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-xs">{user.completionPercentage}%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {user.prize ? (
+                          <span
+                            className={
+                              user.prize.redeemed
+                                ? "text-green-600 bg-green-100 px-2 py-0.5 rounded text-xs font-medium"
+                                : "text-amber-600 bg-amber-100 px-2 py-0.5 rounded text-xs font-medium"
+                            }
+                          >
+                            {user.prize.redeemed ? 'Reclamado' : 'Pendiente'}
+                          </span>
+                        ) : (
+                          <span className="text-gray-600 bg-gray-100 px-2 py-0.5 rounded text-xs font-medium">
+                            No disponible
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-4 text-gray-500">
+                      No se encontraron usuarios que coincidan con la búsqueda
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      );
+    };
+    
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-800">Estadísticas de la aplicación</h2>
-          
+          <h2 className="text-2xl font-bold text-gray-800">Estadísticas internas de la aplicación</h2>
           <div className="bg-amber-100 px-3 py-1 rounded-md text-amber-800 text-sm flex items-center">
             <AlertTriangle className="h-4 w-4 mr-1" />
-            API externa no disponible - Mostrando datos internos
+            API de Replit no disponible
           </div>
         </div>
         
@@ -849,41 +525,41 @@ const AnalyticsTab: React.FC = () => {
             <CardHeader className="bg-primary text-white">
               <CardTitle className="text-xl">Usuarios registrados</CardTitle>
               <CardDescription className="text-white/80">
-                Personas que han creado una cuenta en la aplicación
+                Total de personas registradas en la aplicación
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
               <div className="flex flex-col items-center">
                 <div className="text-5xl font-bold mb-2 text-primary">
-                  <UsersInternalStats />
+                  <UsersCount />
                 </div>
-                <p className="text-gray-500 text-sm">Total de usuarios registrados</p>
+                <p className="text-gray-500 text-sm">Total de usuarios</p>
               </div>
             </CardContent>
           </Card>
           
           <Card className="overflow-hidden">
             <CardHeader className="bg-primary text-white">
-              <CardTitle className="text-xl">Progreso de Usuarios</CardTitle>
+              <CardTitle className="text-xl">Progreso de usuarios</CardTitle>
               <CardDescription className="text-white/80">
                 Distribución del avance en el mapa
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
               <div className="w-full h-[180px]">
-                <MapProgressStats />
+                <ProgressStats />
               </div>
             </CardContent>
           </Card>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        <div className="grid grid-cols-1 gap-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Distribución por Dispositivos</CardTitle>
-              <CardDescription>
-                Principales dispositivos que utilizan la aplicación
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Dispositivos</CardTitle>
+                <CardDescription>Principales dispositivos que acceden a la aplicación</CardDescription>
+              </div>
             </CardHeader>
             <CardContent>
               <ul className="space-y-3">
@@ -914,96 +590,32 @@ const AnalyticsTab: React.FC = () => {
                     <span className="text-gray-600 font-medium">216</span>
                   </div>
                 </li>
-                <li className="flex justify-between items-center">
-                  <span className="font-medium">macOS</span>
-                  <div className="flex items-center">
-                    <div className="w-32 bg-gray-200 rounded-full h-2.5 mr-2">
-                      <div className="bg-yellow-500 h-2.5 rounded-full" style={{width: '0.3%'}}></div>
-                    </div>
-                    <span className="text-gray-600 font-medium">148</span>
-                  </div>
-                </li>
-                <li className="flex justify-between items-center">
-                  <span className="font-medium">Linux</span>
-                  <div className="flex items-center">
-                    <div className="w-32 bg-gray-200 rounded-full h-2.5 mr-2">
-                      <div className="bg-red-500 h-2.5 rounded-full" style={{width: '0.05%'}}></div>
-                    </div>
-                    <span className="text-gray-600 font-medium">24</span>
-                  </div>
-                </li>
               </ul>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Estadísticas Geográficas</CardTitle>
-              <CardDescription>
-                Tráfico y alcance por ubicación
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center bg-gradient-to-r from-primary/10 to-primary/5 p-3 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-lg">Colombia</h4>
-                    <p className="text-sm text-gray-600">Principal ubicación</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-semibold text-primary">57.4k</p>
-                    <p className="text-xs text-gray-500">visitas totales</p>
-                  </div>
-                </div>
-                
-                <div className="pt-2">
-                  <div className="flex justify-between mb-1 text-sm">
-                    <span className="font-medium">Direcciones IP únicas</span>
-                    <span className="text-gray-600">1,418</span>
-                  </div>
-                  <div className="h-1.5 bg-gray-200 rounded-full">
-                    <div className="h-1.5 rounded-full bg-primary" style={{width: '100%'}}></div>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">Representa el total de dispositivos distintos que accedieron a la aplicación</p>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </div>
         
-        <Card className="mt-6">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Lista de Usuarios</CardTitle>
-              <CardDescription>Información detallada sobre los usuarios registrados</CardDescription>
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex items-center gap-1"
-              onClick={handleExportPDF}
-            >
-              <FileDown className="h-4 w-4" />
-              Exportar PDF
-            </Button>
+        <Card>
+          <CardHeader>
+            <CardTitle>Lista de Usuarios</CardTitle>
+            <CardDescription>Información detallada de todos los usuarios registrados</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
-              <UserListTable />
-            </div>
+            <UsersList />
           </CardContent>
         </Card>
-
-        <div className="mt-8 px-4 py-3 bg-blue-50 rounded-md text-blue-800 text-sm">
+        
+        <div className="mt-4 px-4 py-3 bg-blue-50 rounded-md text-blue-800 text-sm">
           <details>
-            <summary className="font-medium cursor-pointer">¿Por qué no puedo ver todas las analíticas?</summary>
+            <summary className="font-medium cursor-pointer">¿Por qué no puedo ver las analíticas de Replit?</summary>
             <div className="mt-2 pl-4 text-blue-700 space-y-2">
-              <p>La API de Analytics de Replit no está disponible actualmente. Error: {error}</p>
-              <p>Puedes intentar seguir estos pasos para habilitar las analíticas avanzadas:</p>
+              <p>Error: {error}</p>
+              <p>Las analíticas de Replit podrían requerir un token válido o un plan específico.</p>
+              <p>Para continuar utilizando analíticas, puedes:</p>
               <ol className="list-decimal pl-5 space-y-1">
-                <li>Ve a la pestaña "Secrets" en tu Repl</li>
-                <li>Añade un token de Replit como <code className="bg-blue-100 px-1 rounded">REPLIT_ANALYTICS_TOKEN</code></li>
-                <li>Considera usar una solución alternativa como Google Analytics para estadísticas más detalladas</li>
+                <li>Agregar un token válido en los secretos del Repl</li>
+                <li>Utilizar una alternativa como Google Analytics</li>
+                <li>Usar las estadísticas internas de la aplicación (mostradas aquí)</li>
               </ol>
             </div>
           </details>
@@ -1012,9 +624,9 @@ const AnalyticsTab: React.FC = () => {
     );
   };
   
-  // Si hay error, mostrar panel alternativo
+  // Si hay error, mostrar el componente de estadísticas internas
   if (error) {
-    return <AlternativeAnalyticsPanel />;
+    return <InternalStats />;
   }
   
   // Si no hay datos, mostrar estado vacío
