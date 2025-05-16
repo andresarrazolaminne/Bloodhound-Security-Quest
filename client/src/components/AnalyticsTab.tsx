@@ -59,20 +59,29 @@ const AnalyticsTab: React.FC = () => {
       setError(null);
       
       try {
-        const response = await fetch(`/api/admin/analytics?timeRange=${timeRange}`);
+        // Intentar primero con el nuevo endpoint de datos completos
+        const response = await fetch(`/api/admin/analitica`);
         
-        if (!response.ok) {
-          throw new Error('Error al obtener datos de analíticas');
-        }
-        
-        const data = await response.json();
-        
-        // Verificamos si la respuesta contiene un mensaje de error
-        if (data._error) {
-          setError(data._error);
-          setAnalyticsData(data); // Aún así guardamos los datos vacíos para evitar errores
-        } else {
+        if (response.ok) {
+          const data = await response.json();
           setAnalyticsData(data);
+        } else {
+          // Si falla, intentar con el endpoint original
+          const fallbackResponse = await fetch(`/api/admin/analytics?timeRange=${timeRange}`);
+          
+          if (!fallbackResponse.ok) {
+            throw new Error('Error al obtener datos de analíticas');
+          }
+          
+          const fallbackData = await fallbackResponse.json();
+          
+          // Verificamos si la respuesta contiene un mensaje de error
+          if (fallbackData._error) {
+            setError(fallbackData._error);
+            setAnalyticsData(fallbackData); // Aún así guardamos los datos vacíos para evitar errores
+          } else {
+            setAnalyticsData(fallbackData);
+          }
         }
       } catch (err) {
         setError('No se pudieron cargar los datos de analíticas');

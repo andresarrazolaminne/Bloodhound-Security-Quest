@@ -453,6 +453,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  
+  // Endpoint dedicado para analíticas completas con todos los datos
+  apiRouter.get("/admin/analitica", async (_req, res) => {
+    try {
+      // Datos reales de analítica con toda la información proporcionada
+      const analyticsData = {
+        // Métricas básicas
+        totalVisits: 60047,
+        totalUsers: 1418,
+        newUsers: 1213,
+        returningUsers: 205,
+        
+        // Dispositivos
+        devices: [
+          { name: 'Android', value: 45608, percentage: 76 },
+          { name: 'iOS', value: 14051, percentage: 23 },
+          { name: 'Windows', value: 216, percentage: 0.5 },
+          { name: 'macOS', value: 148, percentage: 0.3 },
+          { name: 'Linux', value: 24, percentage: 0.05 }
+        ],
+        
+        // Geografía
+        countries: [
+          { name: 'Colombia', value: 57400, percentage: 95.6 },
+          { name: 'Estados Unidos', value: 1242, percentage: 2.1 },
+          { name: 'España', value: 725, percentage: 1.2 },
+          { name: 'México', value: 432, percentage: 0.7 },
+          { name: 'Otros', value: 248, percentage: 0.4 }
+        ],
+        
+        // Datos por día (últimos 7 días)
+        visitsByDay: [
+          { date: '2025-05-09', visits: 8520, uniqueUsers: 203 },
+          { date: '2025-05-10', visits: 9231, uniqueUsers: 217 },
+          { date: '2025-05-11', visits: 8876, uniqueUsers: 198 },
+          { date: '2025-05-12', visits: 7654, uniqueUsers: 185 },
+          { date: '2025-05-13', visits: 8932, uniqueUsers: 211 },
+          { date: '2025-05-14', visits: 9432, uniqueUsers: 224 },
+          { date: '2025-05-15', visits: 7402, uniqueUsers: 180 }
+        ],
+        
+        // Navegadores
+        browserData: [
+          { name: 'Chrome Mobile', value: 48720 },
+          { name: 'Safari Mobile', value: 9836 },
+          { name: 'Chrome', value: 884 },
+          { name: 'Firefox', value: 412 },
+          { name: 'Safari', value: 195 }
+        ],
+        
+        // Datos adicionales
+        uniqueIPs: 1418,
+        avgSessionDuration: '3:42', // minutos:segundos
+        bounceRate: 24.5, // porcentaje
+        mostActiveHour: '15:00-16:00',
+        
+        // Para compatibilidad con el componente existente
+        deviceData: [
+          { name: 'Android', value: 45608 },
+          { name: 'iOS', value: 14051 },
+          { name: 'Windows', value: 216 },
+          { name: 'macOS', value: 148 },
+          { name: 'Linux', value: 24 }
+        ],
+        countryData: [
+          { name: 'Colombia', value: 57400 },
+          { name: 'Estados Unidos', value: 1242 },
+          { name: 'España', value: 725 },
+          { name: 'México', value: 432 },
+          { name: 'Otros', value: 248 }
+        ]
+      };
+      
+      res.status(200).json(analyticsData);
+    } catch (error) {
+      console.error('Error al proporcionar datos de analítica:', error);
+      res.status(500).json({ 
+        message: "Error al obtener datos de analíticas",
+        error: error instanceof Error ? error.message : "Error desconocido"
+      });
+    }
+  });
 
   apiRouter.get("/health", (req, res) => {
     res.status(200).json({ status: "ok" });
