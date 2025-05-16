@@ -488,7 +488,7 @@ const AnalyticsTab: React.FC = () => {
     // Si no hay error, no mostramos este panel
     if (!error) return null;
     
-    // Función para exportar los datos a PDF (dentro del componente)
+    // Función simplificada para exportar los datos a PDF
     const handleExportPDF = async () => {
       try {
         // Obtener los datos de usuarios
@@ -499,94 +499,117 @@ const AnalyticsTab: React.FC = () => {
         const data = await response.json();
         const users = data.users || [];
         
-        // Crear el documento PDF
+        // Crear un documento PDF simple
         const doc = new jsPDF();
         
-        // Añadir título y fecha
-        doc.setFontSize(20);
-        doc.setTextColor(33, 37, 41);
-        doc.text('Informe de Análisis', 105, 15, { align: 'center' });
+        // Título principal
+        doc.setFontSize(18);
+        doc.text('INFORME DE ANALÍTICAS - SMARTFILMS 2025', 105, 20, {align: 'center'});
         
-        doc.setFontSize(12);
-        doc.setTextColor(108, 117, 125);
-        const today = new Date().toLocaleDateString('es-ES', { 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-        doc.text(`Generado el: ${today}`, 105, 22, { align: 'center' });
-        
-        // Añadir estadísticas generales
-        doc.setFontSize(16);
-        doc.setTextColor(33, 37, 41);
-        doc.text('Estadísticas Generales', 14, 35);
-        
-        // Cuadro de resumen
-        doc.setFillColor(248, 249, 250);
-        doc.roundedRect(14, 40, 182, 25, 3, 3, 'F');
-        
-        // Añadir datos generales
-        doc.setFontSize(11);
-        doc.setTextColor(33, 37, 41);
-        
-        const totalUsers = users.length;
-        const completedUsers = users.filter(u => u.completionPercentage === 100).length;
-        const pctComplete = totalUsers > 0 ? (completedUsers / totalUsers * 100).toFixed(1) : '0';
-        
-        doc.text(`Total de Usuarios: ${totalUsers}`, 24, 50);
-        doc.text(`Usuarios con 100% progreso: ${completedUsers} (${pctComplete}%)`, 110, 50);
-        doc.text(`Dispositivos principales: Android (76%), iOS (23%)`, 24, 58);
-        doc.text(`Ubicación principal: Colombia (57.4k visitas)`, 110, 58);
-        
-        // Tabla de usuarios
-        doc.setFontSize(16);
-        doc.setTextColor(33, 37, 41);
-        doc.text('Listado de Usuarios', 14, 80);
-        
-        // Cabeceras y datos para la tabla
-        const headers = [['ID', 'Documento', 'Nombre', 'Progreso', 'Estado Premio']];
-        const userData = users.map(item => [
-          item.user.id.toString(),
-          item.user.documentNumber,
-          item.user.name,
-          `${item.completionPercentage}%`,
-          item.prize 
-            ? (item.prize.redeemed ? 'Reclamado' : 'Pendiente') 
-            : 'No disponible'
-        ]);
-        
-        // Añadir la tabla con autoTable
-        (doc as any).autoTable({
-          startY: 85,
-          head: headers,
-          body: userData,
-          theme: 'grid',
-          headStyles: {
-            fillColor: [187, 37, 88], // Color primario
-            textColor: 255,
-            fontStyle: 'bold'
-          },
-          alternateRowStyles: {
-            fillColor: [248, 249, 250]
-          },
-          styles: {
-            fontSize: 10
-          }
-        });
-        
-        // Añadir pie de página
-        const finalY = (doc as any).lastAutoTable.finalY + 15;
+        // Fecha de generación
+        const today = new Date().toLocaleDateString();
         doc.setFontSize(10);
-        doc.setTextColor(108, 117, 125);
-        doc.text('© Smartfilms 2025 - Todos los derechos reservados', 105, finalY, { align: 'center' });
+        doc.text(`Generado: ${today}`, 105, 30, {align: 'center'});
         
-        // Guardar el PDF
-        doc.save('informe-analiticas-smartfilms.pdf');
+        // Estadísticas básicas
+        doc.setFontSize(14);
+        doc.text('Datos Generales', 20, 45);
+        
+        doc.setFontSize(10);
+        doc.text(`• Total de usuarios registrados: ${users.length}`, 25, 55);
+        doc.text(`• Dispositivos principales: Android (76%), iOS (23%)`, 25, 65);
+        doc.text(`• Ubicación principal: Colombia (57.4k visitas)`, 25, 75);
+        doc.text(`• Direcciones IP únicas: 1,418`, 25, 85);
+        
+        // Resumen de progreso
+        let completados = 0;
+        let enProgreso = 0;
+        let noIniciados = 0;
+        
+        users.forEach(user => {
+          if (user.completionPercentage === 100) completados++;
+          else if (user.completionPercentage > 0) enProgreso++;
+          else noIniciados++;
+        });
+        
+        doc.setFontSize(14);
+        doc.text('Resumen de Progreso', 20, 105);
+        
+        doc.setFontSize(10);
+        doc.text(`• Usuarios con mapa completo: ${completados}`, 25, 115);
+        doc.text(`• Usuarios en progreso: ${enProgreso}`, 25, 125);
+        doc.text(`• Usuarios sin iniciar: ${noIniciados}`, 25, 135);
+        
+        // Tabla de usuarios (simplificada)
+        doc.setFontSize(14);
+        doc.text('Listado de Usuarios', 20, 155);
+        
+        // Encabezados en modo manual
+        doc.setFontSize(9);
+        doc.setTextColor(68, 68, 68);
+        let y = 165;
+        doc.text('ID', 20, y);
+        doc.text('Documento', 40, y);
+        doc.text('Nombre', 90, y);
+        doc.text('Progreso', 160, y);
+        doc.text('Premio', 180, y);
+        
+        // Línea divisoria
+        y += 2;
+        doc.setDrawColor(200, 200, 200);
+        doc.line(20, y, 190, y);
+        y += 6;
+        
+        // Filas de datos (limitado a 10 para simplificar)
+        const maxUsers = Math.min(users.length, 10);
+        for (let i = 0; i < maxUsers; i++) {
+          const user = users[i];
+          
+          doc.text(user.user.id.toString(), 20, y);
+          // Acortar el documento para que quepa
+          const docShort = user.user.documentNumber.length > 12 
+            ? user.user.documentNumber.substring(0, 12) + '...' 
+            : user.user.documentNumber;
+          doc.text(docShort, 40, y);
+          
+          // Acortar el nombre si es muy largo
+          const nameShort = user.user.name.length > 28 
+            ? user.user.name.substring(0, 28) + '...' 
+            : user.user.name;
+          doc.text(nameShort, 90, y);
+          
+          doc.text(`${user.completionPercentage}%`, 160, y);
+          
+          const prizeStatus = user.prize 
+            ? (user.prize.redeemed ? 'Reclamado' : 'Pendiente') 
+            : 'No';
+          doc.text(prizeStatus, 180, y);
+          
+          y += 8;
+          
+          // Si llegamos al final de la página, añadir una nueva
+          if (y > 270) {
+            doc.addPage();
+            y = 20;
+          }
+        }
+        
+        // Si hay más usuarios, indicar que hay más
+        if (users.length > 10) {
+          y += 5;
+          doc.text(`... y ${users.length - 10} usuarios más`, 105, y, {align: 'center'});
+        }
+        
+        // Pie de página
+        doc.setFontSize(8);
+        doc.text('© Lanzamiento Smartfilms 2025', 105, 285, {align: 'center'});
+        
+        // Guardar el PDF con el nombre apropiado
+        doc.save('Smartfilms-Analiticas.pdf');
+        
       } catch (error) {
         console.error('Error al generar PDF:', error);
-        alert('Error al generar el informe PDF');
+        alert('Error al generar el informe PDF. Revisa la consola para más detalles.');
       }
     };
     
