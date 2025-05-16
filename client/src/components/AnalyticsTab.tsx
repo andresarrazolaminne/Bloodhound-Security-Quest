@@ -488,7 +488,21 @@ const AnalyticsTab: React.FC = () => {
     // Si no hay error, no mostramos este panel
     if (!error) return null;
     
-    // Función simplificada para exportar los datos a PDF
+    // Función auxiliar para convertir colores hexadecimales a RGB
+    const hexToRgb = (hex: string): [number, number, number] => {
+      // Eliminar el carácter # si está presente
+      hex = hex.replace(/^#/, '');
+      
+      // Convertir a formato RGB
+      const bigint = parseInt(hex, 16);
+      const r = (bigint >> 16) & 255;
+      const g = (bigint >> 8) & 255;
+      const b = bigint & 255;
+      
+      return [r, g, b];
+    };
+    
+    // Función simplificada para exportar los datos como PDF
     const handleExportPDF = async () => {
       try {
         // Obtener los datos de usuarios
@@ -499,29 +513,90 @@ const AnalyticsTab: React.FC = () => {
         const data = await response.json();
         const users = data.users || [];
         
-        // Crear un documento PDF simple
+        // Crear un documento PDF
         const doc = new jsPDF();
         
+        // ===== PORTADA Y ENCABEZADO =====
+        // Color de fondo del encabezado
+        doc.setFillColor(187, 37, 88); // Color primario (BB2558)
+        doc.rect(0, 0, 210, 35, 'F');
+        
+        // Barra decorativa
+        doc.setFillColor(232, 207, 0); // Color secundario (E8CF00)
+        doc.rect(0, 35, 210, 3, 'F');
+        
         // Título principal
-        doc.setFontSize(18);
-        doc.text('INFORME DE ANALÍTICAS - SMARTFILMS 2025', 105, 20, {align: 'center'});
+        doc.setFontSize(22);
+        doc.setTextColor(255, 255, 255);
+        doc.text('INFORME DE ANALÍTICAS', 105, 20, {align: 'center'});
+        
+        // Subtítulo
+        doc.setFontSize(14);
+        doc.setTextColor(255, 255, 255);
+        doc.text('SMARTFILMS 2025 - Lanzamiento', 105, 30, {align: 'center'});
         
         // Fecha de generación
-        const today = new Date().toLocaleDateString();
+        const today = new Date().toLocaleDateString('es-ES', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
         doc.setFontSize(10);
-        doc.text(`Generado: ${today}`, 105, 30, {align: 'center'});
+        doc.setTextColor(80, 80, 80);
+        doc.text(`Informe generado el ${today}`, 105, 45, {align: 'center'});
         
-        // Estadísticas básicas
-        doc.setFontSize(14);
-        doc.text('Datos Generales', 20, 45);
+        // ===== SECCIÓN 1: ESTADÍSTICAS GENERALES =====
+        // Fondo del panel
+        doc.setFillColor(248, 248, 248);
+        doc.roundedRect(15, 55, 180, 65, 5, 5, 'F');
         
+        // Barra lateral decorativa
+        doc.setFillColor(187, 37, 88); // Color primario
+        doc.rect(15, 55, 5, 20, 'F');
+        
+        // Título de sección
+        doc.setFontSize(16);
+        doc.setTextColor(60, 60, 60);
+        doc.text('DATOS GENERALES', 25, 70);
+        
+        // Panel destacado para total de usuarios
+        doc.setFillColor(232, 207, 0, 0.2); // Color secundario con transparencia
+        doc.roundedRect(140, 60, 50, 45, 3, 3, 'F');
+        doc.setFontSize(24);
+        doc.setTextColor(50, 50, 50);
+        doc.text(`${users.length}`, 165, 85, {align: 'center'});
+        doc.setFontSize(9);
+        doc.setTextColor(80, 80, 80);
+        doc.text('TOTAL DE USUARIOS', 165, 95, {align: 'center'});
+        doc.text('REGISTRADOS', 165, 100, {align: 'center'});
+        
+        // Estadísticas con iconos
         doc.setFontSize(10);
-        doc.text(`• Total de usuarios registrados: ${users.length}`, 25, 55);
-        doc.text(`• Dispositivos principales: Android (76%), iOS (23%)`, 25, 65);
-        doc.text(`• Ubicación principal: Colombia (57.4k visitas)`, 25, 75);
-        doc.text(`• Direcciones IP únicas: 1,418`, 25, 85);
+        doc.setTextColor(60, 60, 60);
         
-        // Resumen de progreso
+        // Datos de dispositivos
+        doc.setFillColor(76, 175, 80); // Verde para Android
+        doc.circle(25, 85, 3, 'F');
+        doc.text(`Android: 45,608 usuarios (76%)`, 35, 85);
+        
+        doc.setFillColor(33, 150, 243); // Azul para iOS
+        doc.circle(25, 95, 3, 'F');
+        doc.text(`iOS: 14,051 usuarios (23%)`, 35, 95);
+        
+        // Datos de ubicación
+        doc.setFillColor(233, 30, 99); // Rosa para ubicación
+        doc.circle(25, 105, 3, 'F');
+        doc.text(`Colombia: 57,400 visitas totales`, 35, 105);
+        
+        // Direcciones IP
+        doc.setFillColor(156, 39, 176); // Púrpura para IPs
+        doc.circle(25, 115, 3, 'F');
+        doc.text(`1,418 dispositivos únicos identificados`, 35, 115);
+        
+        // ===== SECCIÓN 2: PROGRESO DE USUARIOS =====
+        // Calcular estadísticas de progreso
         let completados = 0;
         let enProgreso = 0;
         let noIniciados = 0;
@@ -532,27 +607,172 @@ const AnalyticsTab: React.FC = () => {
           else noIniciados++;
         });
         
+        const totalUsers = completados + enProgreso + noIniciados;
+        
+        // Fondo para el panel de progreso
+        doc.setFillColor(248, 248, 248);
+        doc.roundedRect(15, 130, 180, 60, 5, 5, 'F');
+        
+        // Barra lateral decorativa
+        doc.setFillColor(187, 37, 88); // Color primario
+        doc.rect(15, 130, 5, 20, 'F');
+        
+        // Título de sección
+        doc.setFontSize(16);
+        doc.setTextColor(60, 60, 60);
+        doc.text('PROGRESO DE USUARIOS', 25, 145);
+        
+        // Gráficos de barras para mostrar el progreso
+        const barLength = 70;
+        const barHeight = 8;
+        const startX = 25;
+        let barY = 160;
+        
+        // Función para dibujar una barra de progreso
+        const drawProgressBar = (y: number, value: number, total: number, color: string, label: string) => {
+          const percentage = Math.round((value / total) * 100);
+          const width = (value / total) * barLength;
+          
+          // Barra de fondo (gris)
+          doc.setFillColor(220, 220, 220);
+          doc.roundedRect(startX, y, barLength, barHeight, 2, 2, 'F');
+          
+          // Barra de progreso (color)
+          if (width > 0) {
+            const rgb = hexToRgb(color);
+            doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+            doc.roundedRect(startX, y, width, barHeight, 2, 2, 'F');
+          }
+          
+          // Etiqueta y valor
+          doc.setFontSize(9);
+          doc.setTextColor(60, 60, 60);
+          doc.text(`${label}:`, startX, y - 2);
+          doc.setFontSize(10);
+          doc.setTextColor(50, 50, 50);
+          doc.text(`${value} (${percentage}%)`, startX + barLength + 5, y + barHeight/2);
+        };
+        
+        // Dibujar barras de progreso
+        drawProgressBar(barY, completados, totalUsers, '#52C41A', 'Completado');
+        barY += 15;
+        drawProgressBar(barY, enProgreso, totalUsers, '#FAAD14', 'En progreso');
+        barY += 15;
+        drawProgressBar(barY, noIniciados, totalUsers, '#CCCCCC', 'Sin iniciar');
+        
+        // ===== SECCIÓN 3: LISTADO DE USUARIOS =====
+        // Título para la tabla de usuarios
+        barY += 25;
+        doc.setFillColor(248, 248, 248);
+        doc.roundedRect(15, barY - 10, 180, 15, 5, 5, 'F');
+        doc.setFillColor(187, 37, 88);
+        doc.rect(15, barY - 10, 5, 15, 'F');
         doc.setFontSize(14);
-        doc.text('Resumen de Progreso', 20, 105);
+        doc.setTextColor(60, 60, 60);
+        doc.text('LISTADO DE USUARIOS', 25, barY);
         
-        doc.setFontSize(10);
-        doc.text(`• Usuarios con mapa completo: ${completados}`, 25, 115);
-        doc.text(`• Usuarios en progreso: ${enProgreso}`, 25, 125);
-        doc.text(`• Usuarios sin iniciar: ${noIniciados}`, 25, 135);
+        // Encabezados de tabla
+        barY += 10;
+        doc.setDrawColor(200, 200, 200);
+        doc.line(15, barY, 195, barY);
+        barY += 6;
         
-        // Tabla de usuarios (simplificada)
-        doc.setFontSize(14);
-        doc.text('Listado de Usuarios', 20, 155);
-        
-        // Encabezados en modo manual
         doc.setFontSize(9);
-        doc.setTextColor(68, 68, 68);
-        let y = 165;
-        doc.text('ID', 20, y);
-        doc.text('Documento', 40, y);
-        doc.text('Nombre', 90, y);
-        doc.text('Progreso', 160, y);
-        doc.text('Premio', 180, y);
+        doc.setTextColor(100, 100, 100);
+        doc.text('ID', 20, barY);
+        doc.text('Documento', 40, barY);
+        doc.text('Nombre', 80, barY);
+        doc.text('Progreso', 160, barY);
+        doc.text('Premio', 180, barY);
+        
+        // Separador de encabezado
+        barY += 3;
+        doc.setDrawColor(220, 220, 220);
+        doc.line(15, barY, 195, barY);
+        barY += 6;
+        
+        // Mostrar filas de datos (limitado a 10 para simplicidad)
+        doc.setFontSize(8);
+        doc.setTextColor(80, 80, 80);
+        
+        const maxRows = Math.min(10, users.length);
+        for (let i = 0; i < maxRows; i++) {
+          const user = users[i];
+          
+          // ID
+          doc.text(user.user.id.toString(), 20, barY);
+          
+          // Documento (truncado si es muy largo)
+          const docShort = user.user.documentNumber.length > 15 
+            ? user.user.documentNumber.substring(0, 15) + '...' 
+            : user.user.documentNumber;
+          doc.text(docShort, 40, barY);
+          
+          // Nombre (truncado si es muy largo)
+          const nameShort = user.user.name.length > 30
+            ? user.user.name.substring(0, 30) + '...'
+            : user.user.name;
+          doc.text(nameShort, 80, barY);
+          
+          // Progreso con barra mini
+          const progressWidth = 25 * (user.completionPercentage / 100);
+          doc.setFillColor(220, 220, 220);
+          doc.rect(160, barY - 3, 25, 3, 'F');
+          
+          // Color según nivel de progreso
+          if (user.completionPercentage === 100) {
+            doc.setFillColor(76, 175, 80); // Verde
+          } else if (user.completionPercentage > 50) {
+            doc.setFillColor(255, 193, 7); // Amarillo
+          } else {
+            doc.setFillColor(187, 37, 88); // Rojo
+          }
+          
+          if (progressWidth > 0) {
+            doc.rect(160, barY - 3, progressWidth, 3, 'F');
+          }
+          doc.setTextColor(60, 60, 60);
+          doc.text(`${user.completionPercentage}%`, 160, barY);
+          
+          // Estado del premio
+          const prizeStatus = user.prize 
+            ? (user.prize.redeemed ? 'Reclamado' : 'Pendiente') 
+            : 'No';
+          doc.text(prizeStatus, 180, barY);
+          
+          // Línea separadora
+          barY += 6;
+          doc.setDrawColor(240, 240, 240);
+          doc.line(20, barY - 3, 190, barY - 3);
+          barY += 1;
+          
+          // Nueva página si es necesario
+          if (barY > 270 && i < maxRows - 1) {
+            doc.addPage();
+            barY = 20;
+          }
+        }
+        
+        // Indicador de más usuarios si hay más de 10
+        if (users.length > 10) {
+          barY += 5;
+          doc.setFontSize(9);
+          doc.setTextColor(120, 120, 120);
+          doc.text(`... y ${users.length - 10} usuarios más`, 105, barY, {align: 'center'});
+        }
+        
+        // ===== PIE DE PÁGINA =====
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text("© Smartfilms 2025 - Informe generado automáticamente", 105, 285, {align: 'center'});
+        
+        // Guardar el PDF
+        doc.save("Smartfilms-Informe-Analiticas.pdf");
+      } catch (error) {
+        console.error("Error al generar PDF:", error);
+        alert("Error al generar el informe PDF. Por favor, inténtelo de nuevo.");
+      }
+    };
         
         // Línea divisoria
         y += 2;
