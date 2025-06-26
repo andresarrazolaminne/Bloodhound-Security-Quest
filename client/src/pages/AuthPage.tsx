@@ -79,7 +79,15 @@ const AuthPage = () => {
       setLastDocument(documentNumber);
       
       setCurrentUser(response.user);
-      setLocation("/map");
+      
+      // Verificar si hay un redirect pendiente
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectUrl = urlParams.get('redirect');
+      if (redirectUrl) {
+        setLocation(decodeURIComponent(redirectUrl));
+      } else {
+        setLocation("/map");
+      }
       
     } catch (error) {
       // If user doesn't exist, redirect to registration
