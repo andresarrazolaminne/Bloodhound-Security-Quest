@@ -115,6 +115,8 @@ const AdminPage = () => {
     isTrap: false,
     generateNewCode: false
   });
+  
+  const [segmentFilter, setSegmentFilter] = useState<"all" | "normal" | "trap">("all");
 
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -543,6 +545,33 @@ const AdminPage = () => {
                 </Button>
               </div>
 
+              {/* Estadísticas y filtro de QR */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center bg-gray-50 p-4 rounded-lg">
+                <div className="flex gap-4 items-center">
+                  <div className="text-sm text-gray-600">
+                    Total: <span className="font-semibold">{mapAssets.length}</span>
+                  </div>
+                  <div className="text-sm text-green-600">
+                    ✅ Normales: <span className="font-semibold">{mapAssets.filter(a => !a.isTrap).length}</span>
+                  </div>
+                  <div className="text-sm text-orange-600">
+                    🎯 Trampa: <span className="font-semibold">{mapAssets.filter(a => a.isTrap).length}</span>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2">
+                  <select
+                    value={segmentFilter}
+                    onChange={(e) => setSegmentFilter(e.target.value as "all" | "normal" | "trap")}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">Todos los QR</option>
+                    <option value="normal">Solo QR Normales</option>
+                    <option value="trap">Solo QR Trampa</option>
+                  </select>
+                </div>
+              </div>
+
               {loadingAssets ? (
                 <div className="flex justify-center py-10">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -554,7 +583,13 @@ const AdminPage = () => {
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {mapAssets.map((asset) => (
+                  {mapAssets
+                    .filter(asset => {
+                      if (segmentFilter === "normal") return !asset.isTrap;
+                      if (segmentFilter === "trap") return asset.isTrap;
+                      return true; // "all"
+                    })
+                    .map((asset) => (
                     <Card key={asset.id} className="overflow-hidden">
                       <div className="relative aspect-square">
                         <img 
@@ -596,6 +631,21 @@ const AdminPage = () => {
                             </span>
                           </div>
                         )}
+
+                        {/* Indicador de tipo de QR */}
+                        <div className="flex items-center mt-2">
+                          {asset.isTrap ? (
+                            <div className="flex items-center text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                              <span className="mr-1">🎯</span>
+                              <span className="font-semibold">QR Trampa</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                              <span className="mr-1">✅</span>
+                              <span className="font-semibold">QR Normal</span>
+                            </div>
+                          )}
+                        </div>
                       </CardContent>
 
                       <CardFooter className="flex justify-between p-4 pt-0">
