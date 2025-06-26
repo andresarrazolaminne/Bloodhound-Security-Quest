@@ -245,6 +245,12 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
   
   // Detener la transmisión de la cámara
   const stopCamera = () => {
+    // Cancelar cualquier frame request pendiente
+    if (frameRequestRef.current) {
+      cancelAnimationFrame(frameRequestRef.current);
+      frameRequestRef.current = null;
+    }
+    
     if (!videoRef.current || !videoRef.current.srcObject) return;
     
     const stream = videoRef.current.srcObject as MediaStream;
@@ -257,8 +263,9 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
   
   // Referencia para control de tiempo entre escaneos
   const lastScanRef = useRef<number>(0);
-  const scanIntervalRef = useRef<number>(30); // reducido a 30ms para escaneo más rápido
+  const scanIntervalRef = useRef<number>(50); // optimizado para mejor balance rendimiento/detección
   const successTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const frameRequestRef = useRef<number | null>(null);
 
   // Escanear continuamente códigos QR con optimización de rendimiento
   const scanQRCode = () => {
@@ -278,14 +285,14 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
     
     if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
       // Si el video no está listo, intentar de nuevo en el próximo frame
-      requestAnimationFrame(scanQRCode);
+      frameRequestRef.current = requestAnimationFrame(scanQRCode);
       return;
     }
     
     // Control de frecuencia de escaneo para reducir carga de CPU
     const now = Date.now();
     if (now - lastScanRef.current < scanIntervalRef.current) {
-      requestAnimationFrame(scanQRCode);
+      frameRequestRef.current = requestAnimationFrame(scanQRCode);
       return;
     }
     lastScanRef.current = now;
@@ -321,42 +328,76 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
         let segmentId: number;
         let securityCode: string | undefined;
         
-        try {
-          // Primero intentar como JSON
-          const data = JSON.parse(code.data);
+        // Nuevo: Detectar y procesar URLs completas
+        if (code.data.startsWith('http://') || code.data.startsWith('https://')) {
+          console.log("Detectado código QR con URL:", code.data);
           
-          // Formato nuevo con ID y código de seguridad
-          if (data && typeof data.segmentId === 'number') {
-            segmentId = data.segmentId;
-            // Si hay código de seguridad, lo guardamos
-            if (data.securityCode && typeof data.securityCode === 'string') {
-              securityCode = data.securityCode;
-            }
-          } else {
-            throw new Error("Formato JSON inválido");
-          }
-        } catch (jsonError) {
-          // Formato alternativo que combina segmentId y securityCode 
-          // en un formato como "3:ABC12" (segmento 3, código ABC12)
-          if (code.data.includes(':')) {
-            const parts = code.data.split(':');
-            if (parts.length === 2) {
-              segmentId = parseInt(parts[0]);
-              securityCode = parts[1];
+          try {
+            const url = new URL(code.data);
+            
+            // Verificar si es una URL de unlock de nuestra aplicación
+            if (url.pathname === '/unlock') {
+              const urlSegmentId = url.searchParams.get('segment');
+              const urlSecurityCode = url.searchParams.get('code');
               
-              // Verificar que tenemos valores válidos
-              if (isNaN(segmentId) || !securityCode) {
+              if (urlSegmentId && urlSecurityCode) {
+                segmentId = parseInt(urlSegmentId);
+                securityCode = urlSecurityCode;
+                
+                if (isNaN(segmentId)) {
+                  throw new Error("ID de segmento inválido en URL");
+                }
+                
+                console.log("URL de unlock procesada exitosamente:", { segmentId, securityCode });
+              } else {
+                throw new Error("URL de unlock incompleta - faltan parámetros segment o code");
+              }
+            } else {
+              throw new Error(`URL no reconocida: ${url.pathname}. Se esperaba /unlock`);
+            }
+          } catch (urlError) {
+            console.error("Error procesando URL:", urlError);
+            throw new Error("URL de código QR inválida");
+          }
+        } else {
+          // Procesar formatos tradicionales (JSON, texto, etc.)
+          try {
+            // Primero intentar como JSON
+            const data = JSON.parse(code.data);
+            
+            // Formato nuevo con ID y código de seguridad
+            if (data && typeof data.segmentId === 'number') {
+              segmentId = data.segmentId;
+              // Si hay código de seguridad, lo guardamos
+              if (data.securityCode && typeof data.securityCode === 'string') {
+                securityCode = data.securityCode;
+              }
+            } else {
+              throw new Error("Formato JSON inválido");
+            }
+          } catch (jsonError) {
+            // Formato alternativo que combina segmentId y securityCode 
+            // en un formato como "3:ABC12" (segmento 3, código ABC12)
+            if (code.data.includes(':')) {
+              const parts = code.data.split(':');
+              if (parts.length === 2) {
+                segmentId = parseInt(parts[0]);
+                securityCode = parts[1];
+                
+                // Verificar que tenemos valores válidos
+                if (isNaN(segmentId) || !securityCode) {
+                  throw new Error("Formato de código QR inválido");
+                }
+              } else {
                 throw new Error("Formato de código QR inválido");
               }
             } else {
-              throw new Error("Formato de código QR inválido");
-            }
-          } else {
-            // Formato más antiguo (solo número de segmento)
-            segmentId = parseInt(code.data);
-            
-            if (isNaN(segmentId)) {
-              throw new Error("El código QR no contiene un número válido");
+              // Formato más antiguo (solo número de segmento)
+              segmentId = parseInt(code.data);
+              
+              if (isNaN(segmentId)) {
+                throw new Error("El código QR no contiene un número válido");
+              }
             }
           }
         }
@@ -397,11 +438,11 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
         });
         
         // Continuar escaneando después de un error
-        requestAnimationFrame(scanQRCode);
+        frameRequestRef.current = requestAnimationFrame(scanQRCode);
       }
     } else {
       // No se encontró código, seguir escaneando
-      requestAnimationFrame(scanQRCode);
+      frameRequestRef.current = requestAnimationFrame(scanQRCode);
     }
   };
   
