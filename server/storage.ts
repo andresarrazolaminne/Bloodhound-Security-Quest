@@ -608,7 +608,7 @@ export class DatabaseStorage implements IStorage {
         return configAny;
       }
       
-      return config || null;
+      return null;
     } catch (error) {
       console.error('Error getting system config:', error);
       
@@ -652,7 +652,7 @@ export class DatabaseStorage implements IStorage {
           .where(eq(systemConfig.id, existingConfig.id))
           .returning();
         
-        return updatedConfig as SystemConfig;
+        return updatedConfig as any;
       } else {
         // Crear nueva configuración
         const [newConfig] = await db
@@ -663,7 +663,7 @@ export class DatabaseStorage implements IStorage {
           })
           .returning();
         
-        return newConfig as SystemConfig;
+        return newConfig as any;
       }
     } catch (error) {
       console.error("Error al actualizar la configuración:", error);
