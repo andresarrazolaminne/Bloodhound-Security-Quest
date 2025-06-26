@@ -73,10 +73,12 @@ export class MemStorage implements IStorage {
   private prizes: Map<number, Prize>;
   private redemptionCodes: Map<string, number>; // redemptionCode -> userId
   private mapAssets: Map<number, MapSegmentAsset>; // segmentId -> asset
+  private trapPoints: Map<number, TrapPoints[]>; // userId -> TrapPoints[]
   private currentUserId: number;
   private currentSegmentId: number;
   private currentPrizeId: number;
   private currentAssetId: number;
+  private currentTrapPointId: number;
 
   constructor() {
     this.users = new Map();
@@ -84,10 +86,12 @@ export class MemStorage implements IStorage {
     this.prizes = new Map();
     this.redemptionCodes = new Map();
     this.mapAssets = new Map();
+    this.trapPoints = new Map();
     this.currentUserId = 1;
     this.currentSegmentId = 1;
     this.currentPrizeId = 1;
     this.currentAssetId = 1;
+    this.currentTrapPointId = 1;
   }
 
   // User operations
@@ -254,15 +258,43 @@ export class MemStorage implements IStorage {
     this.mapAssets.delete(segmentId);
   }
   
+  // Trap points operations
+  async addTrapPoints(userId: number, segmentId: number, points: number = 1): Promise<TrapPoints> {
+    const trapPoint: TrapPoints = {
+      id: this.currentTrapPointId++,
+      userId,
+      segmentId,
+      pointsAwarded: points,
+      scannedAt: new Date()
+    };
+
+    const userTrapPoints = this.trapPoints.get(userId) || [];
+    userTrapPoints.push(trapPoint);
+    this.trapPoints.set(userId, userTrapPoints);
+
+    return trapPoint;
+  }
+
+  async getTrapPointsByUserId(userId: number): Promise<TrapPoints[]> {
+    return this.trapPoints.get(userId) || [];
+  }
+
+  async getTotalTrapPointsByUserId(userId: number): Promise<number> {
+    const userTrapPoints = this.trapPoints.get(userId) || [];
+    return userTrapPoints.reduce((total, trapPoint) => total + trapPoint.pointsAwarded, 0);
+  }
+
   // Reset user data for testing
   async resetAllUserData(): Promise<void> {
     this.users.clear();
     this.segments.clear();
     this.prizes.clear();
     this.redemptionCodes.clear();
+    this.trapPoints.clear();
     this.currentUserId = 1;
     this.currentSegmentId = 1;
     this.currentPrizeId = 1;
+    this.currentTrapPointId = 1;
   }
 
   // System configuration operations
@@ -753,6 +785,40 @@ export class DatabaseStorage implements IStorage {
       // Si ninguno completó, ordenar por porcentaje de completado (mayor primero)
       return b.completionPercentage - a.completionPercentage;
     });
+  }
+
+  // Trap points operations
+  async addTrapPoints(userId: number, segmentId: number, points: number = 1): Promise<TrapPoints> {
+    const [trapPoint] = await db
+      .insert(trapPoints)
+      .values({
+        userId,
+        segmentId,
+        pointsAwarded: points
+      })
+      .returning();
+    
+    return trapPoint;
+  }
+
+  async getTrapPointsByUserId(userId: number): Promise<TrapPoints[]> {
+    return await db
+      .select()
+      .from(trapPoints)
+      .where(eq(trapPoints.userId, userId))
+      .orderBy(desc(trapPoints.scannedAt));
+  }
+
+  async getTotalTrapPointsByUserId(userId: number): Promise<number> {
+    const userTrapPoints = await this.getTrapPointsByUserId(userId);
+    return userTrapPoints.reduce((total, trapPoint) => total + trapPoint.pointsAwarded, 0);
+  }
+
+  async resetAllUserData(): Promise<void> {
+    await db.delete(trapPoints);
+    await db.delete(mapSegments);
+    await db.delete(prizes);
+    await db.delete(users);
   }
 }
 
