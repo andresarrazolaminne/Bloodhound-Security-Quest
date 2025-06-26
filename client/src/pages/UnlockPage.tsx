@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useUser } from '@/context/UserContext';
-import { unlockSegment } from '@/lib/api';
+import { unlockSegment, login } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, Loader2, MapPin } from 'lucide-react';
@@ -37,14 +37,30 @@ const UnlockPage = () => {
         return;
       }
 
+      // Si no hay usuario, intentar autenticación con el último documento usado
       if (!currentUser) {
-        console.log('UnlockPage - Sin usuario, redirigiendo a login');
-        // Redirigir a login con parámetros para volver después
+        console.log('UnlockPage - Sin usuario, intentando auto-login...');
+        
+        const lastDocument = localStorage.getItem("last_login_document");
+        if (lastDocument) {
+          try {
+            console.log('UnlockPage - Intentando login automático con:', lastDocument);
+            const response = await login(lastDocument);
+            setCurrentUser(response.user);
+            console.log('UnlockPage - Auto-login exitoso');
+            // El efecto se volverá a ejecutar con el usuario ya cargado
+            return;
+          } catch (error) {
+            console.log('UnlockPage - Auto-login falló, redirigiendo al login');
+          }
+        }
+        
+        // Si no hay último documento o falló el auto-login, redirigir
         setLocation(`/auth?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
         return;
       }
 
-      console.log('UnlockPage - Iniciando proceso de desbloqueo');
+      console.log('UnlockPage - Usuario cargado, iniciando proceso de desbloqueo');
       setIsProcessing(true);
 
       try {
@@ -78,7 +94,7 @@ const UnlockPage = () => {
         // Redirigir al mapa después de un breve delay
         setTimeout(() => {
           setLocation('/map');
-        }, 3000);
+        }, 2000);
 
       } catch (error: any) {
         console.error('UnlockPage - Error:', error);
@@ -99,7 +115,7 @@ const UnlockPage = () => {
     };
 
     processUnlock();
-  }, [currentUser, addUnlockedSegment, setLocation, toast]);
+  }, [currentUser, addUnlockedSegment, setLocation, toast, setCurrentUser]);
 
   if (isProcessing) {
     return (

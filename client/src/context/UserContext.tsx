@@ -11,6 +11,7 @@ interface UserContextType {
   setIsMapCompleted: (completed: boolean) => void;
   redemptionCode: string | null;
   setRedemptionCode: (code: string | null) => void;
+  isUserLoading: boolean;
   logout: () => void;
 }
 
