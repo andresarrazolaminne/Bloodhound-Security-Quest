@@ -7,8 +7,8 @@ export const systemConfig = pgTable("system_config", {
   id: serial("id").primaryKey(),
   instructionsText: text("instructions_text").notNull(),
   siteMapImageUrl: text("site_map_image_url").notNull(),
-  footerLogoUrl: text("footer_logo_url").default('https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png'),
-  cobrandingImageUrl: text("cobranding_image_url").default('https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png'),
+  footerLogoUrl: text("footer_logo_url").notNull().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png'),
+  cobrandingImageUrl: text("cobranding_image_url").notNull().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png'),
   mapGapSize: text("map_gap_size").notNull().default('medium'),
   mapGridSize: text("map_grid_size").notNull().default('3x3'),
   updatedAt: timestamp("updated_at").notNull().defaultNow()

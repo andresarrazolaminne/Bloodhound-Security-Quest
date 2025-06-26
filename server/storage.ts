@@ -84,8 +84,10 @@ export class MemStorage implements IStorage {
 
   // User operations
   async getUserByDocumentNumber(documentNumber: string): Promise<User | undefined> {
-    for (const [, user] of this.users) {
-      if (user.documentNumber === documentNumber) {
+    const userIds = Array.from(this.users.keys());
+    for (const userId of userIds) {
+      const user = this.users.get(userId);
+      if (user && user.documentNumber === documentNumber) {
         return user;
       }
     }
@@ -299,7 +301,11 @@ export class MemStorage implements IStorage {
     let totalSegments = 9;
     
     // Recorrer todos los usuarios
-    for (const [, user] of this.users) {
+    const userIds = Array.from(this.users.keys());
+    for (const userId of userIds) {
+      const user = this.users.get(userId);
+      if (!user) continue;
+      
       const segments = this.segments.get(user.id) || [];
       const unlockedSegments = segments.filter(s => s.unlocked).length;
       const completionPercentage = (unlockedSegments / totalSegments) * 100;
@@ -586,18 +592,20 @@ export class DatabaseStorage implements IStorage {
       
       // Si los campos de configuración no existen en la base de datos, los añadimos en memoria
       if (config) {
-        if (!('mapGapSize' in config)) {
-          config.mapGapSize = 'medium';
+        const configAny = config as any;
+        if (!configAny.mapGapSize) {
+          configAny.mapGapSize = 'medium';
         }
-        if (!('mapGridSize' in config)) {
-          config.mapGridSize = '3x3';
+        if (!configAny.mapGridSize) {
+          configAny.mapGridSize = '3x3';
         }
-        if (!('footerLogoUrl' in config)) {
-          config.footerLogoUrl = 'https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png';
+        if (!configAny.footerLogoUrl) {
+          configAny.footerLogoUrl = 'https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png';
         }
-        if (!('cobrandingImageUrl' in config)) {
-          config.cobrandingImageUrl = 'https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png';
+        if (!configAny.cobrandingImageUrl) {
+          configAny.cobrandingImageUrl = 'https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png';
         }
+        return configAny;
       }
       
       return config || null;
@@ -644,7 +652,7 @@ export class DatabaseStorage implements IStorage {
           .where(eq(systemConfig.id, existingConfig.id))
           .returning();
         
-        return updatedConfig;
+        return updatedConfig as SystemConfig;
       } else {
         // Crear nueva configuración
         const [newConfig] = await db
@@ -655,7 +663,7 @@ export class DatabaseStorage implements IStorage {
           })
           .returning();
         
-        return newConfig;
+        return newConfig as SystemConfig;
       }
     } catch (error) {
       console.error("Error al actualizar la configuración:", error);
