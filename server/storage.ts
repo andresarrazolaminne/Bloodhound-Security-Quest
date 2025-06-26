@@ -43,6 +43,10 @@ export interface IStorage {
   updateMapSegmentAsset(segmentId: number, asset: Partial<InsertMapSegmentAsset>): Promise<MapSegmentAsset>;
   deleteMapSegmentAsset(segmentId: number): Promise<void>;
   
+  // System configuration operations
+  getSystemConfig(): Promise<any>;
+  updateSystemConfig(configData: any): Promise<any>;
+  
   // Admin statistics
   getAllUsersWithProgress(): Promise<Array<{
     user: User;
@@ -80,7 +84,7 @@ export class MemStorage implements IStorage {
 
   // User operations
   async getUserByDocumentNumber(documentNumber: string): Promise<User | undefined> {
-    for (const user of this.users.values()) {
+    for (const [, user] of this.users) {
       if (user.documentNumber === documentNumber) {
         return user;
       }
@@ -249,6 +253,35 @@ export class MemStorage implements IStorage {
     this.currentSegmentId = 1;
     this.currentPrizeId = 1;
   }
+
+  // System configuration operations
+  async getSystemConfig(): Promise<any> {
+    // Return default configuration for MemStorage
+    return {
+      id: 1,
+      instructionsText: "Bienvenido a nuestra aplicación. Sigue las instrucciones para participar.",
+      siteMapImageUrl: "https://i.pinimg.com/736x/df/93/10/df93101fdd1057543ae9a6bf2ff16b1c.jpg",
+      footerLogoUrl: "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png",
+      cobrandingImageUrl: "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png",
+      mapGapSize: "medium",
+      mapGridSize: "3x3",
+      updatedAt: new Date()
+    };
+  }
+
+  async updateSystemConfig(configData: any): Promise<any> {
+    // For MemStorage, just return the provided data with defaults
+    return {
+      id: 1,
+      instructionsText: configData.instructionsText || "Bienvenido a nuestra aplicación. Sigue las instrucciones para participar.",
+      siteMapImageUrl: configData.siteMapImageUrl || "https://i.pinimg.com/736x/df/93/10/df93101fdd1057543ae9a6bf2ff16b1c.jpg",
+      footerLogoUrl: configData.footerLogoUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png",
+      cobrandingImageUrl: configData.cobrandingImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png",
+      mapGapSize: configData.mapGapSize || "medium",
+      mapGridSize: configData.mapGridSize || "3x3",
+      updatedAt: new Date()
+    };
+  }
   
   // Admin statistics
   async getAllUsersWithProgress(): Promise<Array<{
@@ -266,7 +299,7 @@ export class MemStorage implements IStorage {
     let totalSegments = 9;
     
     // Recorrer todos los usuarios
-    for (const user of this.users.values()) {
+    for (const [, user] of this.users) {
       const segments = this.segments.get(user.id) || [];
       const unlockedSegments = segments.filter(s => s.unlocked).length;
       const completionPercentage = (unlockedSegments / totalSegments) * 100;

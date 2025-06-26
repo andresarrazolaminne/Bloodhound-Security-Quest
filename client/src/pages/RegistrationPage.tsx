@@ -56,7 +56,7 @@ const RegistrationPage = () => {
       // Intentar extraer el mensaje de error detallado
       let errorMessage = "No pudimos registrar tu cuenta. Inténtalo de nuevo.";
 
-      if (error?.json) {
+      if (error instanceof Response) {
         try {
           const errorData = await error.json();
           if (errorData?.message) {
@@ -64,7 +64,10 @@ const RegistrationPage = () => {
           }
         } catch (e) {
           // Si no podemos parsear el error, usamos el mensaje genérico
+          errorMessage = `Error ${error.status}: ${error.statusText}`;
         }
+      } else if (error?.message) {
+        errorMessage = error.message;
       }
 
       toast({

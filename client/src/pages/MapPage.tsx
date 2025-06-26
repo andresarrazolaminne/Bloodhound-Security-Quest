@@ -40,12 +40,14 @@ const MapPage = () => {
     instructionsText: string;
     siteMapImageUrl: string;
     footerLogoUrl: string;
+    cobrandingImageUrl: string;
     mapGapSize: 'none' | 'x-small' | 'small' | 'medium' | 'large';
     mapGridSize: '3x3' | '3x2' | '2x3' | '4x2' | '2x4';
   }>({
     instructionsText: '',
     siteMapImageUrl: 'https://i.pinimg.com/736x/df/93/10/df93101fdd1057543ae9a6bf2ff16b1c.jpg',
     footerLogoUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png',
+    cobrandingImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png',
     mapGapSize: 'medium',
     mapGridSize: '3x3'
   });
