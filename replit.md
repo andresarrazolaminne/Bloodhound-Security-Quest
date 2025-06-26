@@ -135,3 +135,5 @@ Changelog:
 - June 26, 2025. Initial setup
 - June 26, 2025. Enhanced QR system with URL support for universal compatibility
 - June 26, 2025. Completed end-to-end QR URL unlock flow with auto-login and seamless user experience
+- June 26, 2025. Implemented QR trap codes system for workplace safety risk identification training
+- June 26, 2025. Added false points ranking system and admin controls for trap QR management

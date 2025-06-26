@@ -568,6 +568,11 @@ const AdminPage = () => {
                         <div className="absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-sm">
                           Segmento {asset.segmentId}
                         </div>
+                        {asset.isTrap && (
+                          <div className="absolute top-2 left-2 bg-orange-500 text-white px-2 py-1 rounded text-xs font-semibold">
+                            🎯 TRAMPA
+                          </div>
+                        )}
                       </div>
 
                       <CardContent className="p-4">

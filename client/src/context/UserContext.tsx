@@ -11,6 +11,9 @@ interface UserContextType {
   setIsMapCompleted: (completed: boolean) => void;
   redemptionCode: string | null;
   setRedemptionCode: (code: string | null) => void;
+  trapPoints: number;
+  setTrapPoints: (points: number) => void;
+  addTrapPoints: (points: number) => void;
   isUserLoading: boolean;
   logout: () => void;
 }
@@ -22,6 +25,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [unlockedSegments, setUnlockedSegmentsState] = useState<number[]>([]);
   const [isMapCompleted, setIsMapCompleted] = useState<boolean>(false);
   const [redemptionCode, setRedemptionCode] = useState<string | null>(null);
+  const [trapPoints, setTrapPoints] = useState<number>(0);
 
   const setUnlockedSegments = (segmentIds: number[]) => {
     setUnlockedSegmentsState(segmentIds);
@@ -44,6 +48,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const addTrapPoints = (points: number) => {
+    setTrapPoints(prev => prev + points);
+  };
+
   const logout = () => {
     // Limpiar localStorage para evitar auto-login
     try {
@@ -57,6 +65,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setUnlockedSegmentsState([]);
     setIsMapCompleted(false);
     setRedemptionCode(null);
+    setTrapPoints(0);
   };
 
   const value = {
@@ -69,6 +78,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setIsMapCompleted,
     redemptionCode,
     setRedemptionCode,
+    trapPoints,
+    setTrapPoints,
+    addTrapPoints,
+    isUserLoading: false,
     logout
   };
 

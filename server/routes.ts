@@ -283,6 +283,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Obtener ranking de puntos trampa para mostrar en el admin
+  apiRouter.get("/admin/trap-points-ranking", async (req, res) => {
+    try {
+      const usersWithProgress = await storage.getAllUsersWithProgress();
+      
+      // Agregar puntos trampa a cada usuario
+      const ranking = await Promise.all(
+        usersWithProgress.map(async (userProgress) => {
+          const totalTrapPoints = await storage.getTotalTrapPointsByUserId(userProgress.user.id);
+          const trapPointsHistory = await storage.getTrapPointsByUserId(userProgress.user.id);
+          
+          return {
+            ...userProgress,
+            totalTrapPoints,
+            trapPointsHistory
+          };
+        })
+      );
+      
+      // Ordenar por puntos trampa (mayor a menor)
+      ranking.sort((a, b) => b.totalTrapPoints - a.totalTrapPoints);
+      
+      return res.status(200).json({ ranking });
+    } catch (error) {
+      console.error("Error getting trap points ranking:", error);
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
   // Admin Dashboard routes for map segment assets
   apiRouter.get("/admin/map-assets", async (req, res) => {
     try {
