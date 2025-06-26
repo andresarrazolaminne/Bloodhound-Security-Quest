@@ -301,8 +301,8 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
     
-    // Usar dimensiones más grandes para mejor detección, incluso si es un poco más lento
-    const scaleFactor = 0.9; // Escalar al 90% para mejor reconocimiento
+    // Optimizar dimensiones para mejor detección de URLs (que suelen tener más datos)
+    const scaleFactor = 1.0; // Usar resolución completa para URLs más largas
     const captureWidth = video.videoWidth * scaleFactor;
     const captureHeight = video.videoHeight * scaleFactor;
     
@@ -321,7 +321,7 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
     });
     
     if (code) {
-      console.log("¡Código QR encontrado!", code.data);
+      console.log("¡Código QR encontrado!", code.data.substring(0, 100) + (code.data.length > 100 ? "..." : ""));
       
       try {
         // Intentar procesar el contenido
@@ -429,11 +429,22 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
         } else {
           throw new Error(`Segmento ${segmentId} fuera de rango (1-16)`);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error procesando QR:", error);
+        // Mensaje más específico según el tipo de error
+        let errorMessage = "El código escaneado no es válido.";
+        
+        if (error?.message?.includes("URL")) {
+          errorMessage = "La URL del código QR no es válida o no corresponde a esta aplicación.";
+        } else if (error?.message?.includes("JSON")) {
+          errorMessage = "El formato del código QR no es reconocido.";
+        } else if (error?.message?.includes("rango")) {
+          errorMessage = "El segmento debe estar entre 1 y 16.";
+        }
+        
         toast({
           title: "Código QR no válido",
-          description: "El código escaneado no corresponde a un segmento del mapa. Debe ser un número del 1 al 16.",
+          description: errorMessage,
           variant: "destructive"
         });
         
