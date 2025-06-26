@@ -61,6 +61,7 @@ interface MapAssetFormData {
   title: string;
   description: string;
   securityCode: string;
+  isTrap: boolean;
   generateNewCode?: boolean;
 }
 
@@ -111,6 +112,7 @@ const AdminPage = () => {
     title: "",
     description: "",
     securityCode: "",
+    isTrap: false,
     generateNewCode: false
   });
 
@@ -222,6 +224,7 @@ const AdminPage = () => {
       title: "",
       description: "",
       securityCode: "",
+      isTrap: false,
       generateNewCode: true
     });
     setDialogOpen(true);
@@ -238,6 +241,7 @@ const AdminPage = () => {
       title: asset.title,
       description: asset.description || "",
       securityCode: asset.securityCode || "",
+      isTrap: asset.isTrap || false,
       generateNewCode: false
     });
     setDialogOpen(true);
@@ -1285,6 +1289,29 @@ const AdminPage = () => {
                   {formData.generateNewCode 
                     ? "Se generará un nuevo código de seguridad al guardar" 
                     : "Código alfanumérico de 5 caracteres que los usuarios deberán escanear para desbloquear este segmento"}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="isTrap" className="text-right">
+                QR Trampa
+              </label>
+              <div className="col-span-3 space-y-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="isTrap"
+                    checked={formData.isTrap}
+                    onChange={(e) => setFormData({...formData, isTrap: e.target.checked})}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="isTrap" className="text-sm text-gray-700">
+                    Este QR es una trampa (no desbloquea segmento real)
+                  </label>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Los QR trampa otorgan puntos falsos para situaciones sin riesgo real. Se usan para crear un ranking más interesante en actividades de identificación de riesgos laborales.
                 </p>
               </div>
             </div>
