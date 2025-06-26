@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const UnlockPage = () => {
   const [location, setLocation] = useLocation();
-  const { currentUser, addUnlockedSegment } = useUser();
+  const { currentUser, addUnlockedSegment, setCurrentUser } = useUser();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<{
@@ -47,8 +47,12 @@ const UnlockPage = () => {
             console.log('UnlockPage - Intentando login automático con:', lastDocument);
             const response = await login(lastDocument);
             setCurrentUser(response.user);
-            console.log('UnlockPage - Auto-login exitoso');
-            // El efecto se volverá a ejecutar con el usuario ya cargado
+            console.log('UnlockPage - Auto-login exitoso, reintentando desbloqueo...');
+            
+            // Procesar desbloqueo inmediatamente después del login exitoso
+            setTimeout(() => {
+              processUnlock();
+            }, 100);
             return;
           } catch (error) {
             console.log('UnlockPage - Auto-login falló, redirigiendo al login');
@@ -65,13 +69,13 @@ const UnlockPage = () => {
 
       try {
         console.log('UnlockPage - Llamando API unlock con:', {
-          documentNumber: currentUser.documentNumber,
+          documentNumber: currentUser!.documentNumber,
           segmentId: parseInt(segmentId),
           securityCode
         });
 
         const response = await unlockSegment(
-          currentUser.documentNumber,
+          currentUser!.documentNumber,
           parseInt(segmentId),
           securityCode
         );
@@ -114,7 +118,12 @@ const UnlockPage = () => {
       }
     };
 
-    processUnlock();
+    // Pequeño delay para asegurar que el efecto se ejecute después de actualizar el estado
+    const timeoutId = setTimeout(() => {
+      processUnlock();
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
   }, [currentUser, addUnlockedSegment, setLocation, toast, setCurrentUser]);
 
   if (isProcessing) {
