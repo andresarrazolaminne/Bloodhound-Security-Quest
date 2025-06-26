@@ -33,8 +33,10 @@ This is a QR code-based treasure hunt application where users scan QR codes to u
 - User context provider for global state management
 
 **QR Code System:**
-- Dual QR code format support: URLs and traditional codes
-- URL format allows scanning with any device QR reader
+- Universal QR compatibility with URL format as default
+- URL format enables scanning with native phone camera apps
+- Automatic login and segment unlock from external QR scans
+- Dedicated QRUnlockHandler for seamless external access
 - Client-side QR scanning using device camera for legacy codes
 - Security code validation for each map segment
 - Real-time segment unlocking with visual feedback
@@ -132,3 +134,4 @@ Preferred communication style: Simple, everyday language.
 Changelog:
 - June 26, 2025. Initial setup
 - June 26, 2025. Enhanced QR system with URL support for universal compatibility
+- June 26, 2025. Completed end-to-end QR URL unlock flow with auto-login and seamless user experience
