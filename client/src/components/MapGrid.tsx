@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import MapSegment from "./MapSegment";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 interface MapGridProps {
   unlockedSegments: number[];

@@ -145,17 +145,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if all segments are completed
       const allSegments = await storage.getSegmentsByUserId(user.id);
       
-      // Obtener la configuración del sistema para determinar el número total de segmentos
-      const config = await storage.getSystemConfig();
-      let totalSegments = 9; // Valor predeterminado (3x3)
+      // Get all valid (non-trap) segment assets to calculate actual progress
+      const allAssets = await storage.getAllMapSegmentAssets();
+      const validAssets = allAssets.filter(asset => !asset.isTrap);
+      const totalSegments = validAssets.length;
       
-      if (config && config.mapGridSize) {
-        // Calcular el total de segmentos basados en el tamaño de la cuadrícula (columnas x filas)
-        const [columns, rows] = config.mapGridSize.split('x').map(Number);
-        totalSegments = columns * rows;
-      }
-      
-      const unlockedSegments = allSegments.filter(s => s.unlocked).length;
+      // Only count unlocked segments that correspond to valid (non-trap) assets
+      const validSegmentIds = validAssets.map(asset => asset.segmentId);
+      const unlockedSegments = allSegments.filter(s => 
+        s.unlocked && validSegmentIds.includes(s.segmentId)
+      ).length;
       
       let redemptionCode = null;
       if (unlockedSegments === totalSegments) {
@@ -411,7 +410,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         title: z.string().optional(),
         description: z.string().nullable().optional(),
         securityCode: z.string().optional(),
-        isTrap: z.boolean().optional()
+        isTrap: z.boolean().optional(),
+        trapMessage: z.string().nullable().optional()
       }).parse(req.body);
       
       // Generar un código de seguridad aleatorio si se solicita explícitamente
