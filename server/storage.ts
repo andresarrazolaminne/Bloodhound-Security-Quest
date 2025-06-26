@@ -3,6 +3,7 @@ import {
   users, 
   prizes, 
   mapSegmentAssets, 
+  trapPoints,
   systemConfig, 
   type User, 
   type InsertUser, 
@@ -12,6 +13,8 @@ import {
   type InsertPrize, 
   type MapSegmentAsset, 
   type InsertMapSegmentAsset,
+  type TrapPoints,
+  type InsertTrapPoints,
   type SystemConfig,
   insertSystemConfigSchema
 } from '@shared/schema';
@@ -26,6 +29,11 @@ export interface IStorage {
   // Map segment operations
   getSegmentsByUserId(userId: number): Promise<MapSegment[]>;
   unlockSegment(userId: number, segmentId: number): Promise<MapSegment>;
+  
+  // Trap points operations
+  addTrapPoints(userId: number, segmentId: number, points?: number): Promise<TrapPoints>;
+  getTrapPointsByUserId(userId: number): Promise<TrapPoints[]>;
+  getTotalTrapPointsByUserId(userId: number): Promise<number>;
   
   // Reset all user data (for testing)
   resetAllUserData(): Promise<void>;
@@ -218,6 +226,7 @@ export class MemStorage implements IStorage {
       title: asset.title || "",
       description: asset.description || null,
       securityCode: asset.securityCode || "",
+      isTrap: asset.isTrap || false,
       updatedAt: new Date()
     };
 

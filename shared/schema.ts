@@ -64,7 +64,17 @@ export const mapSegmentAssets = pgTable("map_segment_assets", {
   title: text("title").notNull().default(""),
   description: text("description"),
   securityCode: text("security_code").notNull().default(""), // Nuevo campo para código de seguridad
+  isTrap: boolean("is_trap").default(false), // Campo para indicar si es un QR trampa
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Tabla para rastrear puntos falsos de usuarios
+export const trapPoints = pgTable("trap_points", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  segmentId: integer("segment_id").notNull(),
+  pointsAwarded: integer("points_awarded").default(1), // Puntos falsos otorgados
+  scannedAt: timestamp("scanned_at").notNull().defaultNow(),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -93,6 +103,13 @@ export const insertMapSegmentAssetsSchema = createInsertSchema(mapSegmentAssets)
   title: true,
   description: true,
   securityCode: true,
+  isTrap: true,
+});
+
+export const insertTrapPointsSchema = createInsertSchema(trapPoints).pick({
+  userId: true,
+  segmentId: true,
+  pointsAwarded: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -106,3 +123,6 @@ export type Prize = typeof prizes.$inferSelect;
 
 export type InsertMapSegmentAsset = z.infer<typeof insertMapSegmentAssetsSchema>;
 export type MapSegmentAsset = typeof mapSegmentAssets.$inferSelect;
+
+export type InsertTrapPoints = z.infer<typeof insertTrapPointsSchema>;
+export type TrapPoints = typeof trapPoints.$inferSelect;
