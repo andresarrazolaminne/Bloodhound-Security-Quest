@@ -125,6 +125,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Verificar si es un QR trampa
+      if (segmentAsset.isTrap) {
+        // Otorgar puntos falsos en lugar de desbloquear segmento real
+        const trapPoints = await storage.addTrapPoints(user.id, segmentId, 1);
+        const totalTrapPoints = await storage.getTotalTrapPointsByUserId(user.id);
+        
+        return res.status(200).json({ 
+          isTrap: true,
+          trapPoints: totalTrapPoints,
+          message: "¡Situación de riesgo reportada! +1 punto",
+          segmentId,
+          timestamp: trapPoints.scannedAt
+        });
+      }
+      
       const segment = await storage.unlockSegment(user.id, segmentId);
       
       // Check if all segments are completed
@@ -242,6 +257,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Código de redención inválido" });
       }
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  // Obtener puntos trampa de un usuario
+  apiRouter.get("/user/:documentNumber/trap-points", async (req, res) => {
+    try {
+      const { documentNumber } = req.params;
+      
+      const user = await storage.getUserByDocumentNumber(documentNumber);
+      if (!user) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+      
+      const trapPoints = await storage.getTrapPointsByUserId(user.id);
+      const totalTrapPoints = await storage.getTotalTrapPointsByUserId(user.id);
+      
+      return res.status(200).json({
+        trapPoints,
+        totalTrapPoints
+      });
+    } catch (error) {
       return res.status(500).json({ message: "Error interno del servidor" });
     }
   });
