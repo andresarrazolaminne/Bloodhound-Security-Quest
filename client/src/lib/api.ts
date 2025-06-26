@@ -14,11 +14,15 @@ export interface SegmentsResponse {
 }
 
 export interface UnlockSegmentResponse {
-  segment: MapSegment;
+  segment?: MapSegment;
   unlockedSegments: number;
   totalSegments: number;
   completed: boolean;
   redemptionCode: string | null;
+  // Campos para QR trampa
+  isTrap?: boolean;
+  trapPoints?: number;
+  message?: string;
 }
 
 export interface PrizeResponse {

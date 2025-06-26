@@ -65,21 +65,37 @@ const QRUnlockHandler = () => {
         // Guardar el usuario en localStorage para persistencia
         localStorage.setItem('currentUser', JSON.stringify(loginResponse.user));
         
-        // Actualizar segmentos desbloqueados
-        const existingSegments = JSON.parse(localStorage.getItem('unlockedSegments') || '[]');
-        const uniqueSegments = Array.from(new Set([...existingSegments, unlockResponse.segment.segmentId]));
-        localStorage.setItem('unlockedSegments', JSON.stringify(uniqueSegments));
+        // Verificar si es un QR trampa
+        if (unlockResponse.isTrap) {
+          // QR Trampa - no desbloquea segmento real, solo otorga puntos falsos
+          setResult({
+            success: true,
+            message: unlockResponse.message || `¡Situación de riesgo reportada! Has ganado ${unlockResponse.trapPoints || 1} punto(s) falso(s).`,
+            segmentId: parseInt(segmentId)
+          });
 
-        setResult({
-          success: true,
-          message: `¡Segmento ${segmentId} desbloqueado exitosamente!`,
-          segmentId: parseInt(segmentId)
-        });
+          toast({
+            title: "🎯 QR Trampa",
+            description: `+${unlockResponse.trapPoints || 1} punto(s) falso(s)`,
+          });
+        } else {
+          // QR Normal - desbloquea segmento real
+          // Actualizar segmentos desbloqueados
+          const existingSegments = JSON.parse(localStorage.getItem('unlockedSegments') || '[]');
+          const uniqueSegments = Array.from(new Set([...existingSegments, unlockResponse.segment.segmentId]));
+          localStorage.setItem('unlockedSegments', JSON.stringify(uniqueSegments));
 
-        toast({
-          title: "¡Éxito!",
-          description: `Segmento ${segmentId} desbloqueado`,
-        });
+          setResult({
+            success: true,
+            message: `¡Segmento ${segmentId} desbloqueado exitosamente!`,
+            segmentId: parseInt(segmentId)
+          });
+
+          toast({
+            title: "¡Éxito!",
+            description: `Segmento ${segmentId} desbloqueado`,
+          });
+        }
 
         // Redirigir al mapa después de mostrar el resultado
         setTimeout(() => {
@@ -173,10 +189,18 @@ const QRUnlockHandler = () => {
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <div className="flex items-center justify-center space-x-2 text-green-800">
                 <MapPin className="h-5 w-5" />
-                <span className="font-medium">Segmento {result.segmentId} desbloqueado</span>
+                <span className="font-medium">
+                  {result.message.includes('trampa') || result.message.includes('falso') ? 
+                    `QR Trampa - Segmento ${result.segmentId}` : 
+                    `Segmento ${result.segmentId} desbloqueado`
+                  }
+                </span>
               </div>
               <p className="text-sm text-green-600 mt-2">
-                Serás redirigido al mapa en unos segundos...
+                {result.message.includes('trampa') || result.message.includes('falso') ? 
+                  'Continúa buscando riesgos reales para desbloquear el mapa...' :
+                  'Serás redirigido al mapa en unos segundos...'
+                }
               </p>
             </div>
           )}
