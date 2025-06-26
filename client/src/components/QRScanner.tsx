@@ -361,8 +361,8 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
           }
         }
         
-        // Verificar que el segmentId está en el rango correcto (1-9)
-        if (segmentId >= 1 && segmentId <= 9) {
+        // Verificar que el segmentId está en el rango correcto (1-16 para soportar diferentes tamaños de cuadrícula)
+        if (segmentId >= 1 && segmentId <= 16) {
           // Detener repetición en caso de encontrar un código válido
           if (successTimeoutRef.current) {
             clearTimeout(successTimeoutRef.current);
@@ -386,13 +386,13 @@ const QRScanner = ({ isOpen, onClose, onSuccess }: QRScannerProps) => {
             }));
           }, 300);
         } else {
-          throw new Error(`Segmento ${segmentId} fuera de rango (1-9)`);
+          throw new Error(`Segmento ${segmentId} fuera de rango (1-16)`);
         }
       } catch (error) {
         console.error("Error procesando QR:", error);
         toast({
           title: "Código QR no válido",
-          description: "El código escaneado no corresponde a un segmento del mapa. Debe ser un número del 1 al 9.",
+          description: "El código escaneado no corresponde a un segmento del mapa. Debe ser un número del 1 al 16.",
           variant: "destructive"
         });
         

@@ -160,18 +160,33 @@ const MapPage = () => {
       console.error("Error unlocking segment:", error);
       
       // Verificar si el error es por código de seguridad inválido
-      if (error instanceof Response && error.status === 403) {
+      if (error instanceof Response) {
         try {
           const errorData = await error.json();
-          toast({
-            title: "Código de seguridad inválido",
-            description: errorData.message || "El código de seguridad no es correcto para este segmento.",
-            variant: "destructive"
-          });
+          
+          if (error.status === 403) {
+            toast({
+              title: "Código de seguridad inválido",
+              description: errorData.message || "El código de seguridad no es correcto para este segmento.",
+              variant: "destructive"
+            });
+          } else if (error.status === 404) {
+            toast({
+              title: "Segmento no encontrado",
+              description: errorData.message || "No se encontró configuración para este segmento.",
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Error",
+              description: errorData.message || "No pudimos desbloquear el segmento. Inténtalo de nuevo.",
+              variant: "destructive"
+            });
+          }
         } catch (e) {
           toast({
             title: "Error",
-            description: "Código de seguridad inválido o no proporcionado.",
+            description: "Error de conexión. Verifica tu conexión a internet.",
             variant: "destructive"
           });
         }

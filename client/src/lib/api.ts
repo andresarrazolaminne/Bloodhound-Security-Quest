@@ -55,6 +55,9 @@ export const register = async (documentNumber: string, name: string): Promise<Re
 // Get user segments
 export const getUserSegments = async (documentNumber: string): Promise<SegmentsResponse> => {
   const response = await apiRequest("GET", `/api/user/${documentNumber}/segments`);
+  if (!response.ok) {
+    throw response;
+  }
   return response.json();
 };
 
@@ -80,6 +83,9 @@ export const unlockSegment = async (documentNumber: string, segmentId: number, s
 // Get user prize status
 export const getUserPrize = async (documentNumber: string): Promise<PrizeResponse> => {
   const response = await apiRequest("GET", `/api/user/${documentNumber}/prize`);
+  if (!response.ok) {
+    throw response;
+  }
   return response.json();
 };
 
