@@ -10,14 +10,27 @@ interface MapGridProps {
 }
 
 const MapGrid = ({ unlockedSegments, gapSize = 'medium', gridSize = '3x3' }: MapGridProps) => {
-  // Los segmentos del mapa basados en el tamaño de la cuadrícula seleccionada
-  const getSegmentIds = () => {
-    const [columns, rows] = gridSize.split('x').map(Number);
-    const totalSegments = columns * rows;
-    return Array.from({ length: totalSegments }, (_, i) => i + 1);
+  // Fetch all map assets to filter out trap segments
+  const { data: assetsData } = useQuery({
+    queryKey: ['/api/admin/map-assets'],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/admin/map-assets");
+      return response.json();
+    }
+  });
+
+  // Get only valid (non-trap) segment IDs
+  const getValidSegmentIds = () => {
+    if (!assetsData?.assets) {
+      return [];
+    }
+    
+    // Filter out trap segments and return only valid segment IDs
+    const validAssets = assetsData.assets.filter((asset: any) => !asset.isTrap);
+    return validAssets.map((asset: any) => asset.segmentId).sort((a: number, b: number) => a - b);
   };
   
-  const segmentIds = getSegmentIds();
+  const segmentIds = getValidSegmentIds();
   
   // Mantener una referencia de los segmentos actuales para comparar con los nuevos
   const previousUnlockedRef = useRef<number[]>([]);

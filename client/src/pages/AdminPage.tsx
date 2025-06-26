@@ -62,6 +62,7 @@ interface MapAssetFormData {
   description: string;
   securityCode: string;
   isTrap: boolean;
+  trapMessage: string;
   generateNewCode?: boolean;
 }
 
@@ -113,6 +114,7 @@ const AdminPage = () => {
     description: "",
     securityCode: "",
     isTrap: false,
+    trapMessage: "",
     generateNewCode: false
   });
   
@@ -227,6 +229,7 @@ const AdminPage = () => {
       description: "",
       securityCode: "",
       isTrap: false,
+      trapMessage: "",
       generateNewCode: true
     });
     setDialogOpen(true);
@@ -244,6 +247,7 @@ const AdminPage = () => {
       description: asset.description || "",
       securityCode: asset.securityCode || "",
       isTrap: asset.isTrap || false,
+      trapMessage: (asset as any).trapMessage || "",
       generateNewCode: false
     });
     setDialogOpen(true);
@@ -1370,6 +1374,27 @@ const AdminPage = () => {
                 </p>
               </div>
             </div>
+
+            {/* Campo de mensaje HTML para QR trampa */}
+            {formData.isTrap && (
+              <div className="grid grid-cols-4 items-start gap-4">
+                <label htmlFor="trapMessage" className="text-right mt-2">
+                  Mensaje Trampa
+                </label>
+                <div className="col-span-3 space-y-2">
+                  <textarea
+                    id="trapMessage"
+                    value={formData.trapMessage}
+                    onChange={(e) => setFormData({...formData, trapMessage: e.target.value})}
+                    placeholder="<h2>¡Situación Segura!</h2><p>Esta situación <strong>NO presenta riesgos</strong> reales. Has identificado correctamente una trampa.</p>"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px] font-mono text-sm"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Mensaje HTML personalizable que se mostrará cuando alguien escanee este QR trampa. Puedes usar etiquetas como &lt;h2&gt;, &lt;p&gt;, &lt;strong&gt;, etc.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
