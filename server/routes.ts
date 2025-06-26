@@ -410,7 +410,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         redirectUrl: z.string().nullable().optional(),
         title: z.string().optional(),
         description: z.string().nullable().optional(),
-        securityCode: z.string().optional()
+        securityCode: z.string().optional(),
+        isTrap: z.boolean().optional()
       }).parse(req.body);
       
       // Generar un código de seguridad aleatorio si se solicita explícitamente
