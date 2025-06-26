@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, Loader2, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import TrapMessageModal from '@/components/TrapMessageModal';
 
 // Handler específico para códigos QR que vienen desde URLs externas
 const QRUnlockHandler = () => {
@@ -15,7 +16,11 @@ const QRUnlockHandler = () => {
     success: boolean;
     message: string;
     segmentId?: number;
+    isTrap?: boolean;
+    trapMessage?: string;
+    trapPoints?: number;
   } | null>(null);
+  const [showTrapModal, setShowTrapModal] = useState(false);
 
   useEffect(() => {
     const handleUnlock = async () => {
@@ -67,23 +72,31 @@ const QRUnlockHandler = () => {
         
         // Verificar si es un QR trampa
         if (unlockResponse.isTrap) {
-          // QR Trampa - no desbloquea segmento real, solo otorga puntos falsos
+          // QR Trampa - mostrar modal con mensaje HTML personalizable
           setResult({
             success: true,
             message: unlockResponse.message || `¡Situación de riesgo reportada! Has ganado ${unlockResponse.trapPoints || 1} punto(s) falso(s).`,
-            segmentId: parseInt(segmentId)
+            segmentId: parseInt(segmentId),
+            isTrap: true,
+            trapMessage: unlockResponse.trapMessage,
+            trapPoints: unlockResponse.trapPoints || 1
           });
 
+          // Mostrar modal con mensaje HTML personalizable
+          setShowTrapModal(true);
+
           toast({
-            title: "🎯 QR Trampa",
+            title: "QR Trampa",
             description: `+${unlockResponse.trapPoints || 1} punto(s) falso(s)`,
           });
         } else {
           // QR Normal - desbloquea segmento real
-          // Actualizar segmentos desbloqueados
-          const existingSegments = JSON.parse(localStorage.getItem('unlockedSegments') || '[]');
-          const uniqueSegments = Array.from(new Set([...existingSegments, unlockResponse.segment.segmentId]));
-          localStorage.setItem('unlockedSegments', JSON.stringify(uniqueSegments));
+          if (unlockResponse.segment) {
+            // Actualizar segmentos desbloqueados
+            const existingSegments = JSON.parse(localStorage.getItem('unlockedSegments') || '[]');
+            const uniqueSegments = Array.from(new Set([...existingSegments, unlockResponse.segment.segmentId]));
+            localStorage.setItem('unlockedSegments', JSON.stringify(uniqueSegments));
+          }
 
           setResult({
             success: true,
@@ -226,6 +239,23 @@ const QRUnlockHandler = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal para mensajes HTML de QR trampa */}
+      {result && result.isTrap && (
+        <TrapMessageModal
+          isOpen={showTrapModal}
+          onClose={() => {
+            setShowTrapModal(false);
+            // Redirigir al mapa después de cerrar el modal
+            setTimeout(() => {
+              setLocation('/map');
+            }, 1000);
+          }}
+          trapMessage={result.trapMessage}
+          segmentId={result.segmentId || 0}
+          points={result.trapPoints || 1}
+        />
+      )}
     </div>
   );
 };

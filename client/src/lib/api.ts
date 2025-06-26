@@ -23,6 +23,7 @@ export interface UnlockSegmentResponse {
   isTrap?: boolean;
   trapPoints?: number;
   message?: string;
+  trapMessage?: string;
 }
 
 export interface PrizeResponse {

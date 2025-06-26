@@ -135,6 +135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isTrap: true,
           trapPoints: totalTrapPoints,
           message: "¡Situación de riesgo reportada! +1 punto",
+          trapMessage: segmentAsset.trapMessage || null,
           segmentId,
           timestamp: trapPoints.scannedAt
         });
