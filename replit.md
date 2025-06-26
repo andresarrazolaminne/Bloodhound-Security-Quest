@@ -43,6 +43,15 @@ This is a QR code-based treasure hunt application where users scan QR codes to u
 - Progress tracking with completion detection
 - Auto-redirect after QR scan to unlock segments
 
+**QR Trap System (for Workplace Safety Training):**
+- Trap QR codes for scenarios without actual safety risks
+- False points system to create engaging risk identification training
+- Admin controls to mark QR codes as "traps" via isTrap boolean field
+- Separate trap points tracking independent of real progress
+- Trap points ranking system for competitive learning
+- Visual indicators in admin panel to identify trap QR codes
+- Specialized responses for trap QR scans with custom messaging
+
 **Admin Dashboard:**
 - Protected admin routes with session authentication
 - System configuration management (instructions, images, map layout)
