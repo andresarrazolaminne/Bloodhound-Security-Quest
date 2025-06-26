@@ -32,7 +32,15 @@ const AuthPage = () => {
           try {
             const response = await login(savedDocument);
             setCurrentUser(response.user);
-            setLocation("/map");
+            
+            // Verificar si hay un redirect pendiente
+            const urlParams = new URLSearchParams(window.location.search);
+            const redirectUrl = urlParams.get('redirect');
+            if (redirectUrl) {
+              setLocation(decodeURIComponent(redirectUrl));
+            } else {
+              setLocation("/map");
+            }
           } catch (error) {
             console.log("No se pudo hacer auto-login con el documento guardado");
             setDocumentNumber(savedDocument || "");

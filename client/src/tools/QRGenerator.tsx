@@ -51,7 +51,7 @@ const QRGenerator = () => {
   const [qrCodes, setQrCodes] = useState<QRCodeData[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isLoadingAssets, setIsLoadingAssets] = useState<boolean>(false);
-  const [qrFormat, setQrFormat] = useState<string>("text");
+  const [qrFormat, setQrFormat] = useState<string>("url");
   const [mapAssets, setMapAssets] = useState<any[]>([]);
 
   // Cargar assets del mapa al inicio para obtener códigos de seguridad existentes
@@ -90,10 +90,18 @@ const QRGenerator = () => {
       let qrData: string;
       let format: string;
       
+      // Obtener la URL base de la aplicación
+      const baseUrl = window.location.origin;
+      
       // Generar el contenido QR según el formato seleccionado
       switch (qrFormat) {
+        case "url":
+          // Formato como URL completa que puede ser escaneada por cualquier lector QR
+          qrData = `${baseUrl}/unlock?segment=${segmentId}&code=${securityCode}`;
+          format = "URL Completa";
+          break;
         case "json":
-          // Formato como objeto JSON
+          // Formato como objeto JSON (formato anterior)
           qrData = JSON.stringify({ 
             segmentId, 
             securityCode
@@ -106,8 +114,8 @@ const QRGenerator = () => {
           format = "Texto";
           break;
         default:
-          qrData = JSON.stringify({ segmentId });
-          format = "JSON Simple";
+          qrData = `${baseUrl}/unlock?segment=${segmentId}&code=${securityCode}`;
+          format = "URL Completa";
       }
       
       const qrUrl = await generateQRCode(qrData);
@@ -151,11 +159,18 @@ const QRGenerator = () => {
         const asset = mapAssets.find(a => a.segmentId === id);
         const code = asset?.securityCode || generateSecurityCode();
         
+        // Obtener la URL base de la aplicación
+        const baseUrl = window.location.origin;
+        
         // Generar el contenido QR según el formato seleccionado
         let qrData: string;
         let format: string;
         
         switch (qrFormat) {
+          case "url":
+            qrData = `${baseUrl}/unlock?segment=${id}&code=${code}`;
+            format = "URL Completa";
+            break;
           case "json":
             qrData = JSON.stringify({ segmentId: id, securityCode: code });
             format = "JSON";
@@ -165,8 +180,8 @@ const QRGenerator = () => {
             format = "Texto";
             break;
           default:
-            qrData = JSON.stringify({ segmentId: id });
-            format = "JSON Simple";
+            qrData = `${baseUrl}/unlock?segment=${id}&code=${code}`;
+            format = "URL Completa";
         }
         
         const url = await generateQRCode(qrData);
@@ -235,6 +250,12 @@ const QRGenerator = () => {
             onValueChange={setQrFormat}
             className="flex flex-col space-y-1"
           >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="url" id="format-url" />
+              <Label htmlFor="format-url" className="cursor-pointer">
+                <span className="font-medium text-green-600">URL Completa</span> (Recomendado - Compatible con cualquier lector QR)
+              </Label>
+            </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="json" id="format-json" />
               <Label htmlFor="format-json" className="cursor-pointer">
