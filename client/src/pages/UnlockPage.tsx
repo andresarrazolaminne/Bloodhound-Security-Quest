@@ -25,28 +25,42 @@ const UnlockPage = () => {
       const segmentId = urlParams.get('segment');
       const securityCode = urlParams.get('code');
 
+      console.log('UnlockPage - Parámetros URL:', { segmentId, securityCode });
+      console.log('UnlockPage - Usuario actual:', currentUser);
+
       if (!segmentId || !securityCode) {
+        console.log('UnlockPage - Faltan parámetros');
         setResult({
           success: false,
-          message: 'Código QR inválido. Faltan parámetros requeridos.'
+          message: `Código QR inválido. Parámetros recibidos: segment=${segmentId}, code=${securityCode}`
         });
         return;
       }
 
       if (!currentUser) {
+        console.log('UnlockPage - Sin usuario, redirigiendo a login');
         // Redirigir a login con parámetros para volver después
         setLocation(`/auth?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
         return;
       }
 
+      console.log('UnlockPage - Iniciando proceso de desbloqueo');
       setIsProcessing(true);
 
       try {
+        console.log('UnlockPage - Llamando API unlock con:', {
+          documentNumber: currentUser.documentNumber,
+          segmentId: parseInt(segmentId),
+          securityCode
+        });
+
         const response = await unlockSegment(
           currentUser.documentNumber,
           parseInt(segmentId),
           securityCode
         );
+
+        console.log('UnlockPage - Respuesta API:', response);
 
         addUnlockedSegment(response.segment.segmentId);
         
@@ -67,6 +81,8 @@ const UnlockPage = () => {
         }, 3000);
 
       } catch (error: any) {
+        console.error('UnlockPage - Error:', error);
+        
         setResult({
           success: false,
           message: error.message || 'Error al desbloquear el segmento'
@@ -99,6 +115,11 @@ const UnlockPage = () => {
             <p className="text-gray-600">
               Desbloqueando segmento del mapa...
             </p>
+            <div className="mt-4 p-3 bg-gray-100 rounded text-xs text-left">
+              <p><strong>Debug info:</strong></p>
+              <p>URL: {window.location.href}</p>
+              <p>Usuario: {currentUser?.documentNumber || 'No logueado'}</p>
+            </div>
           </CardContent>
         </Card>
       </div>
