@@ -33,6 +33,35 @@ const AuthPage = () => {
     gradientEndColor: '#e8cf00'
   });
 
+  // Load system configuration for login page customization
+  useEffect(() => {
+    const loadSystemConfig = async () => {
+      try {
+        const response = await fetch('/api/system-config');
+        if (response.ok) {
+          const data = await response.json();
+          const config = data.config || {};
+          
+          setSystemConfig({
+            loginTitle: config.loginTitle || 'Lanzamiento',
+            loginSubtitle: config.loginSubtitle || '2025',
+            loginWelcomeText: config.loginWelcomeText || 'Bienvenido al reto de identificación de riesgos',
+            loginButtonText: config.loginButtonText || 'Ingresar',
+            loginDocumentLabel: config.loginDocumentLabel || 'Número de documento',
+            loginNameLabel: config.loginNameLabel || 'Nombre completo',
+            backgroundImageUrl: config.backgroundImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
+            gradientStartColor: config.gradientStartColor || '#bb2558',
+            gradientEndColor: config.gradientEndColor || '#e8cf00'
+          });
+        }
+      } catch (error) {
+        console.error('Error loading system configuration:', error);
+      }
+    };
+
+    loadSystemConfig();
+  }, []);
+
   // Cargar el último usuario que se logueó
   useEffect(() => {
     try {
@@ -130,7 +159,7 @@ const AuthPage = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4" 
         style={{
-          background: "url('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png') repeat, linear-gradient(175deg, #bb2558 0%, #bb2558 75%, #e8cf00 100%)"
+          background: `url('${systemConfig.backgroundImageUrl}') repeat, linear-gradient(175deg, ${systemConfig.gradientStartColor} 0%, ${systemConfig.gradientStartColor} 75%, ${systemConfig.gradientEndColor} 100%)`
         }}>
         <Card className="w-full max-w-md bg-white/90 backdrop-blur-sm shadow-xl">
           <CardContent className="pt-6 flex flex-col items-center justify-center py-12">
@@ -145,12 +174,12 @@ const AuthPage = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 text-white" 
       style={{
-        background: "url('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png') repeat, linear-gradient(175deg, #bb2558 0%, #bb2558 75%, #e8cf00 100%)"
+        background: `url('${systemConfig.backgroundImageUrl}') repeat, linear-gradient(175deg, ${systemConfig.gradientStartColor} 0%, ${systemConfig.gradientStartColor} 75%, ${systemConfig.gradientEndColor} 100%)`
       }}>
       <Card className="w-full max-w-md bg-white/90 backdrop-blur-sm shadow-xl border-0">
         <CardContent className="pt-8 pb-8 px-6">
           <div className="flex flex-col items-center justify-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">Lanzamiento</h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">{systemConfig.loginTitle}</h1>
             
             {/* Imagen de luz */}
             <div className="relative my-3">
@@ -162,11 +191,11 @@ const AuthPage = () => {
               <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-3/4 h-1 bg-yellow-300/20 rounded-full blur-md"></div>
             </div>
             
-            <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">Smartfilms 2025</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">{systemConfig.loginSubtitle}</h2>
             <p className="text-gray-600 text-center max-w-xs">
               {lastDocument 
-                ? "Continuar con tu cuenta o cambiar de usuario" 
-                : "Ingresa con tu número de documento para acceder a tu mapa personal"
+                ? systemConfig.loginWelcomeText 
+                : systemConfig.loginWelcomeText
               }
             </p>
           </div>
@@ -187,7 +216,7 @@ const AuthPage = () => {
                   className="w-full py-6 text-base"
                   disabled={isLoading}
                 >
-                  Continuar
+                  {systemConfig.loginButtonText}
                   {isLoading && <BrainLoader size="small" className="ml-2" />}
                 </Button>
                 
@@ -204,7 +233,7 @@ const AuthPage = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-3">
                 <label htmlFor="document-number" className="block text-base font-medium text-gray-700">
-                  Número de Documento
+                  {systemConfig.loginDocumentLabel}
                 </label>
                 <Input
                   id="document-number"
@@ -222,7 +251,7 @@ const AuthPage = () => {
                 className="w-full flex items-center justify-center py-6 text-base mt-8"
                 disabled={isLoading}
               >
-                <span>{isLoading ? "Iniciando sesión..." : "Ingresar al Mapa"}</span>
+                <span>{isLoading ? "Iniciando sesión..." : systemConfig.loginButtonText}</span>
                 {isLoading ? (
                   <BrainLoader size="small" className="ml-2" />
                 ) : (
