@@ -24,7 +24,7 @@ const BrainLoader = ({ className, size = "medium", text }: BrainLoaderProps) => 
     // Load system configuration for preload image
     const loadPreloadImage = async () => {
       try {
-        const response = await fetch('/api/system-config');
+        const response = await fetch('/api/system-config?t=' + Date.now());
         if (response.ok) {
           const data = await response.json();
           const config = data.config || {};
@@ -36,6 +36,17 @@ const BrainLoader = ({ className, size = "medium", text }: BrainLoaderProps) => 
     };
 
     loadPreloadImage();
+    
+    // Listen for custom events to reload image configuration
+    const handleConfigUpdate = () => {
+      loadPreloadImage();
+    };
+    
+    window.addEventListener('systemConfigUpdated', handleConfigUpdate);
+    
+    return () => {
+      window.removeEventListener('systemConfigUpdated', handleConfigUpdate);
+    };
   }, []);
   
   return (

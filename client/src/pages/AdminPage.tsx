@@ -229,6 +229,9 @@ const AdminPage = () => {
           description: "La personalización del frontend se ha guardado correctamente"
         });
         
+        // Emit custom event to notify other components about the configuration update
+        window.dispatchEvent(new CustomEvent('systemConfigUpdated'));
+        
         // Actualizar el estado local con los datos guardados
         if (data.config) {
           setSystemConfig({

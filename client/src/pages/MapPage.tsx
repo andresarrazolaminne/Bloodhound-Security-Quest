@@ -105,7 +105,7 @@ const MapPage = () => {
     // Cargar configuración del sistema
     const loadSystemConfig = async () => {
       try {
-        const response = await fetch('/api/system-config');
+        const response = await fetch('/api/system-config?t=' + Date.now());
         if (response.ok) {
           const data = await response.json();
           const config = data.config || {};
@@ -136,6 +136,17 @@ const MapPage = () => {
     };
     
     loadSystemConfig();
+    
+    // Listen for custom events to reload configuration
+    const handleConfigUpdate = () => {
+      loadSystemConfig();
+    };
+    
+    window.addEventListener('systemConfigUpdated', handleConfigUpdate);
+    
+    return () => {
+      window.removeEventListener('systemConfigUpdated', handleConfigUpdate);
+    };
   }, []);
 
   const loadUserData = async () => {
