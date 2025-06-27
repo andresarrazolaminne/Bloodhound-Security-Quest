@@ -15,6 +15,7 @@ const AuthPage = () => {
   const [documentNumber, setDocumentNumber] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingLastUser, setIsLoadingLastUser] = useState(true);
+  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [lastDocument, setLastDocument] = useState<string | null>(null);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -44,6 +45,11 @@ const AuthPage = () => {
           const data = await response.json();
           const config = data.config || {};
           
+          // Update CSS custom properties immediately to prevent flash
+          document.documentElement.style.setProperty('--auth-bg-start', config.gradientStartColor || '#bb2558');
+          document.documentElement.style.setProperty('--auth-bg-end', config.gradientEndColor || '#e8cf00');
+          document.documentElement.style.setProperty('--auth-bg-image', `url('${config.backgroundImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png'}')`);
+          
           setSystemConfig({
             loginTitle: config.loginTitle || 'Lanzamiento',
             loginSubtitle: config.loginSubtitle || '2025',
@@ -60,6 +66,8 @@ const AuthPage = () => {
         }
       } catch (error) {
         console.error('Error loading system configuration:', error);
+      } finally {
+        setIsLoadingConfig(false);
       }
     };
 
@@ -185,12 +193,10 @@ const AuthPage = () => {
     );
   }
   
-  // Mostrar interfaz normal de login
+  // Mostrar interfaz normal de login con transición suave
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 text-white" 
-      style={{
-        background: `url('${systemConfig.backgroundImageUrl}') repeat, linear-gradient(175deg, ${systemConfig.gradientStartColor} 0%, ${systemConfig.gradientStartColor} 75%, ${systemConfig.gradientEndColor} 100%)`
-      }}>
+    <div 
+      className={`flex flex-col items-center justify-center min-h-screen p-4 text-white auth-page-bg transition-opacity duration-300 ${isLoadingConfig ? 'opacity-0' : 'opacity-100'}`}>
       <Card className="w-full max-w-md bg-white/90 backdrop-blur-sm shadow-xl border-0">
         <CardContent className="pt-8 pb-8 px-6">
           <div className="flex flex-col items-center justify-center mb-8">

@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* CSS variables for system configuration to prevent FOUC */
+:root {
+  --auth-bg-start: #bb2558;
+  --auth-bg-end: #e8cf00;
+  --auth-bg-image: url('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png');
+}
+
+/* Auth page background with CSS variables */
+.auth-page-bg {
+  background: var(--auth-bg-image) repeat, linear-gradient(175deg, var(--auth-bg-start) 0%, var(--auth-bg-start) 75%, var(--auth-bg-end) 100%);
+}
+
 @keyframes float {
   0% {
     transform: translateY(0px);
