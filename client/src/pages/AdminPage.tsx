@@ -206,12 +206,7 @@ const AdminPage = () => {
     try {
       setLoadingAssets(true);
       
-      const response = await apiRequest("POST", "/api/system-config", {
-        body: JSON.stringify(systemConfig),
-        headers: {
-          "Content-Type": "application/json"
-        }
-      });
+      const response = await apiRequest("POST", "/api/admin/system-config", systemConfig);
       
       if (response.ok) {
         toast({
