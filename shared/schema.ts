@@ -14,8 +14,14 @@ export const systemConfig = pgTable("system_config", {
   // Frontend customization fields
   appTitle: text("app_title").notNull().default('Lanzamiento 2025'),
   backgroundImageUrl: text("background_image_url").notNull().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png'),
+  backgroundSize: text("background_size").notNull().default('auto'),
+  backgroundRepeat: text("background_repeat").notNull().default('repeat'),
+  backgroundPosition: text("background_position").notNull().default('center'),
   gradientStartColor: text("gradient_start_color").notNull().default('#bb2558'),
   gradientEndColor: text("gradient_end_color").notNull().default('#e8cf00'),
+  gradientMidColor: text("gradient_mid_color"),
+  gradientDirection: text("gradient_direction").notNull().default('175deg'),
+  gradientType: text("gradient_type").notNull().default('linear'),
   // Login page customization
   loginTitle: text("login_title").notNull().default('Lanzamiento'),
   loginSubtitle: text("login_subtitle").notNull().default('2025'),
@@ -46,8 +52,14 @@ export const systemConfigSchema = z.object({
   // Frontend customization fields
   appTitle: z.string().default('Lanzamiento 2025'),
   backgroundImageUrl: z.string().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png'),
+  backgroundSize: z.enum(['auto', 'cover', 'contain', '100%', '50%']).default('auto'),
+  backgroundRepeat: z.enum(['repeat', 'no-repeat', 'repeat-x', 'repeat-y']).default('repeat'),
+  backgroundPosition: z.enum(['center', 'top', 'bottom', 'left', 'right', 'top left', 'top right', 'bottom left', 'bottom right']).default('center'),
   gradientStartColor: z.string().default('#bb2558'),
   gradientEndColor: z.string().default('#e8cf00'),
+  gradientMidColor: z.string().optional(),
+  gradientDirection: z.string().default('175deg'),
+  gradientType: z.enum(['linear', 'radial']).default('linear'),
   // Login page customization
   loginTitle: z.string().default('Lanzamiento'),
   loginSubtitle: z.string().default('2025'),

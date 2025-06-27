@@ -95,8 +95,14 @@ const AdminPage = () => {
     // Frontend customization fields
     appTitle: "",
     backgroundImageUrl: "",
+    backgroundSize: "auto" as 'auto' | 'cover' | 'contain' | '100%' | '50%',
+    backgroundRepeat: "repeat" as 'repeat' | 'no-repeat' | 'repeat-x' | 'repeat-y',
+    backgroundPosition: "center" as 'center' | 'top' | 'bottom' | 'left' | 'right' | 'top left' | 'top right' | 'bottom left' | 'bottom right',
     gradientStartColor: "#bb2558",
     gradientEndColor: "#e8cf00",
+    gradientMidColor: "",
+    gradientDirection: "175deg",
+    gradientType: "linear" as 'linear' | 'radial',
     // Login page customization
     loginTitle: "Lanzamiento",
     loginSubtitle: "2025",
@@ -179,8 +185,14 @@ const AdminPage = () => {
         // Frontend customization fields
         appTitle: config.appTitle || "Lanzamiento 2025",
         backgroundImageUrl: config.backgroundImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png",
+        backgroundSize: config.backgroundSize || "auto",
+        backgroundRepeat: config.backgroundRepeat || "repeat",
+        backgroundPosition: config.backgroundPosition || "center",
         gradientStartColor: config.gradientStartColor || "#bb2558",
         gradientEndColor: config.gradientEndColor || "#e8cf00",
+        gradientMidColor: config.gradientMidColor || "",
+        gradientDirection: config.gradientDirection || "175deg",
+        gradientType: config.gradientType || "linear",
         scanButtonText: config.scanButtonText || "¡Escanea aquí!",
         helpButtonText: config.helpButtonText || "Ayuda",
         siteMapButtonText: config.siteMapButtonText || "Mapa del Sitio",
@@ -251,8 +263,14 @@ const AdminPage = () => {
             mapGridSize: data.config.mapGridSize || "3x3",
             appTitle: data.config.appTitle || "Lanzamiento 2025",
             backgroundImageUrl: data.config.backgroundImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png",
+            backgroundSize: data.config.backgroundSize || "auto",
+            backgroundRepeat: data.config.backgroundRepeat || "repeat",
+            backgroundPosition: data.config.backgroundPosition || "center",
             gradientStartColor: data.config.gradientStartColor || "#bb2558",
             gradientEndColor: data.config.gradientEndColor || "#e8cf00",
+            gradientMidColor: data.config.gradientMidColor || "",
+            gradientDirection: data.config.gradientDirection || "175deg",
+            gradientType: data.config.gradientType || "linear",
             scanButtonText: data.config.scanButtonText || "¡Escanea aquí!",
             helpButtonText: data.config.helpButtonText || "Ayuda",
             siteMapButtonText: data.config.siteMapButtonText || "Mapa del Sitio",
@@ -1879,68 +1897,213 @@ const AdminPage = () => {
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Colores del Degradado de Fondo</h3>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label htmlFor="gradient-start-color" className="block text-sm font-medium text-gray-700">
-                        Color Inicial del Degradado
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          id="gradient-start-color"
-                          type="color"
-                          value={systemConfig.gradientStartColor || '#bb2558'}
+                  {/* Configuración avanzada del degradado */}
+                  <div className="space-y-4">
+                    <h4 className="text-md font-semibold text-gray-800 border-b pb-2">Configuración del Degradado</h4>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label htmlFor="gradient-type" className="block text-sm font-medium text-gray-700">
+                          Tipo de Degradado
+                        </label>
+                        <select
+                          id="gradient-type"
+                          value={systemConfig.gradientType || 'linear'}
                           onChange={(e) => setSystemConfig({
                             ...systemConfig,
-                            gradientStartColor: e.target.value
+                            gradientType: e.target.value as 'linear' | 'radial'
                           })}
-                          className="w-16 h-10 rounded cursor-pointer border-2"
-                        />
-                        <Input
-                          type="text"
-                          value={systemConfig.gradientStartColor || '#bb2558'}
-                          onChange={(e) => setSystemConfig({
-                            ...systemConfig,
-                            gradientStartColor: e.target.value
-                          })}
-                          placeholder="#bb2558"
-                          className="flex-1 font-mono text-sm"
-                        />
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
+                        >
+                          <option value="linear">Lineal</option>
+                          <option value="radial">Radial</option>
+                        </select>
                       </div>
-                      <p className="text-xs text-gray-500">
-                        Color de inicio del degradado de fondo
-                      </p>
+                      
+                      <div className="space-y-2">
+                        <label htmlFor="gradient-direction" className="block text-sm font-medium text-gray-700">
+                          Dirección/Ángulo
+                        </label>
+                        <Input
+                          id="gradient-direction"
+                          type="text"
+                          value={systemConfig.gradientDirection || '175deg'}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            gradientDirection: e.target.value
+                          })}
+                          placeholder="175deg, to right, 45deg"
+                          className="w-full font-mono text-sm"
+                        />
+                        <p className="text-xs text-gray-500">
+                          Ej: 175deg, to right, to bottom left
+                        </p>
+                      </div>
                     </div>
                     
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label htmlFor="gradient-start-color" className="block text-sm font-medium text-gray-700">
+                          Color Inicial
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="gradient-start-color"
+                            type="color"
+                            value={systemConfig.gradientStartColor || '#bb2558'}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              gradientStartColor: e.target.value
+                            })}
+                            className="w-16 h-10 rounded cursor-pointer border-2"
+                          />
+                          <Input
+                            type="text"
+                            value={systemConfig.gradientStartColor || '#bb2558'}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              gradientStartColor: e.target.value
+                            })}
+                            placeholder="#bb2558"
+                            className="flex-1 font-mono text-sm"
+                          />
+                        </div>
+                      </div>
+                    
+                      <div className="space-y-2">
+                        <label htmlFor="gradient-end-color" className="block text-sm font-medium text-gray-700">
+                          Color Final
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="gradient-end-color"
+                            type="color"
+                            value={systemConfig.gradientEndColor || '#e8cf00'}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              gradientEndColor: e.target.value
+                            })}
+                            className="w-16 h-10 rounded cursor-pointer border-2"
+                          />
+                          <Input
+                            type="text"
+                            value={systemConfig.gradientEndColor || '#e8cf00'}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              gradientEndColor: e.target.value
+                            })}
+                            placeholder="#e8cf00"
+                            className="flex-1 font-mono text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Color intermedio opcional */}
                     <div className="space-y-2">
-                      <label htmlFor="gradient-end-color" className="block text-sm font-medium text-gray-700">
-                        Color Final del Degradado
+                      <label htmlFor="gradient-mid-color" className="block text-sm font-medium text-gray-700">
+                        Color Intermedio (Opcional)
                       </label>
                       <div className="flex items-center gap-2">
                         <Input
-                          id="gradient-end-color"
+                          id="gradient-mid-color"
                           type="color"
-                          value={systemConfig.gradientEndColor || '#e8cf00'}
+                          value={systemConfig.gradientMidColor || '#ffffff'}
                           onChange={(e) => setSystemConfig({
                             ...systemConfig,
-                            gradientEndColor: e.target.value
+                            gradientMidColor: e.target.value
                           })}
                           className="w-16 h-10 rounded cursor-pointer border-2"
                         />
                         <Input
                           type="text"
-                          value={systemConfig.gradientEndColor || '#e8cf00'}
+                          value={systemConfig.gradientMidColor || ''}
                           onChange={(e) => setSystemConfig({
                             ...systemConfig,
-                            gradientEndColor: e.target.value
+                            gradientMidColor: e.target.value
                           })}
-                          placeholder="#e8cf00"
+                          placeholder="Dejar vacío para no usar"
                           className="flex-1 font-mono text-sm"
                         />
                       </div>
                       <p className="text-xs text-gray-500">
-                        Color final del degradado de fondo
+                        Agrega un color en el medio del degradado para más variación
                       </p>
                     </div>
+                  </div>
+                  
+                  {/* Configuración del fondo */}
+                  <div className="space-y-4">
+                    <h4 className="text-md font-semibold text-gray-800 border-b pb-2">Configuración de Imagen de Fondo</h4>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <label htmlFor="background-size" className="block text-sm font-medium text-gray-700">
+                          Tamaño
+                        </label>
+                        <select
+                          id="background-size"
+                          value={systemConfig.backgroundSize || 'auto'}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            backgroundSize: e.target.value as 'auto' | 'cover' | 'contain' | '100%' | '50%'
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
+                        >
+                          <option value="auto">Auto</option>
+                          <option value="cover">Cubrir (cover)</option>
+                          <option value="contain">Contener (contain)</option>
+                          <option value="100%">100%</option>
+                          <option value="50%">50%</option>
+                        </select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label htmlFor="background-repeat" className="block text-sm font-medium text-gray-700">
+                          Repetición
+                        </label>
+                        <select
+                          id="background-repeat"
+                          value={systemConfig.backgroundRepeat || 'repeat'}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            backgroundRepeat: e.target.value as 'repeat' | 'no-repeat' | 'repeat-x' | 'repeat-y'
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
+                        >
+                          <option value="repeat">Repetir</option>
+                          <option value="no-repeat">No repetir</option>
+                          <option value="repeat-x">Repetir horizontalmente</option>
+                          <option value="repeat-y">Repetir verticalmente</option>
+                        </select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label htmlFor="background-position" className="block text-sm font-medium text-gray-700">
+                          Posición
+                        </label>
+                        <select
+                          id="background-position"
+                          value={systemConfig.backgroundPosition || 'center'}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            backgroundPosition: e.target.value as 'center' | 'top' | 'bottom' | 'left' | 'right' | 'top left' | 'top right' | 'bottom left' | 'bottom right'
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
+                        >
+                          <option value="center">Centro</option>
+                          <option value="top">Arriba</option>
+                          <option value="bottom">Abajo</option>
+                          <option value="left">Izquierda</option>
+                          <option value="right">Derecha</option>
+                          <option value="top left">Arriba izquierda</option>
+                          <option value="top right">Arriba derecha</option>
+                          <option value="bottom left">Abajo izquierda</option>
+                          <option value="bottom right">Abajo derecha</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
                   </div>
                   
                   {/* Vista previa del degradado */}
