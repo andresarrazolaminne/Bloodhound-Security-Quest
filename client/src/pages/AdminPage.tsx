@@ -2272,7 +2272,7 @@ const AdminPage = () => {
         </CardContent>
       </Card>
     </TabsContent>
-  </Tabs>
+      </Tabs>
 
       {/* Diálogo para crear/editar assets */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
