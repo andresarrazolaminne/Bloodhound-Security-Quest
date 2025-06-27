@@ -190,10 +190,7 @@ const AuthPage = () => {
   // Mostrar pantalla de carga mientras verificamos si hay un usuario guardado
   if (isLoadingLastUser) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4" 
-        style={{
-          background: `url('${systemConfig.backgroundImageUrl}') repeat, linear-gradient(175deg, ${systemConfig.gradientStartColor} 0%, ${systemConfig.gradientStartColor} 75%, ${systemConfig.gradientEndColor} 100%)`
-        }}>
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 map-page-bg">
         <Card className="w-full max-w-md bg-white/90 backdrop-blur-sm shadow-xl">
           <CardContent className="pt-6 flex flex-col items-center justify-center py-12">
             <BrainLoader size="large" text="Iniciando sesión automáticamente..." />
@@ -206,7 +203,7 @@ const AuthPage = () => {
   // Mostrar interfaz normal de login con transición suave
   return (
     <div 
-      className={`flex flex-col items-center justify-center min-h-screen p-4 text-white auth-page-bg transition-opacity duration-300 ${isLoadingConfig ? 'opacity-0' : 'opacity-100'}`}>
+      className={`flex flex-col items-center justify-center min-h-screen p-4 text-white map-page-bg transition-opacity duration-300 ${isLoadingConfig ? 'opacity-0' : 'opacity-100'}`}>
       <Card className="w-full max-w-md bg-white/90 backdrop-blur-sm shadow-xl border-0">
         <CardContent className="pt-8 pb-8 px-6">
           <div className="flex flex-col items-center justify-center mb-8">
