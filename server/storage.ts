@@ -296,6 +296,16 @@ export class DatabaseStorage implements IStorage {
         cobrandingImageUrl: "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png",
         mapGapSize: "medium",
         mapGridSize: "3x3",
+        appTitle: 'Lanzamiento 2025',
+        backgroundImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
+        gradientStartColor: '#bb2558',
+        gradientEndColor: '#e8cf00',
+        scanButtonText: '¡Escanea aquí!',
+        helpButtonText: 'Ayuda',
+        siteMapButtonText: 'Mapa del Sitio',
+        prizeButtonText: 'Ver Código Premio',
+        completionTitle: '¡Felicidades, has completado el reto!',
+        loadingText: 'Cargando tu mapa...',
         updatedAt: new Date()
       };
     }
@@ -308,6 +318,16 @@ export class DatabaseStorage implements IStorage {
     cobrandingImageUrl?: string;
     mapGapSize?: 'none' | 'x-small' | 'small' | 'medium' | 'large';
     mapGridSize?: '3x3' | '3x2' | '2x3' | '4x2' | '2x4';
+    appTitle?: string;
+    backgroundImageUrl?: string;
+    gradientStartColor?: string;
+    gradientEndColor?: string;
+    scanButtonText?: string;
+    helpButtonText?: string;
+    siteMapButtonText?: string;
+    prizeButtonText?: string;
+    completionTitle?: string;
+    loadingText?: string;
   }): Promise<SystemConfig> {
     try {
       const validatedData = insertSystemConfigSchema.parse(configData);

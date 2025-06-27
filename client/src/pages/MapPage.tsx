@@ -273,7 +273,7 @@ const MapPage = () => {
 
   return (
     <div className="flex flex-col min-h-screen" style={{
-      background: `url('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png') repeat, linear-gradient(175deg, #bb2558 0%, #bb2558 75%, #e8cf00 100%)`
+      background: `url('${systemConfig.backgroundImageUrl}') repeat, linear-gradient(175deg, ${systemConfig.gradientStartColor} 0%, ${systemConfig.gradientStartColor} 75%, ${systemConfig.gradientEndColor} 100%)`
     }}>
       {/* Header */}
       <header className="bg-primary text-white shadow-md">

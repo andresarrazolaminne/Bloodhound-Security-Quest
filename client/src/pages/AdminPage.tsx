@@ -1453,6 +1453,86 @@ const AdminPage = () => {
                     </p>
                   </div>
                   
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="gradient-start-color" className="block text-sm font-medium text-gray-700">
+                        Color Inicial del Degradado
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="gradient-start-color"
+                          type="color"
+                          value={systemConfig.gradientStartColor}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            gradientStartColor: e.target.value
+                          })}
+                          className="w-16 h-10 rounded cursor-pointer border-2"
+                        />
+                        <Input
+                          type="text"
+                          value={systemConfig.gradientStartColor}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            gradientStartColor: e.target.value
+                          })}
+                          placeholder="#bb2558"
+                          className="flex-1 font-mono text-sm"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Color de inicio del degradado de fondo
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="gradient-end-color" className="block text-sm font-medium text-gray-700">
+                        Color Final del Degradado
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="gradient-end-color"
+                          type="color"
+                          value={systemConfig.gradientEndColor}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            gradientEndColor: e.target.value
+                          })}
+                          className="w-16 h-10 rounded cursor-pointer border-2"
+                        />
+                        <Input
+                          type="text"
+                          value={systemConfig.gradientEndColor}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            gradientEndColor: e.target.value
+                          })}
+                          placeholder="#e8cf00"
+                          className="flex-1 font-mono text-sm"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Color final del degradado de fondo
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Vista previa del degradado */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Vista Previa del Degradado
+                    </label>
+                    <div 
+                      className="w-full h-16 rounded-lg border border-gray-200 shadow-sm"
+                      style={{
+                        background: `linear-gradient(175deg, ${systemConfig.gradientStartColor} 0%, ${systemConfig.gradientStartColor} 75%, ${systemConfig.gradientEndColor} 100%)`
+                      }}
+                    ></div>
+                    <p className="text-xs text-gray-500">
+                      Así se verá el degradado de fondo en la aplicación
+                    </p>
+                  </div>
+                  
                   <div className="space-y-2">
                     <label htmlFor="cobranding-image-url" className="block text-sm font-medium text-gray-700">
                       URL de Imagen del Banner (Cobranding)

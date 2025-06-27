@@ -14,6 +14,8 @@ export const systemConfig = pgTable("system_config", {
   // Frontend customization fields
   appTitle: text("app_title").notNull().default('Lanzamiento 2025'),
   backgroundImageUrl: text("background_image_url").notNull().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png'),
+  gradientStartColor: text("gradient_start_color").notNull().default('#bb2558'),
+  gradientEndColor: text("gradient_end_color").notNull().default('#e8cf00'),
   scanButtonText: text("scan_button_text").notNull().default('¡Escanea aquí!'),
   helpButtonText: text("help_button_text").notNull().default('Ayuda'),
   siteMapButtonText: text("site_map_button_text").notNull().default('Mapa del Sitio'),
@@ -35,6 +37,8 @@ export const systemConfigSchema = z.object({
   // Frontend customization fields
   appTitle: z.string().default('Lanzamiento 2025'),
   backgroundImageUrl: z.string().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png'),
+  gradientStartColor: z.string().default('#bb2558'),
+  gradientEndColor: z.string().default('#e8cf00'),
   scanButtonText: z.string().default('¡Escanea aquí!'),
   helpButtonText: z.string().default('Ayuda'),
   siteMapButtonText: z.string().default('Mapa del Sitio'),
