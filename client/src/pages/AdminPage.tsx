@@ -2274,8 +2274,8 @@ const AdminPage = () => {
     </TabsContent>
     </Tabs>
 
-      {/* Diálogo para crear/editar assets */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+    {/* Diálogo para crear/editar assets */}
+    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -2514,7 +2514,6 @@ const AdminPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Tabs>
     </div>
   );
 };
