@@ -20,6 +20,22 @@ const BrainLoader = ({ className, size = "medium", text }: BrainLoaderProps) => 
   
   useEffect(() => {
     setIsVisible(true);
+    
+    // Load system configuration for preload image
+    const loadPreloadImage = async () => {
+      try {
+        const response = await fetch('/api/system-config');
+        if (response.ok) {
+          const data = await response.json();
+          const config = data.config || {};
+          setPreloadImageUrl(config.preloadImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Cerebro.png");
+        }
+      } catch (error) {
+        console.error('Error loading preload image configuration:', error);
+      }
+    };
+
+    loadPreloadImage();
   }, []);
   
   return (
@@ -33,7 +49,7 @@ const BrainLoader = ({ className, size = "medium", text }: BrainLoaderProps) => 
         sizeClasses[size]
       )}>
         <img 
-          src="https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Cerebro.png" 
+          src={preloadImageUrl} 
           alt="Cargando" 
           className={cn(
             "object-contain w-full h-full animate-float",

@@ -152,3 +152,6 @@ Changelog:
 - June 27, 2025. Implemented complete frontend customization system - admin can now modify app titles, button texts, loading messages, and UI elements through dedicated "Personalización" tab with real-time persistence
 - June 27, 2025. Added comprehensive image management to frontend customization - admin can now control banner/cobranding images, footer logos, site map images, and background textures with live previews
 - June 27, 2025. Implemented gradient color selection system - admin can now customize background gradient colors with live preview and persistent storage
+- June 27, 2025. Added complete login page customization through admin panel - admin can now personalize login titles, subtitles, welcome text, field labels, button text, logo image, and preload images
+- June 27, 2025. Reorganized admin customization panel into dedicated tabs (Personalización, Imágenes, Colores, Página Login) eliminating parameter duplications and improving organization
+- June 27, 2025. Implemented customizable preload and login images - BrainLoader component and AuthPage now dynamically load images from database configuration
