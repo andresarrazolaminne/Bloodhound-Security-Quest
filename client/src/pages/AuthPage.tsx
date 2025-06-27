@@ -46,8 +46,18 @@ const AuthPage = () => {
           const config = data.config || {};
           
           // Update CSS custom properties immediately to prevent flash
-          document.documentElement.style.setProperty('--auth-bg-start', config.gradientStartColor || '#bb2558');
-          document.documentElement.style.setProperty('--auth-bg-end', config.gradientEndColor || '#e8cf00');
+          const timestamp = Date.now();
+          document.documentElement.style.setProperty('--background-image-url', config.backgroundImageUrl ? `url('${config.backgroundImageUrl}?t=${timestamp}')` : '');
+          document.documentElement.style.setProperty('--background-size', config.backgroundSize || 'auto');
+          document.documentElement.style.setProperty('--background-repeat', config.backgroundRepeat || 'repeat');
+          document.documentElement.style.setProperty('--background-position', config.backgroundPosition || 'center');
+          document.documentElement.style.setProperty('--gradient-start-color', config.gradientStartColor || '#bb2558');
+          document.documentElement.style.setProperty('--gradient-mid-color', config.gradientMidColor || '');
+          document.documentElement.style.setProperty('--gradient-end-color', config.gradientEndColor || '#e8cf00');
+          document.documentElement.style.setProperty('--gradient-direction', config.gradientDirection || '175deg');
+          document.documentElement.style.setProperty('--gradient-type', config.gradientType || 'linear');
+          document.documentElement.style.setProperty('--login-logo-image-url', config.loginLogoImageUrl ? `url('${config.loginLogoImageUrl}?t=${timestamp}')` : '');
+          document.documentElement.style.setProperty('--preload-image-url', config.preloadImageUrl ? `url('${config.preloadImageUrl}?t=${timestamp}')` : '');
           document.documentElement.style.setProperty('--auth-bg-image', `url('${config.backgroundImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png'}')`);
           
           setSystemConfig({

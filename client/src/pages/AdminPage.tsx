@@ -28,36 +28,31 @@ import {
 import { 
   Loader2, 
   PlusCircle, 
-  Edit, 
+  Pencil, 
   Trash2, 
-  CheckCircle, 
-  XCircle, 
-  Users, 
-  Award, 
+  ExternalLink, 
+  Download, 
   AlertTriangle, 
   LogOut,
-  Eye,
-  EyeOff,
-  Settings,
-  Palette,
-  Image as ImageIcon,
-  Type,
-  UserCheck
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  RefreshCw,
+  BarChart
 } from "lucide-react";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
+import { apiRequest } from "@/lib/queryClient";
+import { MapSegmentAsset } from "@shared/schema";
+import QRGenerator from '@/tools/QRGenerator';
+import AnalyticsTab from '@/components/AnalyticsTab';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import AnalyticsTab from "@/components/AnalyticsTab";
 
 interface MapAssetFormData {
   segmentId: number;
@@ -72,120 +67,72 @@ interface MapAssetFormData {
   generateNewCode?: boolean;
 }
 
-interface MapSegmentAsset {
-  id: number;
-  segmentId: number;
-  imageUrl: string;
-  redirectUrl: string;
-  title: string;
-  description: string;
-  securityCode: string;
-  isTrap: boolean;
-  trapMessage: string;
-  modalContent: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-interface SystemConfigData {
-  id: number;
-  appTitle: string;
-  welcomeTitle: string;
-  scanButtonText: string;
-  progressText: string;
-  completionMessage: string;
-  bannerImageUrl: string;
-  footerLogoUrl: string;
-  siteMapImageUrl: string;
-  backgroundImageUrl: string;
-  backgroundSize: string;
-  backgroundRepeat: string;
-  backgroundPosition: string;
-  gradientStartColor: string;
-  gradientMidColor: string;
-  gradientEndColor: string;
-  gradientDirection: string;
-  gradientType: string;
-  loadingMessage: string;
-  loginTitle: string;
-  loginSubtitle: string;
-  loginWelcomeText: string;
-  loginFieldLabel: string;
-  loginButtonText: string;
-  loginLogoImageUrl: string;
-  preloadImageUrl: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-interface UserProgress {
-  user: {
-    id: number;
-    documentNumber: string;
-    createdAt: Date;
-  };
-  segments: any[];
-  totalSegments: number;
-  unlockedSegments: number;
-  completionPercentage: number;
-  prize: any;
-}
-
-interface PrizeData {
-  id: number;
-  userId: number;
-  redemptionCode: string;
-  redeemed: boolean;
-  redeemedAt?: Date;
-  createdAt: Date;
-}
-
 const AdminPage = () => {
-  const [, setLocation] = useLocation();
-  const { toast } = useToast();
-  
-  // States
+  // Redención de premios
   const [redemptionCode, setRedemptionCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [prizeData, setPrizeData] = useState<PrizeData | null>(null);
-  const [assets, setAssets] = useState<MapSegmentAsset[]>([]);
+  const [result, setResult] = useState<{
+    success: boolean;
+    message: string;
+    redeemedAt?: string;
+    alreadyRedeemed?: boolean;
+  } | null>(null);
+
+  // Gestión de segmentos del mapa
+  const [mapAssets, setMapAssets] = useState<MapSegmentAsset[]>([]);
   const [loadingAssets, setLoadingAssets] = useState(false);
+  const [seedingData, setSeedingData] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState<MapSegmentAsset | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
-  const [selectedAsset, setSelectedAsset] = useState<MapSegmentAsset | null>(null);
-  const [userProgress, setUserProgress] = useState<UserProgress[]>([]);
-  const [loadingUserProgress, setLoadingUserProgress] = useState(false);
-  const [systemConfig, setSystemConfig] = useState<SystemConfigData>({
-    id: 1,
-    appTitle: 'QR Code Quest',
-    welcomeTitle: 'Bienvenido',
-    scanButtonText: 'Escanear QR',
-    progressText: 'Tu Progreso',
-    completionMessage: '¡Felicitaciones! Has completado el mapa',
-    bannerImageUrl: '',
-    footerLogoUrl: '',
-    siteMapImageUrl: '',
-    backgroundImageUrl: '',
-    backgroundSize: 'auto',
-    backgroundRepeat: 'repeat',
-    backgroundPosition: 'center',
-    gradientStartColor: '#bb2558',
-    gradientMidColor: '',
-    gradientEndColor: '#e8cf00',
-    gradientDirection: '175deg',
-    gradientType: 'linear',
-    loadingMessage: 'Cargando...',
-    loginTitle: 'Iniciar Sesión',
-    loginSubtitle: 'Accede a tu cuenta',
-    loginWelcomeText: 'Bienvenido de vuelta',
-    loginFieldLabel: 'Número de Documento',
-    loginButtonText: 'Ingresar',
-    loginLogoImageUrl: '',
-    preloadImageUrl: '',
-    createdAt: new Date(),
-    updatedAt: new Date()
+  const [systemConfig, setSystemConfig] = useState({
+    instructionsText: "",
+    siteMapImageUrl: "",
+    footerLogoUrl: "",
+    cobrandingImageUrl: "",
+    mapGapSize: "medium" as 'none' | 'x-small' | 'small' | 'medium' | 'large',
+    mapGridSize: "3x3" as '3x3' | '3x2' | '2x3' | '4x2' | '2x4',
+    // Frontend customization fields
+    appTitle: "",
+    backgroundImageUrl: "",
+    backgroundSize: "auto" as 'auto' | 'cover' | 'contain' | '100%' | '50%',
+    backgroundRepeat: "repeat" as 'repeat' | 'no-repeat' | 'repeat-x' | 'repeat-y',
+    backgroundPosition: "center" as 'center' | 'top' | 'bottom' | 'left' | 'right' | 'top left' | 'top right' | 'bottom left' | 'bottom right',
+    gradientStartColor: "#bb2558",
+    gradientEndColor: "#e8cf00",
+    gradientMidColor: "",
+    gradientDirection: "175deg",
+    gradientType: "linear" as 'linear' | 'radial',
+    // Login page customization
+    loginTitle: "Lanzamiento",
+    loginSubtitle: "2025",
+    loginWelcomeText: "Bienvenido al reto de identificación de riesgos",
+    loginButtonText: "Ingresar",
+    loginDocumentLabel: "Número de documento",
+    loginNameLabel: "Nombre completo",
+    loginLogoImageUrl: "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
+    preloadImageUrl: "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
+    scanButtonText: "",
+    helpButtonText: "",
+    siteMapButtonText: "",
+    prizeButtonText: "",
+    completionTitle: "",
+    loadingText: ""
   });
-
+  
+  // Ranking de usuarios
+  const [userRanking, setUserRanking] = useState<Array<{
+    user: { id: number; documentNumber: string; name: string; completedAt: string | null };
+    segments: Array<{ id: number; userId: number; segmentId: number; unlocked: boolean }>;
+    totalSegments: number;
+    unlockedSegments: number;
+    completionPercentage: number;
+    prize: { id: number; userId: number; redeemed: boolean; redemptionCode: string | null; redeemedAt: string | null } | null;
+  }>>([]);
+  const [loadingRanking, setLoadingRanking] = useState(false);
+  const [documentFilter, setDocumentFilter] = useState("");
+  const [filteredRanking, setFilteredRanking] = useState<typeof userRanking>([]);
+  const [resettingData, setResettingData] = useState(false);
   const [formData, setFormData] = useState<MapAssetFormData>({
     segmentId: 1,
     imageUrl: "",
@@ -198,306 +145,207 @@ const AdminPage = () => {
     modalContent: "",
     generateNewCode: false
   });
+  
+  const [segmentFilter, setSegmentFilter] = useState<"all" | "normal" | "trap">("all");
 
-  // Load system config on mount
-  useEffect(() => {
-    fetchSystemConfig();
-  }, []);
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
+  // Función para cerrar sesión
+  const handleLogout = () => {
+    // Eliminar la autenticación de la sesión
+    sessionStorage.removeItem("adminAuthenticated");
+
+    toast({
+      title: "Sesión cerrada",
+      description: "Has salido del panel de administración",
+    });
+
+    // Redirigir a la página de login
+    setLocation("/admin-login");
+  };
+
+  // Función para cargar la configuración del sistema
   const fetchSystemConfig = async () => {
     try {
-      const response = await fetch('/api/system-config');
-      if (response.ok) {
-        const config = await response.json();
-        setSystemConfig(config);
-      }
+      const response = await apiRequest("GET", "/api/system-config");
+      const data = await response.json();
+      
+      // La respuesta contiene un objeto 'config' que contiene la configuración
+      const config = data.config || {};
+      
+      // Establecer la configuración actual
+      setSystemConfig({
+        instructionsText: config.instructionsText || "",
+        siteMapImageUrl: config.siteMapImageUrl || "",
+        footerLogoUrl: config.footerLogoUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png",
+        cobrandingImageUrl: config.cobrandingImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png",
+        mapGapSize: config.mapGapSize || "medium",
+        mapGridSize: config.mapGridSize || "3x3",
+        // Frontend customization fields
+        appTitle: config.appTitle || "Lanzamiento 2025",
+        backgroundImageUrl: config.backgroundImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png",
+        backgroundSize: config.backgroundSize || "auto",
+        backgroundRepeat: config.backgroundRepeat || "repeat",
+        backgroundPosition: config.backgroundPosition || "center",
+        gradientStartColor: config.gradientStartColor || "#bb2558",
+        gradientEndColor: config.gradientEndColor || "#e8cf00",
+        gradientMidColor: config.gradientMidColor || "",
+        gradientDirection: config.gradientDirection || "175deg",
+        gradientType: config.gradientType || "linear",
+        scanButtonText: config.scanButtonText || "¡Escanea aquí!",
+        helpButtonText: config.helpButtonText || "Ayuda",
+        siteMapButtonText: config.siteMapButtonText || "Mapa del Sitio",
+        prizeButtonText: config.prizeButtonText || "Ver Código Premio",
+        completionTitle: config.completionTitle || "¡Felicidades, has completado el reto!",
+        loadingText: config.loadingText || "Cargando tu mapa...",
+        loginTitle: config.loginTitle || "Lanzamiento",
+        loginSubtitle: config.loginSubtitle || "2025",
+        loginWelcomeText: config.loginWelcomeText || "Bienvenido al reto de identificación de riesgos",
+        loginButtonText: config.loginButtonText || "Ingresar",
+        loginDocumentLabel: config.loginDocumentLabel || "Número de documento",
+        loginNameLabel: config.loginNameLabel || "Nombre completo",
+        loginLogoImageUrl: config.loginLogoImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
+        preloadImageUrl: config.preloadImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png"
+      } as any);
     } catch (error) {
-      console.error('Error loading system config:', error);
+      console.error("Error loading system config:", error);
+      // No mostramos un toast para no molestar al usuario si no hay config
     }
   };
 
+  // Función para cargar datos del ranking de usuarios
+  const fetchUserRanking = async () => {
+    try {
+      setLoadingRanking(true);
+      const response = await apiRequest("GET", "/api/admin/users-progress");
+      const data = await response.json();
+      setUserRanking(data.users || []);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Error al cargar el ranking de usuarios",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingRanking(false);
+    }
+  };
+
+  // Función para actualizar la configuración del sistema
   const handleUpdateSystemConfig = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
+    
     try {
-      const response = await fetch('/api/system-config', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(systemConfig),
-      });
-
+      setLoadingAssets(true);
+      
+      const response = await apiRequest("POST", "/api/admin/system-config", systemConfig);
+      
       if (response.ok) {
-        const updatedConfig = await response.json();
-        setSystemConfig(updatedConfig);
-        
-        // Update CSS variables
-        updateCSSVariables(updatedConfig);
-        
-        // Emit event for other components to update
-        window.dispatchEvent(new CustomEvent('systemConfigUpdated', { detail: updatedConfig }));
+        const data = await response.json();
         
         toast({
           title: "Configuración actualizada",
-          description: "Los cambios se han aplicado correctamente.",
+          description: "La personalización del frontend se ha guardado correctamente"
         });
-      } else {
-        throw new Error('Error al actualizar la configuración');
-      }
-    } catch (error) {
-      console.error('Error updating system config:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar la configuración.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const updateCSSVariables = (config: SystemConfigData) => {
-    const root = document.documentElement;
-    const timestamp = Date.now();
-    
-    root.style.setProperty('--app-title', `'${config.appTitle}'`);
-    root.style.setProperty('--welcome-title', `'${config.welcomeTitle}'`);
-    root.style.setProperty('--scan-button-text', `'${config.scanButtonText}'`);
-    root.style.setProperty('--progress-text', `'${config.progressText}'`);
-    root.style.setProperty('--completion-message', `'${config.completionMessage}'`);
-    root.style.setProperty('--banner-image-url', config.bannerImageUrl ? `url('${config.bannerImageUrl}?t=${timestamp}')` : '');
-    root.style.setProperty('--footer-logo-url', config.footerLogoUrl ? `url('${config.footerLogoUrl}?t=${timestamp}')` : '');
-    root.style.setProperty('--site-map-image-url', config.siteMapImageUrl ? `url('${config.siteMapImageUrl}?t=${timestamp}')` : '');
-    root.style.setProperty('--background-image-url', config.backgroundImageUrl ? `url('${config.backgroundImageUrl}?t=${timestamp}')` : '');
-    root.style.setProperty('--background-size', config.backgroundSize || 'auto');
-    root.style.setProperty('--background-repeat', config.backgroundRepeat || 'repeat');
-    root.style.setProperty('--background-position', config.backgroundPosition || 'center');
-    root.style.setProperty('--gradient-start-color', config.gradientStartColor || '#bb2558');
-    root.style.setProperty('--gradient-mid-color', config.gradientMidColor || '');
-    root.style.setProperty('--gradient-end-color', config.gradientEndColor || '#e8cf00');
-    root.style.setProperty('--gradient-direction', config.gradientDirection || '175deg');
-    root.style.setProperty('--gradient-type', config.gradientType || 'linear');
-    root.style.setProperty('--loading-message', `'${config.loadingMessage}'`);
-    root.style.setProperty('--login-title', `'${config.loginTitle}'`);
-    root.style.setProperty('--login-subtitle', `'${config.loginSubtitle}'`);
-    root.style.setProperty('--login-welcome-text', `'${config.loginWelcomeText}'`);
-    root.style.setProperty('--login-field-label', `'${config.loginFieldLabel}'`);
-    root.style.setProperty('--login-button-text', `'${config.loginButtonText}'`);
-    root.style.setProperty('--login-logo-image-url', config.loginLogoImageUrl ? `url('${config.loginLogoImageUrl}?t=${timestamp}')` : '');
-    root.style.setProperty('--preload-image-url', config.preloadImageUrl ? `url('${config.preloadImageUrl}?t=${timestamp}')` : '');
-  };
-
-  const handleValidatePrize = async () => {
-    if (!redemptionCode.trim()) {
-      toast({
-        title: "Error",
-        description: "Por favor ingresa un código de canje.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const result = await redeemPrize(redemptionCode.trim());
-      setPrizeData(result as any);
-      toast({
-        title: "Premio validado",
-        description: `Premio canjeado exitosamente.`,
-      });
-    } catch (error) {
-      console.error("Error validating prize:", error);
-      toast({
-        title: "Error",
-        description: "Código de canje inválido o ya utilizado.",
-        variant: "destructive",
-      });
-      setPrizeData(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchAssets = async () => {
-    setLoadingAssets(true);
-    try {
-      const response = await fetch('/api/map-segment-assets');
-      if (response.ok) {
-        const data = await response.json();
-        setAssets(data);
-      }
-    } catch (error) {
-      console.error('Error fetching assets:', error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los segmentos.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingAssets(false);
-    }
-  };
-
-  const fetchUserProgress = async () => {
-    setLoadingUserProgress(true);
-    try {
-      const response = await fetch('/api/admin/users-progress');
-      if (response.ok) {
-        const data = await response.json();
-        setUserProgress(data);
-      }
-    } catch (error) {
-      console.error('Error fetching user progress:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo cargar el progreso de usuarios.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingUserProgress(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAssets();
-    fetchUserProgress();
-  }, []);
-
-  const generateQRCode = async (segmentId: number, securityCode: string) => {
-    const baseUrl = window.location.origin;
-    const qrUrl = `${baseUrl}/unlock/${segmentId}/${securityCode}`;
-    
-    // Generate QR code using qrcode library
-    const QRCode = (await import('qrcode')).default;
-    try {
-      const qrCodeDataUrl = await QRCode.toDataURL(qrUrl, {
-        width: 200,
-        margin: 2,
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF'
+        
+        // Emit custom event to notify other components about the configuration update
+        window.dispatchEvent(new CustomEvent('systemConfigUpdated'));
+        
+        // Actualizar el estado local con los datos guardados
+        if (data.config) {
+          setSystemConfig({
+            instructionsText: data.config.instructionsText || "",
+            siteMapImageUrl: data.config.siteMapImageUrl || "",
+            footerLogoUrl: data.config.footerLogoUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png",
+            cobrandingImageUrl: data.config.cobrandingImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png",
+            mapGapSize: data.config.mapGapSize || "medium",
+            mapGridSize: data.config.mapGridSize || "3x3",
+            appTitle: data.config.appTitle || "Lanzamiento 2025",
+            backgroundImageUrl: data.config.backgroundImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png",
+            backgroundSize: data.config.backgroundSize || "auto",
+            backgroundRepeat: data.config.backgroundRepeat || "repeat",
+            backgroundPosition: data.config.backgroundPosition || "center",
+            gradientStartColor: data.config.gradientStartColor || "#bb2558",
+            gradientEndColor: data.config.gradientEndColor || "#e8cf00",
+            gradientMidColor: data.config.gradientMidColor || "",
+            gradientDirection: data.config.gradientDirection || "175deg",
+            gradientType: data.config.gradientType || "linear",
+            scanButtonText: data.config.scanButtonText || "¡Escanea aquí!",
+            helpButtonText: data.config.helpButtonText || "Ayuda",
+            siteMapButtonText: data.config.siteMapButtonText || "Mapa del Sitio",
+            prizeButtonText: data.config.prizeButtonText || "Ver Código Premio",
+            completionTitle: data.config.completionTitle || "¡Felicidades, has completado el reto!",
+            loadingText: data.config.loadingText || "Cargando tu mapa...",
+            loginTitle: data.config.loginTitle || "Lanzamiento",
+            loginSubtitle: data.config.loginSubtitle || "2025",
+            loginWelcomeText: data.config.loginWelcomeText || "Bienvenido al reto de identificación de riesgos",
+            loginButtonText: data.config.loginButtonText || "Ingresar",
+            loginDocumentLabel: data.config.loginDocumentLabel || "Número de documento",
+            loginNameLabel: data.config.loginNameLabel || "Nombre completo",
+            loginLogoImageUrl: data.config.loginLogoImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
+            preloadImageUrl: data.config.preloadImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png"
+          } as any);
         }
-      });
-      
-      // Create download link
-      const link = document.createElement('a');
-      link.href = qrCodeDataUrl;
-      link.download = `qr-segment-${segmentId}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      toast({
-        title: "QR generado",
-        description: `Código QR para el segmento ${segmentId} descargado.`,
-      });
-    } catch (error) {
-      console.error('Error generating QR code:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo generar el código QR.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSaveAsset = async () => {
-    if (!formData.title || !formData.imageUrl || !formData.securityCode) {
-      toast({
-        title: "Error",
-        description: "Por favor completa todos los campos requeridos.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoadingAssets(true);
-    try {
-      const url = dialogMode === "create" 
-        ? '/api/map-segment-assets' 
-        : `/api/map-segment-assets/${selectedAsset?.segmentId}`;
-      
-      const method = dialogMode === "create" ? 'POST' : 'PUT';
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        await fetchAssets();
-        setDialogOpen(false);
-        resetForm();
-        toast({
-          title: "Éxito",
-          description: `Segmento ${dialogMode === "create" ? "creado" : "actualizado"} exitosamente.`,
-        });
+        
+        // También recargar la configuración para asegurar sincronización
+        await fetchSystemConfig();
       } else {
-        throw new Error('Error saving asset');
+        throw new Error("Error al actualizar la configuración");
       }
     } catch (error) {
-      console.error('Error saving asset:', error);
       toast({
         title: "Error",
-        description: "No se pudo guardar el segmento.",
-        variant: "destructive",
+        description: "Error al actualizar la configuración del sistema",
+        variant: "destructive"
       });
     } finally {
       setLoadingAssets(false);
     }
   };
 
-  const handleDeleteAsset = async (segmentId: number) => {
-    if (!confirm("¿Estás seguro de que quieres eliminar este segmento?")) return;
+  // Cargar assets de segmentos del mapa y configuración del sistema al iniciar
+  useEffect(() => {
+    fetchMapAssets();
+    fetchSystemConfig();
+    fetchUserRanking();
+  }, []);
+  
+  // Filtrar los usuarios cuando cambia el filtro o los datos
+  useEffect(() => {
+    if (documentFilter.trim() === '') {
+      setFilteredRanking(userRanking);
+    } else {
+      setFilteredRanking(
+        userRanking.filter(item => 
+          item.user.documentNumber.toLowerCase().includes(documentFilter.toLowerCase()) ||
+          item.user.name.toLowerCase().includes(documentFilter.toLowerCase())
+        )
+      );
+    }
+  }, [userRanking, documentFilter]);
 
+  // Función para cargar los assets de segmentos del mapa
+  const fetchMapAssets = async () => {
     try {
-      const response = await fetch(`/api/map-segment-assets/${segmentId}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        await fetchAssets();
-        toast({
-          title: "Éxito",
-          description: "Segmento eliminado exitosamente.",
-        });
-      } else {
-        throw new Error('Error deleting asset');
-      }
+      setLoadingAssets(true);
+      const response = await apiRequest("GET", "/api/admin/map-assets");
+      const data = await response.json();
+      setMapAssets(data.assets);
     } catch (error) {
-      console.error('Error deleting asset:', error);
       toast({
         title: "Error",
-        description: "No se pudo eliminar el segmento.",
-        variant: "destructive",
+        description: "Error al cargar los segmentos del mapa",
+        variant: "destructive"
       });
+    } finally {
+      setLoadingAssets(false);
     }
   };
 
-  const handleEditAsset = (asset: MapSegmentAsset) => {
-    setSelectedAsset(asset);
-    setFormData({
-      segmentId: asset.segmentId,
-      imageUrl: asset.imageUrl,
-      redirectUrl: asset.redirectUrl,
-      title: asset.title,
-      description: asset.description,
-      securityCode: asset.securityCode,
-      isTrap: asset.isTrap,
-      trapMessage: asset.trapMessage,
-      modalContent: asset.modalContent,
-      generateNewCode: false
-    });
-    setDialogMode("edit");
-    setDialogOpen(true);
-  };
-
-  const resetForm = () => {
+  // Función para abrir el diálogo de crear asset
+  const handleCreateAsset = () => {
+    setDialogMode("create");
     setFormData({
       segmentId: 1,
       imageUrl: "",
@@ -508,26 +356,163 @@ const AdminPage = () => {
       isTrap: false,
       trapMessage: "",
       modalContent: "",
-      generateNewCode: false
+      generateNewCode: true
     });
-    setSelectedAsset(null);
-  };
-
-  const handleCreateNew = () => {
-    resetForm();
-    setDialogMode("create");
     setDialogOpen(true);
   };
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('adminLoggedIn');
-    setLocation('/admin');
+  // Función para abrir el diálogo de editar asset
+  const handleEditAsset = (asset: MapSegmentAsset) => {
+    setDialogMode("edit");
+    setSelectedAsset(asset);
+    setFormData({
+      segmentId: asset.segmentId,
+      imageUrl: asset.imageUrl,
+      redirectUrl: asset.redirectUrl || "",
+      title: asset.title,
+      description: asset.description || "",
+      securityCode: asset.securityCode || "",
+      isTrap: asset.isTrap || false,
+      trapMessage: (asset as any).trapMessage || "",
+      modalContent: (asset as any).modalContent || "",
+      generateNewCode: false
+    });
+    setDialogOpen(true);
+  };
+
+  // Función para guardar un asset (crear o actualizar)
+  const handleSaveAsset = async () => {
+    try {
+      setLoadingAssets(true);
+
+      const payload = {
+        ...formData,
+        redirectUrl: formData.redirectUrl || null,
+        description: formData.description || null,
+        // Si el usuario eligió generar un nuevo código, incluimos la bandera
+        // para que el servidor genere uno nuevo
+        generateNewCode: formData.generateNewCode || false
+      };
+
+      if (dialogMode === "create") {
+        // Crear nuevo asset
+        await apiRequest("POST", "/api/admin/map-assets", payload);
+        toast({
+          title: "Éxito",
+          description: "Segmento creado correctamente"
+        });
+      } else {
+        // Actualizar asset existente
+        await apiRequest("PUT", `/api/admin/map-assets/${formData.segmentId}`, payload);
+        toast({
+          title: "Éxito",
+          description: "Segmento actualizado correctamente"
+        });
+      }
+
+      // Recargar la lista de assets
+      fetchMapAssets();
+      setDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Error al guardar el segmento",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingAssets(false);
+    }
+  };
+
+  // Función para eliminar un asset
+  const handleDeleteAsset = async (segmentId: number) => {
+    if (!confirm("¿Estás seguro de eliminar este segmento?")) {
+      return;
+    }
+
+    try {
+      setLoadingAssets(true);
+      await apiRequest("DELETE", `/api/admin/map-assets/${segmentId}`);
+
+      toast({
+        title: "Éxito",
+        description: "Segmento eliminado correctamente"
+      });
+
+      // Recargar la lista de assets
+      fetchMapAssets();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Error al eliminar el segmento",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingAssets(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!redemptionCode.trim()) {
+      toast({
+        title: "Error",
+        description: "Por favor ingresa un código de redención",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setResult(null);
+
+      const response = await redeemPrize(redemptionCode);
+
+      setResult({
+        success: true,
+        message: "Premio disponible para redención"
+      });
+
+      toast({
+        title: "Éxito",
+        description: "Premio validado correctamente",
+      });
+
+    } catch (error) {
+      const errorResponse = await (error as Response).json();
+
+      if (errorResponse.redeemedAt) {
+        // Already redeemed - Mostrar como validado pero ya reclamado
+        setResult({
+          success: true, // Cambio a true para mostrar como válido pero ya reclamado
+          message: "Premio ya reclamado anteriormente",
+          redeemedAt: errorResponse.redeemedAt,
+          alreadyRedeemed: true // Nuevo flag para indicar que ya fue reclamado
+        });
+      } else {
+        // Invalid code or other error
+        setResult({
+          success: false,
+          message: errorResponse.message || "Código de redención inválido"
+        });
+      }
+
+      toast({
+        title: "Error",
+        description: errorResponse.message || "Código de redención inválido",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-primary">Panel de Administración</h1>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="flex justify-between items-center mb-6 max-w-5xl mx-auto">
+        <h1 className="text-3xl font-bold">Panel de Administración</h1>
         <Button 
           variant="outline" 
           onClick={handleLogout}
@@ -543,175 +528,274 @@ const AdminPage = () => {
           <TabsTrigger value="prizes">Validación de Premios</TabsTrigger>
           <TabsTrigger value="segments">Segmentos del Mapa</TabsTrigger>
           <TabsTrigger value="qrgenerator">Generador de QR</TabsTrigger>
-          <TabsTrigger value="users">Progreso de Usuarios</TabsTrigger>
-          <TabsTrigger value="analytics">Analíticas</TabsTrigger>
+          <TabsTrigger value="ranking">Ranking de Usuarios</TabsTrigger>
+          <TabsTrigger value="analytics">
+            <div className="flex items-center gap-1">
+              <BarChart className="h-4 w-4" />
+              <span>Analíticas</span>
+            </div>
+          </TabsTrigger>
           <TabsTrigger value="frontend">Personalización</TabsTrigger>
-          <TabsTrigger value="images">Imágenes</TabsTrigger>
+          <TabsTrigger value="config">Configuración</TabsTrigger>
         </TabsList>
 
         <TabsContent value="prizes">
-          <Card>
+          <Card className="w-full">
             <CardHeader className="bg-primary text-white">
-              <CardTitle className="text-xl flex items-center gap-2">
-                <Award className="h-5 w-5" />
-                Validación de Premios
-              </CardTitle>
+              <CardTitle className="text-xl">Validación de Premios</CardTitle>
               <CardDescription className="text-white/80">
-                Ingresa el código de canje para validar y marcar un premio como canjeado
+                Ingresa un código de redención para validar un premio
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="flex gap-4">
+
+            <CardContent className="pt-6">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <label htmlFor="redemption-code" className="block text-sm font-medium text-gray-700">
+                    Código de Redención
+                  </label>
                   <Input
-                    placeholder="Código de canje del premio"
+                    id="redemption-code"
+                    type="text"
                     value={redemptionCode}
                     onChange={(e) => setRedemptionCode(e.target.value)}
-                    className="flex-1"
+                    placeholder="Ingresa el código de redención"
+                    className="w-full"
+                    required
                   />
-                  <Button onClick={handleValidatePrize} disabled={isLoading}>
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Validando...
-                      </>
-                    ) : (
-                      "Validar Premio"
-                    )}
-                  </Button>
                 </div>
 
-                {prizeData && (
-                  <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                      <h3 className="font-semibold text-green-800">Premio Válido</h3>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="font-semibold">ID del Premio:</span> {prizeData.id}
-                      </div>
-                      <div>
-                        <span className="font-semibold">Usuario ID:</span> {prizeData.userId}
-                      </div>
-                      <div>
-                        <span className="font-semibold">Código:</span> {prizeData.redemptionCode}
-                      </div>
-                      <div>
-                        <span className="font-semibold">Estado:</span>
-                        <Badge variant={prizeData.redeemed ? "destructive" : "default"} className="ml-2">
-                          {prizeData.redeemed ? "Canjeado" : "Disponible"}
-                        </Badge>
-                      </div>
-                      <div className="col-span-2">
-                        <span className="font-semibold">Fecha de creación:</span> {new Date(prizeData.createdAt).toLocaleString()}
-                      </div>
-                      {prizeData.redeemed && prizeData.redeemedAt && (
-                        <div className="col-span-2">
-                          <span className="font-semibold">Canjeado el:</span> {new Date(prizeData.redeemedAt).toLocaleString()}
-                        </div>
-                      )}
-                    </div>
+                <Button 
+                  type="submit"
+                  className="w-full"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Validando..." : "Validar Premio"}
+                </Button>
+              </form>
+
+              {result && (
+                <div className={`mt-6 p-4 rounded-md ${result.success ? (result.alreadyRedeemed ? 'bg-yellow-50' : 'bg-green-50') : 'bg-red-50'}`}>
+                  <div className="flex items-center mb-2">
+                    <Badge 
+                      variant={result.success 
+                        ? (result.alreadyRedeemed ? "secondary" : "success") 
+                        : "destructive"} 
+                      className="mr-2"
+                    >
+                      {result.success 
+                        ? (result.alreadyRedeemed ? "Ya Reclamado" : "Válido") 
+                        : "Inválido"}
+                    </Badge>
+                    <p className="font-medium">{result.message}</p>
                   </div>
-                )}
-              </div>
+
+                  {/* Mostrar el código de redención validado */}
+                  {result.success && redemptionCode && (
+                    <div className="my-3 p-3 bg-white border border-gray-200 rounded-md">
+                      <p className="text-xs text-gray-500 mb-1">Código validado:</p>
+                      <p className="font-mono text-lg font-bold tracking-wider break-all">
+                        {redemptionCode}
+                      </p>
+                    </div>
+                  )}
+
+                  {result.redeemedAt && (
+                    <div className="mt-2 mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                      <div className="flex items-center text-yellow-800">
+                        <AlertTriangle className="h-4 w-4 mr-2" />
+                        <p className="font-medium">Premio ya entregado</p>
+                      </div>
+                      <p className="text-sm text-yellow-700 mt-1">
+                        Código reclamado el: {new Date(result.redeemedAt).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* El botón de confirmar entrega ha sido eliminado ya que es redundante */}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="segments">
-          <Card>
+          <Card className="w-full">
             <CardHeader className="bg-primary text-white">
-              <CardTitle className="text-xl flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Gestión de Segmentos del Mapa
-              </CardTitle>
+              <CardTitle className="text-xl">Gestión de Segmentos del Mapa</CardTitle>
               <CardDescription className="text-white/80">
-                Administra los segmentos del mapa, sus imágenes, códigos QR y configuraciones
+                Administra las imágenes y URLs de redirección de los segmentos del mapa
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold">Segmentos Configurados</h3>
-                <Button onClick={handleCreateNew} className="flex items-center gap-2">
-                  <PlusCircle className="h-4 w-4" />
-                  Crear Nuevo Segmento
+
+            <CardContent className="pt-6">
+              <div className="flex justify-between mb-6">
+                <Button 
+                  onClick={async () => {
+                    try {
+                      setSeedingData(true);
+
+                      const response = await apiRequest("POST", "/api/admin/seed-map-assets");
+                      const data = await response.json();
+
+                      if (data.success) {
+                        toast({
+                          title: "Éxito",
+                          description: "Segmentos predeterminados cargados correctamente",
+                        });
+                        fetchMapAssets();
+                      }
+                    } catch (error) {
+                      toast({
+                        title: "Error",
+                        description: "Error al cargar los segmentos predeterminados",
+                        variant: "destructive"
+                      });
+                    } finally {
+                      setSeedingData(false);
+                    }
+                  }}
+                  variant="outline"
+                  disabled={seedingData}
+                >
+                  {seedingData ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Cargando...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="mr-2 h-4 w-4" />
+                      Cargar Ejemplos
+                    </>
+                  )}
+                </Button>
+
+                <Button onClick={handleCreateAsset}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Nuevo Segmento
                 </Button>
               </div>
 
+              {/* Estadísticas y filtro de QR */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center bg-gray-50 p-4 rounded-lg">
+                <div className="flex gap-4 items-center">
+                  <div className="text-sm text-gray-600">
+                    Total: <span className="font-semibold">{mapAssets.length}</span>
+                  </div>
+                  <div className="text-sm text-green-600">
+                    ✅ Normales: <span className="font-semibold">{mapAssets.filter(a => !a.isTrap).length}</span>
+                  </div>
+                  <div className="text-sm text-orange-600">
+                    🎯 Trampa: <span className="font-semibold">{mapAssets.filter(a => a.isTrap).length}</span>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2">
+                  <select
+                    value={segmentFilter}
+                    onChange={(e) => setSegmentFilter(e.target.value as "all" | "normal" | "trap")}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">Todos los QR</option>
+                    <option value="normal">Solo QR Normales</option>
+                    <option value="trap">Solo QR Trampa</option>
+                  </select>
+                </div>
+              </div>
+
               {loadingAssets ? (
-                <div className="flex justify-center items-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin" />
-                  <span className="ml-2">Cargando segmentos...</span>
+                <div className="flex justify-center py-10">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : mapAssets.length === 0 ? (
+                <div className="text-center py-10 text-gray-500">
+                  <p>No hay segmentos configurados</p>
+                  <p className="text-sm mt-2">Haz clic en "Nuevo Segmento" para empezar</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableCaption>Lista de todos los segmentos del mapa configurados</TableCaption>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Segmento</TableHead>
-                        <TableHead>Título</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Código</TableHead>
-                        <TableHead>Imagen</TableHead>
-                        <TableHead>Acciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {assets.map((asset) => (
-                        <TableRow key={asset.id}>
-                          <TableCell className="font-medium">#{asset.segmentId}</TableCell>
-                          <TableCell>{asset.title}</TableCell>
-                          <TableCell>
-                            {asset.isTrap ? (
-                              <Badge variant="destructive" className="flex items-center gap-1">
-                                <AlertTriangle className="h-3 w-3" />
-                                Trampa
-                              </Badge>
-                            ) : (
-                              <Badge variant="default">Normal</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="font-mono text-sm">{asset.securityCode}</TableCell>
-                          <TableCell>
-                            {asset.imageUrl && (
-                              <img 
-                                src={asset.imageUrl} 
-                                alt={asset.title}
-                                className="w-12 h-12 object-cover rounded"
-                              />
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEditAsset(asset)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => generateQRCode(asset.segmentId, asset.securityCode)}
-                              >
-                                QR
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleDeleteAsset(asset.segmentId)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {mapAssets
+                    .filter(asset => {
+                      if (segmentFilter === "normal") return !asset.isTrap;
+                      if (segmentFilter === "trap") return asset.isTrap;
+                      return true; // "all"
+                    })
+                    .map((asset) => (
+                    <Card key={asset.id} className="overflow-hidden">
+                      <div className="relative aspect-square">
+                        <img 
+                          src={asset.imageUrl} 
+                          alt={`Segmento ${asset.segmentId}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "https://placehold.co/400x400/e2e8f0/64748b?text=Imagen+no+disponible";
+                          }}
+                        />
+                        <div className="absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-sm">
+                          Segmento {asset.segmentId}
+                        </div>
+                        {asset.isTrap && (
+                          <div className="absolute top-2 left-2 bg-orange-500 text-white px-2 py-1 rounded text-xs font-semibold">
+                            🎯 TRAMPA
+                          </div>
+                        )}
+                      </div>
+
+                      <CardContent className="p-4">
+                        <h3 className="font-bold truncate">{asset.title || `Segmento ${asset.segmentId}`}</h3>
+
+                        {asset.description && (
+                          <p className="text-sm text-gray-500 mt-1 line-clamp-2">{asset.description}</p>
+                        )}
+
+                        {asset.redirectUrl && (
+                          <div className="flex items-center mt-2 text-sm text-blue-600">
+                            <ExternalLink className="h-4 w-4 mr-1" />
+                            <span className="truncate">{asset.redirectUrl}</span>
+                          </div>
+                        )}
+
+                        {asset.securityCode && (
+                          <div className="flex items-center mt-2 text-xs text-gray-600 bg-gray-100 p-1 rounded">
+                            <span className="font-mono font-semibold tracking-wider mr-1">
+                              Código: {asset.securityCode}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Indicador de tipo de QR */}
+                        <div className="flex items-center mt-2">
+                          {asset.isTrap ? (
+                            <div className="flex items-center text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                              <span className="mr-1">🎯</span>
+                              <span className="font-semibold">QR Trampa</span>
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                          ) : (
+                            <div className="flex items-center text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                              <span className="mr-1">✅</span>
+                              <span className="font-semibold">QR Normal</span>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+
+                      <CardFooter className="flex justify-between p-4 pt-0">
+                        <Button variant="outline" size="sm" onClick={() => handleEditAsset(asset)}>
+                          <Pencil className="h-4 w-4 mr-1" />
+                          Editar
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => handleDeleteAsset(asset.segmentId)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Eliminar
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  ))}
                 </div>
               )}
             </CardContent>
@@ -719,115 +803,542 @@ const AdminPage = () => {
         </TabsContent>
 
         <TabsContent value="qrgenerator">
-          <Card>
+          <Card className="w-full">
             <CardHeader className="bg-primary text-white">
               <CardTitle className="text-xl">Generador de Códigos QR</CardTitle>
               <CardDescription className="text-white/80">
-                Genera y descarga códigos QR para los segmentos del mapa
+                Crea códigos QR para el desbloqueo de segmentos del mapa
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {assets.map((asset) => (
-                  <Card key={asset.id} className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-semibold">Segmento #{asset.segmentId}</h4>
-                      {asset.isTrap && (
-                        <Badge variant="destructive" className="text-xs">
-                          <AlertTriangle className="h-3 w-3 mr-1" />
-                          Trampa
-                        </Badge>
-                      )}
+            <CardContent className="pt-6">
+              <QRGenerator />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="config">
+          <Card className="w-full">
+            <CardHeader className="bg-primary text-white">
+              <CardTitle className="text-xl">Configuración del Sistema</CardTitle>
+              <CardDescription className="text-white/80">
+                Gestiona las configuraciones globales de la aplicación
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="pt-6">
+              <form className="space-y-6" onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  await apiRequest("POST", "/api/admin/system-config", {
+                    instructionsText: systemConfig.instructionsText,
+                    siteMapImageUrl: systemConfig.siteMapImageUrl,
+                    footerLogoUrl: systemConfig.footerLogoUrl,
+                    cobrandingImageUrl: systemConfig.cobrandingImageUrl,
+                    mapGapSize: systemConfig.mapGapSize,
+                    mapGridSize: systemConfig.mapGridSize
+                  });
+                  
+                  toast({
+                    title: "Éxito",
+                    description: "Configuración actualizada correctamente"
+                  });
+                } catch (error) {
+                  toast({
+                    title: "Error",
+                    description: "No se pudo actualizar la configuración",
+                    variant: "destructive"
+                  });
+                }
+              }}>
+                <div className="space-y-2">
+                  <label htmlFor="instructions" className="block text-sm font-medium text-gray-700">
+                    Texto de Instrucciones
+                  </label>
+                  
+                  <RichTextEditor
+                    value={systemConfig.instructionsText}
+                    onChange={(value) => setSystemConfig({
+                      ...systemConfig,
+                      instructionsText: value
+                    })}
+                    className="min-h-[300px]"
+                  />
+                  
+                  <p className="text-sm text-gray-500">
+                    Este texto se mostrará en el modal de instrucciones. 
+                    Usa el editor para dar formato a las instrucciones.
+                  </p>
+                  
+                  {systemConfig.instructionsText && (
+                    <div className="mt-4 border rounded-md p-4">
+                      <p className="text-sm font-medium mb-2">Vista previa:</p>
+                      <HtmlContent html={systemConfig.instructionsText} />
                     </div>
-                    <p className="text-sm text-gray-600 mb-3">{asset.title}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="map-url" className="block text-sm font-medium text-gray-700">
+                    URL del Mapa del Sitio
+                  </label>
+                  <Input
+                    id="map-url"
+                    type="url"
+                    value={systemConfig.siteMapImageUrl}
+                    onChange={(e) => setSystemConfig({
+                      ...systemConfig,
+                      siteMapImageUrl: e.target.value
+                    })}
+                    placeholder="https://ejemplo.com/mapa.jpg"
+                  />
+                  <p className="text-sm text-gray-500">
+                    URL de la imagen del mapa del sitio que se mostrará en el modal correspondiente
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <label htmlFor="footer-logo-url" className="block text-sm font-medium text-gray-700">
+                    URL del Logo del Pie de Página
+                  </label>
+                  <Input
+                    id="footer-logo-url"
+                    type="url"
+                    value={systemConfig.footerLogoUrl}
+                    onChange={(e) => setSystemConfig({
+                      ...systemConfig,
+                      footerLogoUrl: e.target.value
+                    })}
+                    placeholder="https://ejemplo.com/logos.png"
+                  />
+                  <p className="text-sm text-gray-500">
+                    URL de la imagen con los logos de patrocinadores que se mostrará en el pie de página
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="cobranding-image-url" className="block text-sm font-medium text-gray-700">
+                    URL de la Imagen de Cobranding
+                  </label>
+                  <Input
+                    id="cobranding-image-url"
+                    type="url"
+                    value={systemConfig.cobrandingImageUrl}
+                    onChange={(e) => setSystemConfig({
+                      ...systemConfig,
+                      cobrandingImageUrl: e.target.value
+                    })}
+                    placeholder="https://ejemplo.com/cobranding.png"
+                  />
+                  <p className="text-sm text-gray-500">
+                    URL de la imagen de cobranding que se mostrará en el encabezado de la aplicación
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <label htmlFor="map-gap-size" className="block text-sm font-medium text-gray-700">
+                    Espaciado entre Imágenes del Mapa
+                  </label>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     <Button
-                      onClick={() => generateQRCode(asset.segmentId, asset.securityCode)}
-                      className="w-full"
-                      size="sm"
+                      type="button"
+                      variant={systemConfig.mapGapSize === 'none' ? 'default' : 'outline'}
+                      className="flex flex-col items-center py-3"
+                      onClick={() => setSystemConfig({
+                        ...systemConfig,
+                        mapGapSize: 'none'
+                      })}
                     >
-                      Generar QR
+                      <div className="flex items-center gap-0 mb-1">
+                        <div className="w-3 h-3 bg-primary rounded-sm"></div>
+                        <div className="w-3 h-3 bg-primary rounded-sm"></div>
+                      </div>
+                      <span className="text-xs">Sin Separación</span>
                     </Button>
-                  </Card>
-                ))}
+                    
+                    <Button
+                      type="button"
+                      variant={systemConfig.mapGapSize === 'x-small' ? 'default' : 'outline'}
+                      className="flex flex-col items-center py-3"
+                      onClick={() => setSystemConfig({
+                        ...systemConfig,
+                        mapGapSize: 'x-small'
+                      })}
+                    >
+                      <div className="flex items-center gap-[2px] mb-1">
+                        <div className="w-3 h-3 bg-primary rounded"></div>
+                        <div className="w-3 h-3 bg-primary rounded"></div>
+                      </div>
+                      <span className="text-xs">Mínimo</span>
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant={systemConfig.mapGapSize === 'small' ? 'default' : 'outline'}
+                      className="flex flex-col items-center py-3"
+                      onClick={() => setSystemConfig({
+                        ...systemConfig,
+                        mapGapSize: 'small'
+                      })}
+                    >
+                      <div className="flex items-center gap-1 mb-1">
+                        <div className="w-3 h-3 bg-primary rounded"></div>
+                        <div className="w-3 h-3 bg-primary rounded"></div>
+                      </div>
+                      <span className="text-xs">Pequeño</span>
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant={systemConfig.mapGapSize === 'medium' ? 'default' : 'outline'}
+                      className="flex flex-col items-center py-3"
+                      onClick={() => setSystemConfig({
+                        ...systemConfig,
+                        mapGapSize: 'medium'
+                      })}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-3 h-3 bg-primary rounded"></div>
+                        <div className="w-3 h-3 bg-primary rounded"></div>
+                      </div>
+                      <span className="text-xs">Medio</span>
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant={systemConfig.mapGapSize === 'large' ? 'default' : 'outline'}
+                      className="flex flex-col items-center py-3"
+                      onClick={() => setSystemConfig({
+                        ...systemConfig,
+                        mapGapSize: 'large'
+                      })}
+                    >
+                      <div className="flex items-center gap-3 mb-1">
+                        <div className="w-3 h-3 bg-primary rounded"></div>
+                        <div className="w-3 h-3 bg-primary rounded"></div>
+                      </div>
+                      <span className="text-xs">Grande</span>
+                    </Button>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Controla la separación entre las imágenes del mapa en la cuadrícula
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <label htmlFor="map-grid-size" className="block text-sm font-medium text-gray-700">
+                    Tamaño de la Cuadrícula del Mapa
+                  </label>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <Button
+                      type="button"
+                      variant={systemConfig.mapGridSize === '3x3' ? 'default' : 'outline'}
+                      className="flex flex-col items-center py-3"
+                      onClick={() => setSystemConfig({
+                        ...systemConfig,
+                        mapGridSize: '3x3'
+                      })}
+                    >
+                      <div className="grid grid-cols-3 gap-[2px] mb-1">
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                      </div>
+                      <span className="text-xs">3x3 (9 Imágenes)</span>
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant={systemConfig.mapGridSize === '3x2' ? 'default' : 'outline'}
+                      className="flex flex-col items-center py-3"
+                      onClick={() => setSystemConfig({
+                        ...systemConfig,
+                        mapGridSize: '3x2'
+                      })}
+                    >
+                      <div className="grid grid-cols-3 gap-[2px] mb-1">
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                      </div>
+                      <span className="text-xs">3x2 (6 Imágenes)</span>
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant={systemConfig.mapGridSize === '2x3' ? 'default' : 'outline'}
+                      className="flex flex-col items-center py-3"
+                      onClick={() => setSystemConfig({
+                        ...systemConfig,
+                        mapGridSize: '2x3'
+                      })}
+                    >
+                      <div className="grid grid-cols-2 gap-[2px] mb-1">
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                      </div>
+                      <span className="text-xs">2x3 (6 Imágenes)</span>
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant={systemConfig.mapGridSize === '4x2' ? 'default' : 'outline'}
+                      className="flex flex-col items-center py-3"
+                      onClick={() => setSystemConfig({
+                        ...systemConfig,
+                        mapGridSize: '4x2'
+                      })}
+                    >
+                      <div className="grid grid-cols-4 gap-[2px] mb-1">
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                      </div>
+                      <span className="text-xs">4x2 (8 Imágenes)</span>
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant={systemConfig.mapGridSize === '2x4' ? 'default' : 'outline'}
+                      className="flex flex-col items-center py-3"
+                      onClick={() => setSystemConfig({
+                        ...systemConfig,
+                        mapGridSize: '2x4'
+                      })}
+                    >
+                      <div className="grid grid-cols-2 gap-[2px] mb-1">
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                        <div className="w-2 h-2 bg-primary rounded-sm"></div>
+                      </div>
+                      <span className="text-xs">2x4 (8 Imágenes)</span>
+                    </Button>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Selecciona el tamaño de la cuadrícula para el mapa (número de filas y columnas)
+                  </p>
+                </div>
+
+                <Button type="submit" className="w-full">
+                  Guardar Configuración
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ranking">
+          <Card className="w-full">
+            <CardHeader className="bg-primary text-white">
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-xl">Ranking de Usuarios</CardTitle>
+                  <CardDescription className="text-white/80">
+                    Consulta el progreso de los usuarios en la aplicación
+                  </CardDescription>
+                </div>
+                <Button 
+                  variant="secondary"
+                  size="sm"
+                  onClick={async () => {
+                    if (confirm("¿Estás seguro de reiniciar todos los datos de usuarios?\nEsta acción no se puede deshacer.")) {
+                      try {
+                        setResettingData(true);
+                        const response = await apiRequest("POST", "/api/admin/reset-data");
+                        const data = await response.json();
+                        
+                        toast({
+                          title: "Datos reiniciados",
+                          description: "Todos los datos de usuarios han sido eliminados"
+                        });
+                        
+                        // Recargar el ranking
+                        fetchUserRanking();
+                      } catch (error) {
+                        toast({
+                          title: "Error",
+                          description: "Error al reiniciar los datos",
+                          variant: "destructive"
+                        });
+                      } finally {
+                        setResettingData(false);
+                      }
+                    }
+                  }}
+                  disabled={resettingData}
+                  className="text-white"
+                >
+                  {resettingData ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Reiniciando...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Reiniciar datos
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardHeader>
+
+            <CardContent className="pt-6">
+              <div className="mb-4">
+                <Input
+                  placeholder="Filtrar por Cédula o Nombre"
+                  value={documentFilter}
+                  onChange={(e) => setDocumentFilter(e.target.value)}
+                  className="max-w-sm"
+                />
+              </div>
+              
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10">#</TableHead>
+                      <TableHead className="w-40">Documento</TableHead>
+                      <TableHead>Nombre</TableHead>
+                      <TableHead className="w-32 text-center">Progreso</TableHead>
+                      <TableHead className="w-40 text-center">Fecha Logro</TableHead>
+                      <TableHead className="w-32 text-center">Premio</TableHead>
+                      <TableHead className="w-32 text-center">Segmentos</TableHead>
+                      <TableHead className="w-32 text-center">Estado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loadingRanking ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-10">
+                          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredRanking.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-6 text-gray-500">
+                          No hay usuarios registrados o que coincidan con el filtro
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredRanking.map((item, index) => (
+                        <TableRow key={item.user.id}>
+                          <TableCell className="font-medium">{index + 1}</TableCell>
+                          <TableCell>{item.user.documentNumber}</TableCell>
+                          <TableCell>{item.user.name}</TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center">
+                              <Progress 
+                                value={item.completionPercentage} 
+                                className="w-20 h-2" 
+                              />
+                              <span className="ml-2 text-sm">
+                                {Math.round(item.completionPercentage)}%
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {item.user.completedAt ? (
+                              <span className="text-sm">
+                                {new Date(item.user.completedAt).toLocaleString('es-ES', {
+                                  year: 'numeric',
+                                  month: '2-digit',
+                                  day: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            ) : (
+                              <span className="text-sm text-gray-400">No completado</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {item.completionPercentage === 100 ? (
+                              item.prize && item.prize.redeemed ? (
+                                <Badge variant="success" className="gap-1">
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                  Reclamado
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="gap-1">
+                                  <Clock className="h-3.5 w-3.5" />
+                                  Pendiente
+                                </Badge>
+                              )
+                            ) : (
+                              <Badge variant="outline" className="gap-1">
+                                <AlertCircle className="h-3.5 w-3.5" />
+                                No disponible
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {item.unlockedSegments}/{item.totalSegments}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-center">
+                              {item.completionPercentage === 100 ? (
+                                <Badge variant="success" className="gap-1">
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                  Completado
+                                </Badge>
+                              ) : item.completionPercentage > 0 ? (
+                                <Badge variant="secondary" className="gap-1">
+                                  <Clock className="h-3.5 w-3.5" />
+                                  En progreso
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="gap-1">
+                                  <AlertCircle className="h-3.5 w-3.5" />
+                                  Sin iniciar
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="users">
-          <Card>
+        <TabsContent value="analytics">
+          <Card className="w-full">
             <CardHeader className="bg-primary text-white">
-              <CardTitle className="text-xl flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Progreso de Usuarios
-              </CardTitle>
+              <CardTitle className="text-xl">Analíticas de Uso</CardTitle>
               <CardDescription className="text-white/80">
-                Monitorea el progreso de todos los usuarios registrados
+                Métricas y estadísticas de uso de la aplicación
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-6">
-              {loadingUserProgress ? (
-                <div className="flex justify-center items-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin" />
-                  <span className="ml-2">Cargando progreso...</span>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableCaption>Progreso de todos los usuarios registrados</TableCaption>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Usuario</TableHead>
-                        <TableHead>Documento</TableHead>
-                        <TableHead>Progreso</TableHead>
-                        <TableHead>Segmentos</TableHead>
-                        <TableHead>Premio</TableHead>
-                        <TableHead>Registro</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {userProgress.map((progress) => (
-                        <TableRow key={progress.user.id}>
-                          <TableCell className="font-medium">#{progress.user.id}</TableCell>
-                          <TableCell>{progress.user.documentNumber}</TableCell>
-                          <TableCell>
-                            <div className="space-y-2">
-                              <Progress value={progress.completionPercentage} className="w-24" />
-                              <span className="text-sm text-gray-600">
-                                {progress.completionPercentage.toFixed(1)}%
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-sm">
-                              {progress.unlockedSegments} / {progress.totalSegments}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {progress.prize ? (
-                              <Badge variant="default" className="flex items-center gap-1">
-                                <CheckCircle className="h-3 w-3" />
-                                Generado
-                              </Badge>
-                            ) : (
-                              <Badge variant="secondary">Pendiente</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-sm text-gray-600">
-                            {new Date(progress.user.createdAt).toLocaleDateString()}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+            <CardContent className="pt-6">
+              <AnalyticsTab />
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="analytics">
-          <AnalyticsTab />
         </TabsContent>
 
         <TabsContent value="frontend">
@@ -838,626 +1349,930 @@ const AdminPage = () => {
                 Personaliza títulos, textos de botones y elementos visuales de la aplicación
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-6">
-              <Tabs defaultValue="personalizacion" className="w-full">
+            <CardContent className="pt-6">
+              <Tabs defaultValue="customization" className="w-full">
                 <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="personalizacion">Personalización</TabsTrigger>
-                  <TabsTrigger value="imagenes">Imágenes</TabsTrigger>
-                  <TabsTrigger value="colores">Colores</TabsTrigger>
+                  <TabsTrigger value="customization">Personalización</TabsTrigger>
+                  <TabsTrigger value="images">Imágenes</TabsTrigger>
+                  <TabsTrigger value="colors">Colores</TabsTrigger>
                   <TabsTrigger value="login">Página Login</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="personalizacion" className="space-y-6">
+                <TabsContent value="customization" className="space-y-6">
                   <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="appTitle">Título de la Aplicación</Label>
-                        <Input
-                          id="appTitle"
-                          value={systemConfig.appTitle}
-                          onChange={(e) => setSystemConfig({...systemConfig, appTitle: e.target.value})}
-                          placeholder="QR Code Quest"
-                        />
-                      </div>
+                {/* Títulos y elementos principales */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Títulos Principales</h3>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="app-title" className="block text-sm font-medium text-gray-700">
+                      Título de la Aplicación
+                    </label>
+                    <Input
+                      id="app-title"
+                      value={systemConfig.appTitle}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        appTitle: e.target.value
+                      })}
+                      placeholder="Lanzamiento 2025"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Texto que aparece en el encabezado de la aplicación (actualmente: "Lanzamiento 2025")
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="completion-title" className="block text-sm font-medium text-gray-700">
+                      Título de Completación
+                    </label>
+                    <Input
+                      id="completion-title"
+                      value={systemConfig.completionTitle}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        completionTitle: e.target.value
+                      })}
+                      placeholder="¡Felicidades, has completado el reto!"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Título que se muestra cuando el usuario completa todos los segmentos
+                    </p>
+                  </div>
+                </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="welcomeTitle">Título de Bienvenida</Label>
-                        <Input
-                          id="welcomeTitle"
-                          value={systemConfig.welcomeTitle}
-                          onChange={(e) => setSystemConfig({...systemConfig, welcomeTitle: e.target.value})}
-                          placeholder="Bienvenido"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="scanButtonText">Texto del Botón de Escaneo</Label>
-                        <Input
-                          id="scanButtonText"
-                          value={systemConfig.scanButtonText}
-                          onChange={(e) => setSystemConfig({...systemConfig, scanButtonText: e.target.value})}
-                          placeholder="Escanear QR"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="progressText">Texto de Progreso</Label>
-                        <Input
-                          id="progressText"
-                          value={systemConfig.progressText}
-                          onChange={(e) => setSystemConfig({...systemConfig, progressText: e.target.value})}
-                          placeholder="Tu Progreso"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="loadingMessage">Mensaje de Carga</Label>
-                        <Input
-                          id="loadingMessage"
-                          value={systemConfig.loadingMessage}
-                          onChange={(e) => setSystemConfig({...systemConfig, loadingMessage: e.target.value})}
-                          placeholder="Cargando..."
-                        />
-                      </div>
-
-                      <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="completionMessage">Mensaje de Completado</Label>
-                        <Textarea
-                          id="completionMessage"
-                          value={systemConfig.completionMessage}
-                          onChange={(e) => setSystemConfig({...systemConfig, completionMessage: e.target.value})}
-                          placeholder="¡Felicitaciones! Has completado el mapa"
-                          className="min-h-[100px]"
-                        />
-                      </div>
+                {/* Textos de botones */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Textos de Botones</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="scan-button-text" className="block text-sm font-medium text-gray-700">
+                        Texto del Botón de Escaneo
+                      </label>
+                      <Input
+                        id="scan-button-text"
+                        value={systemConfig.scanButtonText}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          scanButtonText: e.target.value
+                        })}
+                        placeholder="¡Escanea aquí!"
+                      />
                     </div>
-
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Guardando...
-                        </>
-                      ) : (
-                        "Actualizar Personalización"
-                      )}
-                    </Button>
-                  </form>
-                </TabsContent>
-
-                <TabsContent value="imagenes" className="space-y-6">
-                  <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="bannerImageUrl">URL de Imagen Banner/Cobranding</Label>
-                        <Input
-                          id="bannerImageUrl"
-                          value={systemConfig.bannerImageUrl}
-                          onChange={(e) => setSystemConfig({...systemConfig, bannerImageUrl: e.target.value})}
-                          placeholder="https://ejemplo.com/banner.png"
-                        />
-                        {systemConfig.bannerImageUrl && (
-                          <div className="mt-2">
-                            <img src={`${systemConfig.bannerImageUrl}?t=${Date.now()}`} alt="Vista previa banner" className="max-w-full h-20 object-contain border rounded" />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="footerLogoUrl">URL de Logo del Footer</Label>
-                        <Input
-                          id="footerLogoUrl"
-                          value={systemConfig.footerLogoUrl}
-                          onChange={(e) => setSystemConfig({...systemConfig, footerLogoUrl: e.target.value})}
-                          placeholder="https://ejemplo.com/logo.png"
-                        />
-                        {systemConfig.footerLogoUrl && (
-                          <div className="mt-2">
-                            <img src={`${systemConfig.footerLogoUrl}?t=${Date.now()}`} alt="Vista previa logo footer" className="max-w-full h-20 object-contain border rounded" />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="siteMapImageUrl">URL de Imagen del Mapa del Sitio</Label>
-                        <Input
-                          id="siteMapImageUrl"
-                          value={systemConfig.siteMapImageUrl}
-                          onChange={(e) => setSystemConfig({...systemConfig, siteMapImageUrl: e.target.value})}
-                          placeholder="https://ejemplo.com/sitemap.png"
-                        />
-                        {systemConfig.siteMapImageUrl && (
-                          <div className="mt-2">
-                            <img src={`${systemConfig.siteMapImageUrl}?t=${Date.now()}`} alt="Vista previa mapa del sitio" className="max-w-full h-20 object-contain border rounded" />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="backgroundImageUrl">URL de Imagen de Fondo</Label>
-                        <Input
-                          id="backgroundImageUrl"
-                          value={systemConfig.backgroundImageUrl}
-                          onChange={(e) => setSystemConfig({...systemConfig, backgroundImageUrl: e.target.value})}
-                          placeholder="https://ejemplo.com/background.png"
-                        />
-                        {systemConfig.backgroundImageUrl && (
-                          <div className="mt-2">
-                            <img src={`${systemConfig.backgroundImageUrl}?t=${Date.now()}`} alt="Vista previa fondo" className="max-w-full h-20 object-contain border rounded" />
-                          </div>
-                        )}
-                      </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="help-button-text" className="block text-sm font-medium text-gray-700">
+                        Texto del Botón de Ayuda
+                      </label>
+                      <Input
+                        id="help-button-text"
+                        value={systemConfig.helpButtonText}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          helpButtonText: e.target.value
+                        })}
+                        placeholder="Ayuda"
+                      />
                     </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="sitemap-button-text" className="block text-sm font-medium text-gray-700">
+                        Texto del Botón de Mapa del Sitio
+                      </label>
+                      <Input
+                        id="sitemap-button-text"
+                        value={systemConfig.siteMapButtonText}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          siteMapButtonText: e.target.value
+                        })}
+                        placeholder="Mapa del Sitio"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="prize-button-text" className="block text-sm font-medium text-gray-700">
+                        Texto del Botón de Premio
+                      </label>
+                      <Input
+                        id="prize-button-text"
+                        value={systemConfig.prizeButtonText}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          prizeButtonText: e.target.value
+                        })}
+                        placeholder="Ver Código Premio"
+                      />
+                    </div>
+                  </div>
+                </div>
 
-                    {/* Advanced background controls */}
-                    <div className="space-y-4 border-t pt-4">
-                      <h4 className="text-lg font-semibold">Configuración Avanzada de Fondo</h4>
+                {/* Mensajes y textos auxiliares */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Mensajes del Sistema</h3>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="loading-text" className="block text-sm font-medium text-gray-700">
+                      Texto de Carga
+                    </label>
+                    <Input
+                      id="loading-text"
+                      value={systemConfig.loadingText}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        loadingText: e.target.value
+                      })}
+                      placeholder="Cargando tu mapa..."
+                    />
+                    <p className="text-xs text-gray-500">
+                      Mensaje que se muestra mientras carga el mapa
+                    </p>
+                  </div>
+                </div>
+
+                {/* Imágenes y fondos */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Imágenes y Fondos</h3>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="background-image-url" className="block text-sm font-medium text-gray-700">
+                      URL de Imagen de Fondo
+                    </label>
+                    <Input
+                      id="background-image-url"
+                      type="url"
+                      value={systemConfig.backgroundImageUrl}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        backgroundImageUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/fondo.png"
+                    />
+                    <p className="text-xs text-gray-500">
+                      URL de la imagen de textura de fondo de la aplicación
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="gradient-start-color" className="block text-sm font-medium text-gray-700">
+                        Color Inicial del Degradado
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="gradient-start-color"
+                          type="color"
+                          value={(systemConfig as any).gradientStartColor || '#bb2558'}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            gradientStartColor: e.target.value
+                          } as any)}
+                          className="w-16 h-10 rounded cursor-pointer border-2"
+                        />
+                        <Input
+                          type="text"
+                          value={(systemConfig as any).gradientStartColor || '#bb2558'}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            gradientStartColor: e.target.value
+                          } as any)}
+                          placeholder="#bb2558"
+                          className="flex-1 font-mono text-sm"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Color de inicio del degradado de fondo
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="gradient-end-color" className="block text-sm font-medium text-gray-700">
+                        Color Final del Degradado
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="gradient-end-color"
+                          type="color"
+                          value={(systemConfig as any).gradientEndColor || '#e8cf00'}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            gradientEndColor: e.target.value
+                          } as any)}
+                          className="w-16 h-10 rounded cursor-pointer border-2"
+                        />
+                        <Input
+                          type="text"
+                          value={(systemConfig as any).gradientEndColor || '#e8cf00'}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            gradientEndColor: e.target.value
+                          } as any)}
+                          placeholder="#e8cf00"
+                          className="flex-1 font-mono text-sm"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Color final del degradado de fondo
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Vista previa del degradado */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Vista Previa del Degradado
+                    </label>
+                    <div 
+                      className="w-full h-16 rounded-lg border border-gray-200 shadow-sm"
+                      style={{
+                        background: `linear-gradient(175deg, ${(systemConfig as any).gradientStartColor || '#bb2558'} 0%, ${(systemConfig as any).gradientStartColor || '#bb2558'} 75%, ${(systemConfig as any).gradientEndColor || '#e8cf00'} 100%)`
+                      }}
+                    ></div>
+                    <p className="text-xs text-gray-500">
+                      Así se verá el degradado de fondo en la aplicación
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="cobranding-image-url" className="block text-sm font-medium text-gray-700">
+                      URL de Imagen del Banner (Cobranding)
+                    </label>
+                    <Input
+                      id="cobranding-image-url"
+                      type="url"
+                      value={systemConfig.cobrandingImageUrl}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        cobrandingImageUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/banner.png"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Imagen que aparece en la parte superior del mapa (banner de marcas)
+                    </p>
+                    {systemConfig.cobrandingImageUrl && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
+                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                        <img 
+                          src={systemConfig.cobrandingImageUrl} 
+                          alt="Vista previa banner" 
+                          className="h-12 object-contain border border-gray-200 rounded"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="footer-logo-url" className="block text-sm font-medium text-gray-700">
+                      URL de Imagen del Footer (Logos de Patrocinadores)
+                    </label>
+                    <Input
+                      id="footer-logo-url"
+                      type="url"
+                      value={systemConfig.footerLogoUrl}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        footerLogoUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/logos-footer.png"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Imagen con logos de patrocinadores que aparece en el pie de página
+                    </p>
+                    {systemConfig.footerLogoUrl && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
+                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                        <img 
+                          src={systemConfig.footerLogoUrl} 
+                          alt="Vista previa footer" 
+                          className="max-h-16 object-contain border border-gray-200 rounded w-full"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="site-map-image-url" className="block text-sm font-medium text-gray-700">
+                      URL de Imagen del Mapa del Sitio
+                    </label>
+                    <Input
+                      id="site-map-image-url"
+                      type="url"
+                      value={systemConfig.siteMapImageUrl}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        siteMapImageUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/mapa-completo.png"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Imagen que se muestra en el modal "Mapa del Sitio"
+                    </p>
+                    {systemConfig.siteMapImageUrl && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
+                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                        <img 
+                          src={systemConfig.siteMapImageUrl} 
+                          alt="Vista previa mapa del sitio" 
+                          className="max-h-20 object-contain border border-gray-200 rounded"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-4 border-t">
+                  <Button type="submit" disabled={loadingAssets}>
+                    {loadingAssets ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Actualizando...
+                      </>
+                    ) : (
+                      "Actualizar Personalización"
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="images" className="space-y-6">
+              <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
+                {/* Imágenes y fondos */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Gestión de Imágenes</h3>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="background-image-url" className="block text-sm font-medium text-gray-700">
+                      URL de Imagen de Fondo (Textura)
+                    </label>
+                    <Input
+                      id="background-image-url"
+                      type="url"
+                      value={systemConfig.backgroundImageUrl}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        backgroundImageUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/fondo.png"
+                    />
+                    <p className="text-xs text-gray-500">
+                      URL de la imagen de textura de fondo de la aplicación
+                    </p>
+                    {systemConfig.backgroundImageUrl && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
+                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                        <img 
+                          src={systemConfig.backgroundImageUrl} 
+                          alt="Vista previa fondo" 
+                          className="h-16 w-32 object-cover border border-gray-200 rounded"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="cobranding-image-url" className="block text-sm font-medium text-gray-700">
+                      URL de Imagen del Banner (Cobranding)
+                    </label>
+                    <Input
+                      id="cobranding-image-url"
+                      type="url"
+                      value={systemConfig.cobrandingImageUrl}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        cobrandingImageUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/banner.png"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Imagen que aparece en la parte superior del mapa (banner de marcas)
+                    </p>
+                    {systemConfig.cobrandingImageUrl && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
+                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                        <img 
+                          src={systemConfig.cobrandingImageUrl} 
+                          alt="Vista previa banner" 
+                          className="h-12 object-contain border border-gray-200 rounded"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="footer-logo-url" className="block text-sm font-medium text-gray-700">
+                      URL de Imagen del Footer (Logos de Patrocinadores)
+                    </label>
+                    <Input
+                      id="footer-logo-url"
+                      type="url"
+                      value={systemConfig.footerLogoUrl}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        footerLogoUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/logos.png"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Logos de patrocinadores que aparecen en la parte inferior
+                    </p>
+                    {systemConfig.footerLogoUrl && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
+                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                        <img 
+                          src={systemConfig.footerLogoUrl} 
+                          alt="Vista previa footer" 
+                          className="h-8 object-contain border border-gray-200 rounded"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="site-map-image-url" className="block text-sm font-medium text-gray-700">
+                      URL de Imagen del Mapa del Sitio
+                    </label>
+                    <Input
+                      id="site-map-image-url"
+                      type="url"
+                      value={systemConfig.siteMapImageUrl}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        siteMapImageUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/mapa.jpg"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Imagen que se muestra en el modal "Mapa del Sitio"
+                    </p>
+                    {systemConfig.siteMapImageUrl && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
+                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                        <img 
+                          src={systemConfig.siteMapImageUrl} 
+                          alt="Vista previa mapa del sitio" 
+                          className="h-20 object-contain border border-gray-200 rounded"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="login-logo-image-url" className="block text-sm font-medium text-gray-700">
+                      URL de Imagen/Logo del Login
+                    </label>
+                    <Input
+                      id="login-logo-image-url"
+                      type="url"
+                      value={systemConfig.loginLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        loginLogoImageUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/logo-login.png"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Imagen/logo que aparece en la página de login entre el título y subtítulo
+                    </p>
+                    {systemConfig.loginLogoImageUrl && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
+                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                        <img 
+                          src={systemConfig.loginLogoImageUrl} 
+                          alt="Vista previa logo login" 
+                          className="h-16 object-contain border border-gray-200 rounded"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="preload-image-url" className="block text-sm font-medium text-gray-700">
+                      URL de Imagen de Precarga
+                    </label>
+                    <Input
+                      id="preload-image-url"
+                      type="url"
+                      value={systemConfig.preloadImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        preloadImageUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/imagen-carga.png"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Imagen que se muestra en las pantallas de carga y precarga de la aplicación
+                    </p>
+                    {systemConfig.preloadImageUrl && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
+                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                        <img 
+                          src={systemConfig.preloadImageUrl} 
+                          alt="Vista previa imagen precarga" 
+                          className="h-16 object-contain border border-gray-200 rounded"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    "Actualizar Imágenes"
+                  )}
+                </Button>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="colors" className="space-y-6">
+              <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
+                {/* Colores del degradado */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Colores del Degradado de Fondo</h3>
+                  
+                  {/* Configuración avanzada del degradado */}
+                  <div className="space-y-4">
+                    <h4 className="text-md font-semibold text-gray-800 border-b pb-2">Configuración del Degradado</h4>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label htmlFor="gradient-type" className="block text-sm font-medium text-gray-700">
+                          Tipo de Degradado
+                        </label>
+                        <select
+                          id="gradient-type"
+                          value={systemConfig.gradientType || 'linear'}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            gradientType: e.target.value as 'linear' | 'radial'
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
+                        >
+                          <option value="linear">Lineal</option>
+                          <option value="radial">Radial</option>
+                        </select>
+                      </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="backgroundSize">Tamaño de Fondo</Label>
-                          <Select 
-                            value={systemConfig.backgroundSize} 
-                            onValueChange={(value) => setSystemConfig({...systemConfig, backgroundSize: value})}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="auto">Auto</SelectItem>
-                              <SelectItem value="cover">Cubrir</SelectItem>
-                              <SelectItem value="contain">Contener</SelectItem>
-                              <SelectItem value="100% 100%">Estirar</SelectItem>
-                              <SelectItem value="50%">50%</SelectItem>
-                              <SelectItem value="75%">75%</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="backgroundRepeat">Repetición de Fondo</Label>
-                          <Select 
-                            value={systemConfig.backgroundRepeat} 
-                            onValueChange={(value) => setSystemConfig({...systemConfig, backgroundRepeat: value})}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="repeat">Repetir</SelectItem>
-                              <SelectItem value="no-repeat">No repetir</SelectItem>
-                              <SelectItem value="repeat-x">Repetir horizontal</SelectItem>
-                              <SelectItem value="repeat-y">Repetir vertical</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="backgroundPosition">Posición de Fondo</Label>
-                          <Select 
-                            value={systemConfig.backgroundPosition} 
-                            onValueChange={(value) => setSystemConfig({...systemConfig, backgroundPosition: value})}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="center">Centro</SelectItem>
-                              <SelectItem value="top">Arriba</SelectItem>
-                              <SelectItem value="bottom">Abajo</SelectItem>
-                              <SelectItem value="left">Izquierda</SelectItem>
-                              <SelectItem value="right">Derecha</SelectItem>
-                              <SelectItem value="top left">Arriba izquierda</SelectItem>
-                              <SelectItem value="top right">Arriba derecha</SelectItem>
-                              <SelectItem value="bottom left">Abajo izquierda</SelectItem>
-                              <SelectItem value="bottom right">Abajo derecha</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Guardando...
-                        </>
-                      ) : (
-                        "Actualizar Imágenes"
-                      )}
-                    </Button>
-                  </form>
-                </TabsContent>
-
-                <TabsContent value="colores" className="space-y-6">
-                  <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <Label htmlFor="gradientStartColor">Color Inicial del Degradado</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="gradientStartColor"
-                            type="color"
-                            value={systemConfig.gradientStartColor}
-                            onChange={(e) => setSystemConfig({...systemConfig, gradientStartColor: e.target.value})}
-                            className="w-16 h-10 p-1 border rounded"
-                          />
-                          <Input
-                            value={systemConfig.gradientStartColor}
-                            onChange={(e) => setSystemConfig({...systemConfig, gradientStartColor: e.target.value})}
-                            placeholder="#bb2558"
-                            className="flex-1"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="gradientEndColor">Color Final del Degradado</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="gradientEndColor"
-                            type="color"
-                            value={systemConfig.gradientEndColor}
-                            onChange={(e) => setSystemConfig({...systemConfig, gradientEndColor: e.target.value})}
-                            className="w-16 h-10 p-1 border rounded"
-                          />
-                          <Input
-                            value={systemConfig.gradientEndColor}
-                            onChange={(e) => setSystemConfig({...systemConfig, gradientEndColor: e.target.value})}
-                            placeholder="#e8cf00"
-                            className="flex-1"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="gradientMidColor">Color Medio del Degradado (Opcional)</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="gradientMidColor"
-                            type="color"
-                            value={systemConfig.gradientMidColor || '#ffffff'}
-                            onChange={(e) => setSystemConfig({...systemConfig, gradientMidColor: e.target.value})}
-                            className="w-16 h-10 p-1 border rounded"
-                          />
-                          <Input
-                            value={systemConfig.gradientMidColor}
-                            onChange={(e) => setSystemConfig({...systemConfig, gradientMidColor: e.target.value})}
-                            placeholder="Opcional - para degradados de 3 colores"
-                            className="flex-1"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="gradientDirection">Dirección del Degradado</Label>
-                        <Select 
-                          value={systemConfig.gradientDirection} 
-                          onValueChange={(value) => setSystemConfig({...systemConfig, gradientDirection: value})}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="0deg">Horizontal (0°)</SelectItem>
-                            <SelectItem value="45deg">Diagonal NE (45°)</SelectItem>
-                            <SelectItem value="90deg">Vertical (90°)</SelectItem>
-                            <SelectItem value="135deg">Diagonal SE (135°)</SelectItem>
-                            <SelectItem value="180deg">Horizontal Inverso (180°)</SelectItem>
-                            <SelectItem value="225deg">Diagonal SW (225°)</SelectItem>
-                            <SelectItem value="270deg">Vertical Inverso (270°)</SelectItem>
-                            <SelectItem value="315deg">Diagonal NW (315°)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="gradientType">Tipo de Degradado</Label>
-                        <Select 
-                          value={systemConfig.gradientType} 
-                          onValueChange={(value) => setSystemConfig({...systemConfig, gradientType: value})}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="linear">Lineal</SelectItem>
-                            <SelectItem value="radial">Radial</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <label htmlFor="gradient-direction" className="block text-sm font-medium text-gray-700">
+                          Dirección/Ángulo
+                        </label>
+                        <Input
+                          id="gradient-direction"
+                          type="text"
+                          value={systemConfig.gradientDirection || '175deg'}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            gradientDirection: e.target.value
+                          })}
+                          placeholder="175deg, to right, 45deg"
+                          className="w-full font-mono text-sm"
+                        />
+                        <p className="text-xs text-gray-500">
+                          Ej: 175deg, to right, to bottom left
+                        </p>
                       </div>
                     </div>
                     
-                    {/* Vista previa del degradado */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label htmlFor="gradient-start-color" className="block text-sm font-medium text-gray-700">
+                          Color Inicial
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="gradient-start-color"
+                            type="color"
+                            value={systemConfig.gradientStartColor || '#bb2558'}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              gradientStartColor: e.target.value
+                            })}
+                            className="w-16 h-10 rounded cursor-pointer border-2"
+                          />
+                          <Input
+                            type="text"
+                            value={systemConfig.gradientStartColor || '#bb2558'}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              gradientStartColor: e.target.value
+                            })}
+                            placeholder="#bb2558"
+                            className="flex-1 font-mono text-sm"
+                          />
+                        </div>
+                      </div>
+                    
+                      <div className="space-y-2">
+                        <label htmlFor="gradient-end-color" className="block text-sm font-medium text-gray-700">
+                          Color Final
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="gradient-end-color"
+                            type="color"
+                            value={systemConfig.gradientEndColor || '#e8cf00'}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              gradientEndColor: e.target.value
+                            })}
+                            className="w-16 h-10 rounded cursor-pointer border-2"
+                          />
+                          <Input
+                            type="text"
+                            value={systemConfig.gradientEndColor || '#e8cf00'}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              gradientEndColor: e.target.value
+                            })}
+                            placeholder="#e8cf00"
+                            className="flex-1 font-mono text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Color intermedio opcional */}
                     <div className="space-y-2">
-                      <Label className="block text-sm font-medium text-gray-700">
-                        Vista Previa del Degradado y Fondo
-                      </Label>
-                      <div 
-                        className="w-full h-20 rounded-lg border border-gray-200 shadow-sm"
-                        style={{
-                          background: `url('${systemConfig.backgroundImageUrl}') ${systemConfig.backgroundRepeat || 'repeat'}, ${systemConfig.gradientType || 'linear'}-gradient(${systemConfig.gradientDirection || '175deg'}, ${systemConfig.gradientStartColor || '#bb2558'} 0%${systemConfig.gradientMidColor ? `, ${systemConfig.gradientMidColor} 50%` : ''}, ${systemConfig.gradientEndColor || '#e8cf00'} 100%)`,
-                          backgroundSize: systemConfig.backgroundSize || 'auto',
-                          backgroundPosition: systemConfig.backgroundPosition || 'center'
-                        }}
-                      ></div>
+                      <label htmlFor="gradient-mid-color" className="block text-sm font-medium text-gray-700">
+                        Color Intermedio (Opcional)
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="gradient-mid-color"
+                          type="color"
+                          value={systemConfig.gradientMidColor || '#ffffff'}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            gradientMidColor: e.target.value
+                          })}
+                          className="w-16 h-10 rounded cursor-pointer border-2"
+                        />
+                        <Input
+                          type="text"
+                          value={systemConfig.gradientMidColor || ''}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            gradientMidColor: e.target.value
+                          })}
+                          placeholder="Dejar vacío para no usar"
+                          className="flex-1 font-mono text-sm"
+                        />
+                      </div>
                       <p className="text-xs text-gray-500">
-                        Vista previa completa del fondo con imagen y degradado aplicados
+                        Agrega un color en el medio del degradado para más variación
                       </p>
                     </div>
-
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Guardando...
-                        </>
-                      ) : (
-                        "Actualizar Colores"
-                      )}
-                    </Button>
-                  </form>
-                </TabsContent>
-
-                <TabsContent value="login" className="space-y-6">
-                  <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  </div>
+                  
+                  {/* Configuración del fondo */}
+                  <div className="space-y-4">
+                    <h4 className="text-md font-semibold text-gray-800 border-b pb-2">Configuración de Imagen de Fondo</h4>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="loginTitle">Título de Login</Label>
-                        <Input
-                          id="loginTitle"
-                          value={systemConfig.loginTitle}
-                          onChange={(e) => setSystemConfig({...systemConfig, loginTitle: e.target.value})}
-                          placeholder="Iniciar Sesión"
-                        />
+                        <label htmlFor="background-size" className="block text-sm font-medium text-gray-700">
+                          Tamaño
+                        </label>
+                        <select
+                          id="background-size"
+                          value={systemConfig.backgroundSize || 'auto'}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            backgroundSize: e.target.value as 'auto' | 'cover' | 'contain' | '100%' | '50%'
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
+                        >
+                          <option value="auto">Auto</option>
+                          <option value="cover">Cubrir (cover)</option>
+                          <option value="contain">Contener (contain)</option>
+                          <option value="100%">100%</option>
+                          <option value="50%">50%</option>
+                        </select>
                       </div>
-
+                      
                       <div className="space-y-2">
-                        <Label htmlFor="loginSubtitle">Subtítulo de Login</Label>
-                        <Input
-                          id="loginSubtitle"
-                          value={systemConfig.loginSubtitle}
-                          onChange={(e) => setSystemConfig({...systemConfig, loginSubtitle: e.target.value})}
-                          placeholder="Accede a tu cuenta"
-                        />
+                        <label htmlFor="background-repeat" className="block text-sm font-medium text-gray-700">
+                          Repetición
+                        </label>
+                        <select
+                          id="background-repeat"
+                          value={systemConfig.backgroundRepeat || 'repeat'}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            backgroundRepeat: e.target.value as 'repeat' | 'no-repeat' | 'repeat-x' | 'repeat-y'
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
+                        >
+                          <option value="repeat">Repetir</option>
+                          <option value="no-repeat">No repetir</option>
+                          <option value="repeat-x">Repetir horizontalmente</option>
+                          <option value="repeat-y">Repetir verticalmente</option>
+                        </select>
                       </div>
-
+                      
                       <div className="space-y-2">
-                        <Label htmlFor="loginWelcomeText">Texto de Bienvenida</Label>
-                        <Input
-                          id="loginWelcomeText"
-                          value={systemConfig.loginWelcomeText}
-                          onChange={(e) => setSystemConfig({...systemConfig, loginWelcomeText: e.target.value})}
-                          placeholder="Bienvenido de vuelta"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="loginFieldLabel">Etiqueta del Campo</Label>
-                        <Input
-                          id="loginFieldLabel"
-                          value={systemConfig.loginFieldLabel}
-                          onChange={(e) => setSystemConfig({...systemConfig, loginFieldLabel: e.target.value})}
-                          placeholder="Número de Documento"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="loginButtonText">Texto del Botón</Label>
-                        <Input
-                          id="loginButtonText"
-                          value={systemConfig.loginButtonText}
-                          onChange={(e) => setSystemConfig({...systemConfig, loginButtonText: e.target.value})}
-                          placeholder="Ingresar"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="loginLogoImageUrl">URL de Logo de Login</Label>
-                        <Input
-                          id="loginLogoImageUrl"
-                          value={systemConfig.loginLogoImageUrl}
-                          onChange={(e) => setSystemConfig({...systemConfig, loginLogoImageUrl: e.target.value})}
-                          placeholder="https://ejemplo.com/logo-login.png"
-                        />
-                        {systemConfig.loginLogoImageUrl && (
-                          <div className="mt-2">
-                            <img src={`${systemConfig.loginLogoImageUrl}?t=${Date.now()}`} alt="Vista previa logo login" className="max-w-full h-20 object-contain border rounded" />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="preloadImageUrl">URL de Imagen de Precarga</Label>
-                        <Input
-                          id="preloadImageUrl"
-                          value={systemConfig.preloadImageUrl}
-                          onChange={(e) => setSystemConfig({...systemConfig, preloadImageUrl: e.target.value})}
-                          placeholder="https://ejemplo.com/preload.png"
-                        />
-                        {systemConfig.preloadImageUrl && (
-                          <div className="mt-2">
-                            <img src={`${systemConfig.preloadImageUrl}?t=${Date.now()}`} alt="Vista previa imagen precarga" className="max-w-full h-20 object-contain border rounded" />
-                          </div>
-                        )}
+                        <label htmlFor="background-position" className="block text-sm font-medium text-gray-700">
+                          Posición
+                        </label>
+                        <select
+                          id="background-position"
+                          value={systemConfig.backgroundPosition || 'center'}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            backgroundPosition: e.target.value as 'center' | 'top' | 'bottom' | 'left' | 'right' | 'top left' | 'top right' | 'bottom left' | 'bottom right'
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
+                        >
+                          <option value="center">Centro</option>
+                          <option value="top">Arriba</option>
+                          <option value="bottom">Abajo</option>
+                          <option value="left">Izquierda</option>
+                          <option value="right">Derecha</option>
+                          <option value="top left">Arriba izquierda</option>
+                          <option value="top right">Arriba derecha</option>
+                          <option value="bottom left">Abajo izquierda</option>
+                          <option value="bottom right">Abajo derecha</option>
+                        </select>
                       </div>
                     </div>
-
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Guardando...
-                        </>
-                      ) : (
-                        "Actualizar Página de Login"
-                      )}
-                    </Button>
-                  </form>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="images">
-          <Card>
-            <CardHeader className="bg-primary text-white">
-              <CardTitle className="text-xl flex items-center gap-2">
-                <ImageIcon className="h-5 w-5" />
-                Gestión de Imágenes
-              </CardTitle>
-              <CardDescription className="text-white/80">
-                Administra todas las imágenes utilizadas en la aplicación
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                
-                {/* Banner/Cobranding */}
-                <div className="space-y-3">
-                  <h4 className="font-semibold flex items-center gap-2">
-                    <ImageIcon className="h-4 w-4" />
-                    Banner/Cobranding
-                  </h4>
-                  {systemConfig.bannerImageUrl ? (
-                    <div className="border rounded-lg p-3 bg-gray-50">
-                      <img 
-                        src={`${systemConfig.bannerImageUrl}?t=${Date.now()}`} 
-                        alt="Banner" 
-                        className="w-full h-32 object-contain rounded"
-                      />
-                      <p className="text-xs text-gray-600 mt-2 truncate">{systemConfig.bannerImageUrl}</p>
-                    </div>
-                  ) : (
-                    <div className="border rounded-lg p-6 bg-gray-50 text-center text-gray-500">
-                      <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No configurado</p>
-                    </div>
-                  )}
+                  </div>
+                  
+                  {/* Vista previa del degradado */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Vista Previa del Degradado y Fondo
+                    </label>
+                    <div 
+                      className="w-full h-20 rounded-lg border border-gray-200 shadow-sm"
+                      style={{
+                        background: `url('${systemConfig.backgroundImageUrl}') ${systemConfig.backgroundRepeat || 'repeat'}, ${systemConfig.gradientType || 'linear'}-gradient(${systemConfig.gradientDirection || '175deg'}, ${systemConfig.gradientStartColor || '#bb2558'} 0%${systemConfig.gradientMidColor ? `, ${systemConfig.gradientMidColor} 50%` : ''}, ${systemConfig.gradientEndColor || '#e8cf00'} 100%)`,
+                        backgroundSize: systemConfig.backgroundSize || 'auto',
+                        backgroundPosition: systemConfig.backgroundPosition || 'center'
+                      }}
+                    ></div>
+                    <p className="text-xs text-gray-500">
+                      Vista previa completa del fondo con imagen y degradado aplicados
+                    </p>
+                  </div>
                 </div>
 
-                {/* Footer Logo */}
-                <div className="space-y-3">
-                  <h4 className="font-semibold flex items-center gap-2">
-                    <ImageIcon className="h-4 w-4" />
-                    Logo del Footer
-                  </h4>
-                  {systemConfig.footerLogoUrl ? (
-                    <div className="border rounded-lg p-3 bg-gray-50">
-                      <img 
-                        src={`${systemConfig.footerLogoUrl}?t=${Date.now()}`} 
-                        alt="Footer Logo" 
-                        className="w-full h-32 object-contain rounded"
-                      />
-                      <p className="text-xs text-gray-600 mt-2 truncate">{systemConfig.footerLogoUrl}</p>
-                    </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Guardando...
+                    </>
                   ) : (
-                    <div className="border rounded-lg p-6 bg-gray-50 text-center text-gray-500">
-                      <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No configurado</p>
-                    </div>
+                    "Actualizar Colores"
                   )}
+                </Button>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="login" className="space-y-6">
+              <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
+                {/* Personalización de página de login */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Personalización de Página de Login</h3>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="login-title" className="block text-sm font-medium text-gray-700">
+                        Título Principal
+                      </label>
+                      <Input
+                        id="login-title"
+                        value={systemConfig.loginTitle || 'Lanzamiento'}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          loginTitle: e.target.value
+                        })}
+                        placeholder="Lanzamiento"
+                      />
+                      <p className="text-xs text-gray-500">
+                        Título principal que aparece en la página de login
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="login-subtitle" className="block text-sm font-medium text-gray-700">
+                        Subtítulo
+                      </label>
+                      <Input
+                        id="login-subtitle"
+                        value={systemConfig.loginSubtitle || '2025'}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          loginSubtitle: e.target.value
+                        })}
+                        placeholder="2025"
+                      />
+                      <p className="text-xs text-gray-500">
+                        Subtítulo que acompaña al título principal
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="login-welcome-text" className="block text-sm font-medium text-gray-700">
+                      Texto de Bienvenida
+                    </label>
+                    <Input
+                      id="login-welcome-text"
+                      value={systemConfig.loginWelcomeText || 'Bienvenido al reto de identificación de riesgos'}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        loginWelcomeText: e.target.value
+                      })}
+                      placeholder="Bienvenido al reto de identificación de riesgos"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Mensaje de bienvenida debajo del título
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="login-document-label" className="block text-sm font-medium text-gray-700">
+                        Etiqueta Campo Documento
+                      </label>
+                      <Input
+                        id="login-document-label"
+                        value={systemConfig.loginDocumentLabel || 'Número de documento'}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          loginDocumentLabel: e.target.value
+                        })}
+                        placeholder="Número de documento"
+                      />
+                      <p className="text-xs text-gray-500">
+                        Etiqueta del campo de número de documento
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="login-name-label" className="block text-sm font-medium text-gray-700">
+                        Etiqueta Campo Nombre
+                      </label>
+                      <Input
+                        id="login-name-label"
+                        value={systemConfig.loginNameLabel || 'Nombre completo'}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          loginNameLabel: e.target.value
+                        })}
+                        placeholder="Nombre completo"
+                      />
+                      <p className="text-xs text-gray-500">
+                        Etiqueta del campo de nombre completo
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="login-button-text" className="block text-sm font-medium text-gray-700">
+                      Texto del Botón de Login
+                    </label>
+                    <Input
+                      id="login-button-text"
+                      value={systemConfig.loginButtonText || 'Ingresar'}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        loginButtonText: e.target.value
+                      })}
+                      placeholder="Ingresar"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Texto que aparece en el botón principal de login
+                    </p>
+                  </div>
                 </div>
 
-                {/* Mapa del Sitio */}
-                <div className="space-y-3">
-                  <h4 className="font-semibold flex items-center gap-2">
-                    <ImageIcon className="h-4 w-4" />
-                    Mapa del Sitio
-                  </h4>
-                  {systemConfig.siteMapImageUrl ? (
-                    <div className="border rounded-lg p-3 bg-gray-50">
-                      <img 
-                        src={`${systemConfig.siteMapImageUrl}?t=${Date.now()}`} 
-                        alt="Site Map" 
-                        className="w-full h-32 object-contain rounded"
-                      />
-                      <p className="text-xs text-gray-600 mt-2 truncate">{systemConfig.siteMapImageUrl}</p>
-                    </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Guardando...
+                    </>
                   ) : (
-                    <div className="border rounded-lg p-6 bg-gray-50 text-center text-gray-500">
-                      <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No configurado</p>
-                    </div>
+                    "Actualizar Página de Login"
                   )}
-                </div>
-
-                {/* Imagen de Fondo */}
-                <div className="space-y-3">
-                  <h4 className="font-semibold flex items-center gap-2">
-                    <ImageIcon className="h-4 w-4" />
-                    Imagen de Fondo
-                  </h4>
-                  {systemConfig.backgroundImageUrl ? (
-                    <div className="border rounded-lg p-3 bg-gray-50">
-                      <img 
-                        src={`${systemConfig.backgroundImageUrl}?t=${Date.now()}`} 
-                        alt="Background" 
-                        className="w-full h-32 object-contain rounded"
-                      />
-                      <p className="text-xs text-gray-600 mt-2 truncate">{systemConfig.backgroundImageUrl}</p>
-                    </div>
-                  ) : (
-                    <div className="border rounded-lg p-6 bg-gray-50 text-center text-gray-500">
-                      <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No configurado</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Logo de Login */}
-                <div className="space-y-3">
-                  <h4 className="font-semibold flex items-center gap-2">
-                    <UserCheck className="h-4 w-4" />
-                    Logo de Login
-                  </h4>
-                  {systemConfig.loginLogoImageUrl ? (
-                    <div className="border rounded-lg p-3 bg-gray-50">
-                      <img 
-                        src={`${systemConfig.loginLogoImageUrl}?t=${Date.now()}`} 
-                        alt="Login Logo" 
-                        className="w-full h-32 object-contain rounded"
-                      />
-                      <p className="text-xs text-gray-600 mt-2 truncate">{systemConfig.loginLogoImageUrl}</p>
-                    </div>
-                  ) : (
-                    <div className="border rounded-lg p-6 bg-gray-50 text-center text-gray-500">
-                      <UserCheck className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No configurado</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Imagen de Precarga */}
-                <div className="space-y-3">
-                  <h4 className="font-semibold flex items-center gap-2">
-                    <Loader2 className="h-4 w-4" />
-                    Imagen de Precarga
-                  </h4>
-                  {systemConfig.preloadImageUrl ? (
-                    <div className="border rounded-lg p-3 bg-gray-50">
-                      <img 
-                        src={`${systemConfig.preloadImageUrl}?t=${Date.now()}`} 
-                        alt="Preload" 
-                        className="w-full h-32 object-contain rounded"
-                      />
-                      <p className="text-xs text-gray-600 mt-2 truncate">{systemConfig.preloadImageUrl}</p>
-                    </div>
-                  ) : (
-                    <div className="border rounded-lg p-6 bg-gray-50 text-center text-gray-500">
-                      <Loader2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No configurado</p>
-                    </div>
-                  )}
-                </div>
-
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                </Button>
+              </form>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    </TabsContent>
+  </Tabs>
 
       {/* Diálogo para crear/editar assets */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -1481,127 +2296,202 @@ const AdminPage = () => {
               <TabsTrigger value="content">Contenido y Modales</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="basic" className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="segmentId">ID del Segmento</Label>
-                  <Input
-                    id="segmentId"
-                    type="number"
-                    value={formData.segmentId}
-                    onChange={(e) => setFormData({...formData, segmentId: parseInt(e.target.value)})}
-                    disabled={dialogMode === "edit"}
-                  />
-                </div>
+            <TabsContent value="basic" className="space-y-4 py-4">
+              {/* Configuración básica del segmento */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="segmentId" className="text-right">
+                ID Segmento
+              </label>
+              <Input
+                id="segmentId"
+                type="number"
+                min="1"
+                max="9"
+                value={formData.segmentId}
+                onChange={(e) => setFormData({...formData, segmentId: parseInt(e.target.value)})}
+                className="col-span-3"
+                disabled={dialogMode === "edit"}
+                required
+              />
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="title">Título</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  />
-                </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="title" className="text-right">
+                Título
+              </label>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                className="col-span-3"
+                required
+              />
+            </div>
 
-                <div className="space-y-2 col-span-2">
-                  <Label htmlFor="description">Descripción</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2 col-span-2">
-                  <Label htmlFor="imageUrl">URL de la Imagen</Label>
-                  <Input
-                    id="imageUrl"
-                    value={formData.imageUrl}
-                    onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2 col-span-2">
-                  <Label htmlFor="redirectUrl">URL de Redirección (Opcional)</Label>
-                  <Input
-                    id="redirectUrl"
-                    value={formData.redirectUrl}
-                    onChange={(e) => setFormData({...formData, redirectUrl: e.target.value})}
-                    placeholder="https://ejemplo.com/info-adicional"
-                  />
-                </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="imageUrl" className="text-right">
+                URL Imagen
+              </label>
+              <div className="col-span-3 space-y-2">
+                <Input
+                  id="imageUrl"
+                  value={formData.imageUrl}
+                  onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
+                  className="w-full"
+                  placeholder="https://ejemplo.com/imagen.jpg"
+                  required
+                />
+                <p className="text-xs text-gray-500">
+                  Ingresa una URL completa a una imagen existente en internet. No es posible subir archivos directamente.
+                </p>
+                <p className="text-xs text-gray-500">
+                  Ejemplos de URLs de imágenes: 
+                  <br/>
+                  https://images.unsplash.com/photo-1579546929518-9e396f3cc809
+                  <br/>
+                  https://placehold.co/400x400/3b82f6/ffffff?text=Segmento+{formData.segmentId}
+                </p>
               </div>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="redirectUrl" className="text-right">
+                URL Redirección
+              </label>
+              <div className="col-span-3 space-y-2">
+                <Input
+                  id="redirectUrl"
+                  value={formData.redirectUrl}
+                  onChange={(e) => setFormData({...formData, redirectUrl: e.target.value})}
+                  className="w-full"
+                  placeholder="https://ejemplo.com"
+                />
+                <p className="text-xs text-gray-500">
+                  URL a la que se redirigirá cuando un usuario haga clic en el segmento desbloqueado (opcional)
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-4 items-start gap-4">
+              <label htmlFor="description" className="text-right pt-2">
+                Descripción
+              </label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                className="col-span-3"
+                rows={3}
+              />
+            </div>
             </TabsContent>
 
-            <TabsContent value="security" className="space-y-4">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="securityCode">Código de Seguridad</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="securityCode"
-                      value={formData.securityCode}
-                      onChange={(e) => setFormData({...formData, securityCode: e.target.value})}
-                      className="flex-1"
-                    />
-                    {dialogMode === "edit" && (
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="generateNewCode"
-                          checked={formData.generateNewCode}
-                          onCheckedChange={(checked) => setFormData({...formData, generateNewCode: checked as boolean})}
-                        />
-                        <Label htmlFor="generateNewCode" className="text-sm">
-                          Generar nuevo código
-                        </Label>
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-500">
-                    Código alfanumérico que debe coincidir con el código QR
-                  </p>
-                </div>
+            <TabsContent value="security" className="space-y-4 py-4">
+              {/* Configuración de seguridad y QR */}
 
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="securityCode" className="text-right">
+                Código Seguridad
+              </label>
+              <div className="col-span-3 space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    id="securityCode"
+                    value={formData.securityCode}
+                    onChange={(e) => setFormData({...formData, securityCode: e.target.value})}
+                    className="flex-1"
+                    placeholder="ABCD1"
+                    maxLength={5}
+                    disabled={formData.generateNewCode}
+                  />
+                  <Button 
+                    type="button"
+                    variant="outline"
+                    onClick={() => setFormData({
+                      ...formData, 
+                      generateNewCode: !formData.generateNewCode
+                    })}
+                    className="whitespace-nowrap"
+                  >
+                    {formData.generateNewCode ? "Usar código manual" : "Generar nuevo"}
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500">
+                  {formData.generateNewCode 
+                    ? "Se generará un nuevo código de seguridad al guardar" 
+                    : "Código alfanumérico de 5 caracteres que los usuarios deberán escanear para desbloquear este segmento"}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="isTrap" className="text-right">
+                QR Trampa
+              </label>
+              <div className="col-span-3 space-y-2">
                 <div className="flex items-center space-x-2">
-                  <Switch
+                  <input
+                    type="checkbox"
                     id="isTrap"
                     checked={formData.isTrap}
-                    onCheckedChange={(checked) => setFormData({...formData, isTrap: checked})}
+                    onChange={(e) => setFormData({...formData, isTrap: e.target.checked})}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
-                  <Label htmlFor="isTrap">
-                    Marcar como Trampa (Código QR falso para entrenamiento)
-                  </Label>
+                  <label htmlFor="isTrap" className="text-sm text-gray-700">
+                    Este QR es una trampa (no desbloquea segmento real)
+                  </label>
                 </div>
+                <p className="text-xs text-gray-500">
+                  Los QR trampa otorgan puntos falsos para situaciones sin riesgo real. Se usan para crear un ranking más interesante en actividades de identificación de riesgos laborales.
+                </p>
+              </div>
+            </div>
 
-                {formData.isTrap && (
-                  <div className="space-y-2">
-                    <Label htmlFor="trapMessage">Mensaje de Trampa</Label>
-                    <Textarea
+
+            </TabsContent>
+
+            <TabsContent value="content" className="space-y-4 py-4">
+              {/* Configuración de contenido y modales */}
+              
+              {/* Campo de mensaje HTML para QR trampa */}
+              {formData.isTrap && (
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <label htmlFor="trapMessage" className="text-right mt-2">
+                    Mensaje Trampa
+                  </label>
+                  <div className="col-span-3 space-y-2">
+                    <textarea
                       id="trapMessage"
                       value={formData.trapMessage}
                       onChange={(e) => setFormData({...formData, trapMessage: e.target.value})}
-                      placeholder="¡Atención! Este es un código QR trampa para entrenamiento..."
-                      className="min-h-[100px]"
+                      placeholder="<h2>¡Situación Segura!</h2><p>Esta situación <strong>NO presenta riesgos</strong> reales. Has identificado correctamente una trampa.</p>"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px] font-mono text-sm"
                     />
+                    <p className="text-xs text-gray-500">
+                      Mensaje HTML personalizable que se mostrará cuando alguien escanee este QR trampa. Puedes usar etiquetas como &lt;h2&gt;, &lt;p&gt;, &lt;strong&gt;, etc.
+                    </p>
                   </div>
-                )}
-              </div>
-            </TabsContent>
+                </div>
+              )}
 
-            <TabsContent value="content" className="space-y-4">
+              {/* Campo de contenido de modal para segmentos normales */}
               {!formData.isTrap && (
-                <div className="space-y-2">
-                  <Label htmlFor="modalContent">Contenido del Modal (HTML Opcional)</Label>
-                  <textarea
-                    id="modalContent"
-                    value={formData.modalContent}
-                    onChange={(e) => setFormData({...formData, modalContent: e.target.value})}
-                    placeholder="<h2>¡Segmento Desbloqueado!</h2><p>Información adicional sobre este segmento...</p>"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px] font-mono text-sm"
-                  />
-                  <p className="text-xs text-gray-500">
-                    Contenido HTML opcional que se mostrará en un modal cuando se desbloquee este segmento. Si está vacío, solo se mostrará el mensaje de éxito estándar.
-                  </p>
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <label htmlFor="modalContent" className="text-right mt-2">
+                    Contenido Modal (Opcional)
+                  </label>
+                  <div className="col-span-3 space-y-2">
+                    <textarea
+                      id="modalContent"
+                      value={formData.modalContent}
+                      onChange={(e) => setFormData({...formData, modalContent: e.target.value})}
+                      placeholder="<h2>¡Segmento Desbloqueado!</h2><p>Información adicional sobre este segmento...</p>"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px] font-mono text-sm"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Contenido HTML opcional que se mostrará en un modal cuando se desbloquee este segmento. Si está vacío, solo se mostrará el mensaje de éxito estándar.
+                    </p>
+                  </div>
                 </div>
               )}
             </TabsContent>
@@ -1624,7 +2514,7 @@ const AdminPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </Tabs>
+    </Tabs>
     </div>
   );
 };
