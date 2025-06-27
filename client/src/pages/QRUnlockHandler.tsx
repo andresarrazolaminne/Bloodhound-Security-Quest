@@ -267,6 +267,23 @@ const QRUnlockHandler = () => {
           points={result.trapPoints || 1}
         />
       )}
+
+      {/* Modal para contenido opcional de segmentos normales */}
+      {result && !result.isTrap && result.modalContent && (
+        <SegmentContentModal
+          isOpen={showSegmentModal}
+          onClose={() => {
+            setShowSegmentModal(false);
+            // Redirigir al mapa después de cerrar el modal
+            setTimeout(() => {
+              setLocation('/map');
+            }, 1000);
+          }}
+          segmentId={result.segmentId || 0}
+          modalContent={result.modalContent}
+          title={result.segmentTitle}
+        />
+      )}
     </div>
   );
 };

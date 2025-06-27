@@ -11,6 +11,7 @@ import ProgressBar from "@/components/ProgressBar";
 import QRScanner from "@/components/QRScanner";
 import HtmlContent from "@/components/HtmlContent";
 import BrainLoader from "@/components/BrainLoader";
+import SegmentContentModal from '@/components/SegmentContentModal';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 
@@ -34,7 +35,13 @@ const MapPage = () => {
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [showInstructionsModal, setShowInstructionsModal] = useState(false);
   const [showSiteMapModal, setShowSiteMapModal] = useState(false);
+  const [showSegmentModal, setShowSegmentModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [segmentModalData, setSegmentModalData] = useState<{
+    segmentId: number;
+    modalContent?: string;
+    title?: string;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [systemConfig, setSystemConfig] = useState<{
     instructionsText: string;
@@ -153,8 +160,18 @@ const MapPage = () => {
       // Recargar los datos para asegurar que todo esté sincronizado
       await loadUserData();
       
-      setSuccessMessage(`¡Has desbloqueado el segmento ${segmentId}!`);
-      setShowSuccessModal(true);
+      // Check if segment has custom modal content
+      if (response.modalContent) {
+        setSegmentModalData({
+          segmentId,
+          modalContent: response.modalContent,
+          title: response.segmentTitle
+        });
+        setShowSegmentModal(true);
+      } else {
+        setSuccessMessage(`¡Has desbloqueado el segmento ${segmentId}!`);
+        setShowSuccessModal(true);
+      }
       
       // Check if map is now completed
       if (response.completed) {
@@ -521,6 +538,20 @@ const MapPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal para contenido opcional de segmentos */}
+      {segmentModalData && (
+        <SegmentContentModal
+          isOpen={showSegmentModal}
+          onClose={() => {
+            setShowSegmentModal(false);
+            setSegmentModalData(null);
+          }}
+          segmentId={segmentModalData.segmentId}
+          modalContent={segmentModalData.modalContent}
+          title={segmentModalData.title}
+        />
+      )}
       
       {/* Footer con logos de patrocinadores */}
       <footer className="mt-auto pb-8 pt-6 px-4">
