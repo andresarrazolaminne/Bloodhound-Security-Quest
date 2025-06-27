@@ -50,13 +50,29 @@ const MapPage = () => {
     cobrandingImageUrl: string;
     mapGapSize: 'none' | 'x-small' | 'small' | 'medium' | 'large';
     mapGridSize: '3x3' | '3x2' | '2x3' | '4x2' | '2x4';
+    appTitle: string;
+    backgroundImageUrl: string;
+    scanButtonText: string;
+    helpButtonText: string;
+    siteMapButtonText: string;
+    prizeButtonText: string;
+    completionTitle: string;
+    loadingText: string;
   }>({
     instructionsText: '',
     siteMapImageUrl: 'https://i.pinimg.com/736x/df/93/10/df93101fdd1057543ae9a6bf2ff16b1c.jpg',
     footerLogoUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png',
     cobrandingImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png',
     mapGapSize: 'medium',
-    mapGridSize: '3x3'
+    mapGridSize: '3x3',
+    appTitle: 'Lanzamiento 2025',
+    backgroundImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
+    scanButtonText: '¡Escanea aquí!',
+    helpButtonText: 'Ayuda',
+    siteMapButtonText: 'Mapa del Sitio',
+    prizeButtonText: 'Ver Código Premio',
+    completionTitle: '¡Felicidades, has completado el reto!',
+    loadingText: 'Cargando tu mapa...'
   });
   
   const [totalValidSegments, setTotalValidSegments] = useState(0);
@@ -88,7 +104,25 @@ const MapPage = () => {
         const response = await fetch('/api/system-config');
         if (response.ok) {
           const data = await response.json();
-          setSystemConfig(data.config);
+          const config = data.config || {};
+          
+          // Merge with default values to ensure all fields are present
+          setSystemConfig({
+            instructionsText: config.instructionsText || '',
+            siteMapImageUrl: config.siteMapImageUrl || 'https://i.pinimg.com/736x/df/93/10/df93101fdd1057543ae9a6bf2ff16b1c.jpg',
+            footerLogoUrl: config.footerLogoUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png',
+            cobrandingImageUrl: config.cobrandingImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png',
+            mapGapSize: config.mapGapSize || 'medium',
+            mapGridSize: config.mapGridSize || '3x3',
+            appTitle: config.appTitle || 'Lanzamiento 2025',
+            backgroundImageUrl: config.backgroundImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
+            scanButtonText: config.scanButtonText || '¡Escanea aquí!',
+            helpButtonText: config.helpButtonText || 'Ayuda',
+            siteMapButtonText: config.siteMapButtonText || 'Mapa del Sitio',
+            prizeButtonText: config.prizeButtonText || 'Ver Código Premio',
+            completionTitle: config.completionTitle || '¡Felicidades, has completado el reto!',
+            loadingText: config.loadingText || 'Cargando tu mapa...'
+          });
         }
       } catch (error) {
         console.error('Error loading system config:', error);
@@ -279,7 +313,7 @@ const MapPage = () => {
       <main className="flex-grow container mx-auto px-4 py-6">
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
-            <BrainLoader size="large" text="Cargando tu mapa..." />
+            <BrainLoader size="large" text={systemConfig.loadingText} />
           </div>
         ) : (
           <>
@@ -313,7 +347,7 @@ const MapPage = () => {
                       <path fillRule="evenodd" d="M5.166 2.621v.858c-1.035.148-2.059.33-3.071.543a.75.75 0 00-.584.859 6.753 6.753 0 006.138 5.6 6.73 6.73 0 002.743-.356l1.918-.87a.5.5 0 01.449 0l1.918.87a6.73 6.73 0 002.743.356 6.753 6.753 0 006.138-5.6.75.75 0 00-.584-.86 47.25 47.25 0 00-3.07-.543v-.858a48.322 48.322 0 00-11.782 0z" clipRule="evenodd" />
                       <path d="M9.5 14.25l-3.22 2.092a.75.75 0 01-1.035-.229.75.75 0 01-.054-.789L7.099 11.5l-3.22-2.092a.75.75 0 01.4-1.357l3.98-.326 1.483-3.918a.75.75 0 011.437 0l1.483 3.918 3.98.326a.75.75 0 01.4 1.357L13.773 11.5l1.906 3.824a.75.75 0 01-.837 1.003L11 14.25l-1.5-.375zm4.5 9.75h-3c-4.416 0-8-3.584-8-8v-2.909l.112.063 2.094 1.371-.6 1.199A1.75 1.75 0 004.917 16 6.3 6.3 0 008.48 17.38l1.733.78.429.195-.518 3.053a1.75 1.75 0 003.462.32L14 16.5l1.265.57a6.3 6.3 0 003.539 1a1.75 1.75 0 001.21-2.89l-.493-.986 1.207-.794a1.75 1.75 0 00.625-2.31l-.516-1.24a44.84 44.84 0 00-.742-.628A1.76 1.76 0 0018.65 8.75l-2.436.607-.469-1.152a1.75 1.75 0 00-1.587-1.014h-.358A7.555 7.555 0 0012 7c-.596 0-1.176.07-1.735.2h-.691a1.75 1.75 0 00-1.594 1.065l-.413 1.011-2.145-.53a1.75 1.75 0 00-1.45.301 1.69 1.69 0 00-.618-.99h-.002L4 8.364v-1.45l.062-.028c.719-.32 1.437-.605 2.156-.855L13.933 4c2.848 0 5.67.285 8.426.847l.64.152.063.028v.242A48.476 48.476 0 0118 6v1.636l.114.062c.284.156.568.319.85.491l.262.159.176.103.06.036.042.028.027.02.011.009L20 9l-.024-.04-.043-.066-.064-.092-.086-.119-.106-.147-.127-.173-.145-.199-.141-.188L19.17 8l-.3.5c-.242.396-.46.796-.653 1.2-.155.325-.282.657-.38.997-.09.33-.149.67-.175 1.018l.334.006.743.014 1.497.045 1.952.09c-.244-4.422-3.906-7.87-8.355-7.87-4.624 0-8.372 3.748-8.372 8.372 0 4.582 3.7 8.294 8.281 8.37l.09-.012z" />
                     </svg>
-                    Ver Código Premio
+                    {systemConfig.prizeButtonText}
                   </BoxButton>
                 )}
               </div>
@@ -327,7 +361,7 @@ const MapPage = () => {
                 className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
               >
                 <HelpCircle className="h-4 w-4" />
-                <span>Ayuda</span>
+                <span>{systemConfig.helpButtonText}</span>
               </OutlineBoxButton>
               <OutlineBoxButton
                 size="sm"
