@@ -369,7 +369,7 @@ const MapPage = () => {
                 className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
               >
                 <Map className="h-4 w-4" />
-                <span>Mapa del Sitio</span>
+                <span>{systemConfig.siteMapButtonText}</span>
               </OutlineBoxButton>
             </div>
             
@@ -383,7 +383,7 @@ const MapPage = () => {
             <div className="flex justify-center mt-8 mb-4">
               <div className="flex flex-col items-center">
                 <div className="bg-white/80 text-amber-600 font-semibold px-3 py-1 rounded-full text-sm mb-2 shadow-md animate-pulse">
-                  ¡Escanea aquí!
+                  {systemConfig.scanButtonText}
                 </div>
                 <BoxButton 
                   onClick={() => setShowQRScanner(true)}
@@ -497,7 +497,7 @@ const MapPage = () => {
       <Dialog open={showCompletionModal} onOpenChange={setShowCompletionModal}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-center text-lg sm:text-xl">¡Felicidades, has completado el reto!</DialogTitle>
+            <DialogTitle className="text-center text-lg sm:text-xl">{systemConfig.completionTitle}</DialogTitle>
           </DialogHeader>
           
           <div className="py-3 px-4 flex flex-col items-center">
