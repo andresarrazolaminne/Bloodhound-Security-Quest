@@ -1525,7 +1525,7 @@ const AdminPage = () => {
                     <div 
                       className="w-full h-16 rounded-lg border border-gray-200 shadow-sm"
                       style={{
-                        background: `linear-gradient(175deg, ${systemConfig.gradientStartColor} 0%, ${systemConfig.gradientStartColor} 75%, ${systemConfig.gradientEndColor} 100%)`
+                        background: `linear-gradient(175deg, ${(systemConfig as any).gradientStartColor || '#bb2558'} 0%, ${(systemConfig as any).gradientStartColor || '#bb2558'} 75%, ${(systemConfig as any).gradientEndColor || '#e8cf00'} 100%)`
                       }}
                     ></div>
                     <p className="text-xs text-gray-500">
