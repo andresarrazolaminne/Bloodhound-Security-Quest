@@ -1452,6 +1452,93 @@ const AdminPage = () => {
                       URL de la imagen de textura de fondo de la aplicación
                     </p>
                   </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="cobranding-image-url" className="block text-sm font-medium text-gray-700">
+                      URL de Imagen del Banner (Cobranding)
+                    </label>
+                    <Input
+                      id="cobranding-image-url"
+                      type="url"
+                      value={systemConfig.cobrandingImageUrl}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        cobrandingImageUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/banner.png"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Imagen que aparece en la parte superior del mapa (banner de marcas)
+                    </p>
+                    {systemConfig.cobrandingImageUrl && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
+                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                        <img 
+                          src={systemConfig.cobrandingImageUrl} 
+                          alt="Vista previa banner" 
+                          className="h-12 object-contain border border-gray-200 rounded"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="footer-logo-url" className="block text-sm font-medium text-gray-700">
+                      URL de Imagen del Footer (Logos de Patrocinadores)
+                    </label>
+                    <Input
+                      id="footer-logo-url"
+                      type="url"
+                      value={systemConfig.footerLogoUrl}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        footerLogoUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/logos-footer.png"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Imagen con logos de patrocinadores que aparece en el pie de página
+                    </p>
+                    {systemConfig.footerLogoUrl && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
+                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                        <img 
+                          src={systemConfig.footerLogoUrl} 
+                          alt="Vista previa footer" 
+                          className="max-h-16 object-contain border border-gray-200 rounded w-full"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="site-map-image-url" className="block text-sm font-medium text-gray-700">
+                      URL de Imagen del Mapa del Sitio
+                    </label>
+                    <Input
+                      id="site-map-image-url"
+                      type="url"
+                      value={systemConfig.siteMapImageUrl}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        siteMapImageUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/mapa-completo.png"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Imagen que se muestra en el modal "Mapa del Sitio"
+                    </p>
+                    {systemConfig.siteMapImageUrl && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
+                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                        <img 
+                          src={systemConfig.siteMapImageUrl} 
+                          alt="Vista previa mapa del sitio" 
+                          className="max-h-20 object-contain border border-gray-200 rounded"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex justify-end pt-4 border-t">
