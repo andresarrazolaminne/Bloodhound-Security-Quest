@@ -306,6 +306,8 @@ export class DatabaseStorage implements IStorage {
         loginButtonText: 'Ingresar',
         loginDocumentLabel: 'Número de documento',
         loginNameLabel: 'Nombre completo',
+        loginLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
+        preloadImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
         scanButtonText: '¡Escanea aquí!',
         helpButtonText: 'Ayuda',
         siteMapButtonText: 'Mapa del Sitio',

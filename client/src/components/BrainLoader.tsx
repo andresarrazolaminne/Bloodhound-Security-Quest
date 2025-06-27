@@ -9,6 +9,7 @@ interface BrainLoaderProps {
 
 const BrainLoader = ({ className, size = "medium", text }: BrainLoaderProps) => {
   const [isVisible, setIsVisible] = useState(false);
+  const [preloadImageUrl, setPreloadImageUrl] = useState("https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Cerebro.png");
   
   // Control de tamaño
   const sizeClasses = {

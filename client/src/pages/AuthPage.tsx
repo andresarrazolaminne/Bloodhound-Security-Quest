@@ -30,7 +30,9 @@ const AuthPage = () => {
     loginNameLabel: 'Nombre completo',
     backgroundImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
     gradientStartColor: '#bb2558',
-    gradientEndColor: '#e8cf00'
+    gradientEndColor: '#e8cf00',
+    loginLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
+    preloadImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
   });
 
   // Load system configuration for login page customization
@@ -51,7 +53,9 @@ const AuthPage = () => {
             loginNameLabel: config.loginNameLabel || 'Nombre completo',
             backgroundImageUrl: config.backgroundImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
             gradientStartColor: config.gradientStartColor || '#bb2558',
-            gradientEndColor: config.gradientEndColor || '#e8cf00'
+            gradientEndColor: config.gradientEndColor || '#e8cf00',
+            loginLogoImageUrl: config.loginLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
+            preloadImageUrl: config.preloadImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
           });
         }
       } catch (error) {
@@ -181,11 +185,11 @@ const AuthPage = () => {
           <div className="flex flex-col items-center justify-center mb-8">
             <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">{systemConfig.loginTitle}</h1>
             
-            {/* Imagen de luz */}
+            {/* Imagen de logo personalizable */}
             <div className="relative my-3">
               <img 
-                src="https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png" 
-                alt="Luz" 
+                src={systemConfig.loginLogoImageUrl} 
+                alt="Logo" 
                 className="w-24 h-24 object-contain animate-pulse"
               />
               <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-3/4 h-1 bg-yellow-300/20 rounded-full blur-md"></div>

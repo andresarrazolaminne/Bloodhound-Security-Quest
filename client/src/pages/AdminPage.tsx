@@ -104,6 +104,8 @@ const AdminPage = () => {
     loginButtonText: "Ingresar",
     loginDocumentLabel: "Número de documento",
     loginNameLabel: "Nombre completo",
+    loginLogoImageUrl: "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
+    preloadImageUrl: "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
     scanButtonText: "",
     helpButtonText: "",
     siteMapButtonText: "",
@@ -1765,6 +1767,64 @@ const AdminPage = () => {
                           src={systemConfig.siteMapImageUrl} 
                           alt="Vista previa mapa del sitio" 
                           className="h-20 object-contain border border-gray-200 rounded"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="login-logo-image-url" className="block text-sm font-medium text-gray-700">
+                      URL de Imagen/Logo del Login
+                    </label>
+                    <Input
+                      id="login-logo-image-url"
+                      type="url"
+                      value={systemConfig.loginLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        loginLogoImageUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/logo-login.png"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Imagen/logo que aparece en la página de login entre el título y subtítulo
+                    </p>
+                    {systemConfig.loginLogoImageUrl && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
+                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                        <img 
+                          src={systemConfig.loginLogoImageUrl} 
+                          alt="Vista previa logo login" 
+                          className="h-16 object-contain border border-gray-200 rounded"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="preload-image-url" className="block text-sm font-medium text-gray-700">
+                      URL de Imagen de Precarga
+                    </label>
+                    <Input
+                      id="preload-image-url"
+                      type="url"
+                      value={systemConfig.preloadImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        preloadImageUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/imagen-carga.png"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Imagen que se muestra en las pantallas de carga y precarga de la aplicación
+                    </p>
+                    {systemConfig.preloadImageUrl && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
+                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                        <img 
+                          src={systemConfig.preloadImageUrl} 
+                          alt="Vista previa imagen precarga" 
+                          className="h-16 object-contain border border-gray-200 rounded"
                         />
                       </div>
                     )}
