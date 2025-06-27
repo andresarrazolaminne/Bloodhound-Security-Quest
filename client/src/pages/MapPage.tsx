@@ -52,6 +52,8 @@ const MapPage = () => {
     mapGridSize: '3x3' | '3x2' | '2x3' | '4x2' | '2x4';
     appTitle: string;
     backgroundImageUrl: string;
+    gradientStartColor: string;
+    gradientEndColor: string;
     scanButtonText: string;
     helpButtonText: string;
     siteMapButtonText: string;
@@ -67,6 +69,8 @@ const MapPage = () => {
     mapGridSize: '3x3',
     appTitle: 'Lanzamiento 2025',
     backgroundImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
+    gradientStartColor: '#bb2558',
+    gradientEndColor: '#e8cf00',
     scanButtonText: '¡Escanea aquí!',
     helpButtonText: 'Ayuda',
     siteMapButtonText: 'Mapa del Sitio',
@@ -116,6 +120,8 @@ const MapPage = () => {
             mapGridSize: config.mapGridSize || '3x3',
             appTitle: config.appTitle || 'Lanzamiento 2025',
             backgroundImageUrl: config.backgroundImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
+            gradientStartColor: config.gradientStartColor || '#bb2558',
+            gradientEndColor: config.gradientEndColor || '#e8cf00',
             scanButtonText: config.scanButtonText || '¡Escanea aquí!',
             helpButtonText: config.helpButtonText || 'Ayuda',
             siteMapButtonText: config.siteMapButtonText || 'Mapa del Sitio',
@@ -273,7 +279,7 @@ const MapPage = () => {
 
   return (
     <div className="flex flex-col min-h-screen" style={{
-      background: `url('${systemConfig.backgroundImageUrl}') repeat, linear-gradient(175deg, ${(systemConfig as any).gradientStartColor || '#bb2558'} 0%, ${(systemConfig as any).gradientStartColor || '#bb2558'} 75%, ${(systemConfig as any).gradientEndColor || '#e8cf00'} 100%)`
+      background: `url('${systemConfig.backgroundImageUrl}') repeat, linear-gradient(175deg, ${systemConfig.gradientStartColor} 0%, ${systemConfig.gradientStartColor} 75%, ${systemConfig.gradientEndColor} 100%)`
     }}>
       {/* Header */}
       <header className="bg-primary text-white shadow-md">
