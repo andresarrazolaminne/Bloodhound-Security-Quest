@@ -1302,7 +1302,16 @@ const AdminPage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
-              <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
+              <Tabs defaultValue="customization" className="w-full">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="customization">Personalización</TabsTrigger>
+                  <TabsTrigger value="images">Imágenes</TabsTrigger>
+                  <TabsTrigger value="colors">Colores</TabsTrigger>
+                  <TabsTrigger value="login">Página Login</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="customization" className="space-y-6">
+                  <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
                 {/* Títulos y elementos principales */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Títulos Principales</h3>
@@ -1638,10 +1647,369 @@ const AdminPage = () => {
                   </Button>
                 </div>
               </form>
+            </TabsContent>
+
+            <TabsContent value="images" className="space-y-6">
+              <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
+                {/* Imágenes y fondos */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Gestión de Imágenes</h3>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="background-image-url" className="block text-sm font-medium text-gray-700">
+                      URL de Imagen de Fondo (Textura)
+                    </label>
+                    <Input
+                      id="background-image-url"
+                      type="url"
+                      value={systemConfig.backgroundImageUrl}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        backgroundImageUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/fondo.png"
+                    />
+                    <p className="text-xs text-gray-500">
+                      URL de la imagen de textura de fondo de la aplicación
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="cobranding-image-url" className="block text-sm font-medium text-gray-700">
+                      URL de Imagen del Banner (Cobranding)
+                    </label>
+                    <Input
+                      id="cobranding-image-url"
+                      type="url"
+                      value={systemConfig.cobrandingImageUrl}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        cobrandingImageUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/banner.png"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Imagen que aparece en la parte superior del mapa (banner de marcas)
+                    </p>
+                    {systemConfig.cobrandingImageUrl && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
+                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                        <img 
+                          src={systemConfig.cobrandingImageUrl} 
+                          alt="Vista previa banner" 
+                          className="h-12 object-contain border border-gray-200 rounded"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="footer-logo-url" className="block text-sm font-medium text-gray-700">
+                      URL de Imagen del Footer (Logos de Patrocinadores)
+                    </label>
+                    <Input
+                      id="footer-logo-url"
+                      type="url"
+                      value={systemConfig.footerLogoUrl}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        footerLogoUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/logos.png"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Logos de patrocinadores que aparecen en la parte inferior
+                    </p>
+                    {systemConfig.footerLogoUrl && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
+                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                        <img 
+                          src={systemConfig.footerLogoUrl} 
+                          alt="Vista previa footer" 
+                          className="h-8 object-contain border border-gray-200 rounded"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="site-map-image-url" className="block text-sm font-medium text-gray-700">
+                      URL de Imagen del Mapa del Sitio
+                    </label>
+                    <Input
+                      id="site-map-image-url"
+                      type="url"
+                      value={systemConfig.siteMapImageUrl}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        siteMapImageUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/mapa.jpg"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Imagen que se muestra en el modal "Mapa del Sitio"
+                    </p>
+                    {systemConfig.siteMapImageUrl && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
+                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                        <img 
+                          src={systemConfig.siteMapImageUrl} 
+                          alt="Vista previa mapa del sitio" 
+                          className="h-20 object-contain border border-gray-200 rounded"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    "Actualizar Imágenes"
+                  )}
+                </Button>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="colors" className="space-y-6">
+              <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
+                {/* Colores del degradado */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Colores del Degradado de Fondo</h3>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="gradient-start-color" className="block text-sm font-medium text-gray-700">
+                        Color Inicial del Degradado
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="gradient-start-color"
+                          type="color"
+                          value={systemConfig.gradientStartColor || '#bb2558'}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            gradientStartColor: e.target.value
+                          })}
+                          className="w-16 h-10 rounded cursor-pointer border-2"
+                        />
+                        <Input
+                          type="text"
+                          value={systemConfig.gradientStartColor || '#bb2558'}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            gradientStartColor: e.target.value
+                          })}
+                          placeholder="#bb2558"
+                          className="flex-1 font-mono text-sm"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Color de inicio del degradado de fondo
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="gradient-end-color" className="block text-sm font-medium text-gray-700">
+                        Color Final del Degradado
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="gradient-end-color"
+                          type="color"
+                          value={systemConfig.gradientEndColor || '#e8cf00'}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            gradientEndColor: e.target.value
+                          })}
+                          className="w-16 h-10 rounded cursor-pointer border-2"
+                        />
+                        <Input
+                          type="text"
+                          value={systemConfig.gradientEndColor || '#e8cf00'}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            gradientEndColor: e.target.value
+                          })}
+                          placeholder="#e8cf00"
+                          className="flex-1 font-mono text-sm"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Color final del degradado de fondo
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Vista previa del degradado */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Vista Previa del Degradado
+                    </label>
+                    <div 
+                      className="w-full h-16 rounded-lg border border-gray-200 shadow-sm"
+                      style={{
+                        background: `linear-gradient(175deg, ${systemConfig.gradientStartColor || '#bb2558'} 0%, ${systemConfig.gradientStartColor || '#bb2558'} 75%, ${systemConfig.gradientEndColor || '#e8cf00'} 100%)`
+                      }}
+                    ></div>
+                    <p className="text-xs text-gray-500">
+                      Así se verá el degradado de fondo en la aplicación
+                    </p>
+                  </div>
+                </div>
+
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    "Actualizar Colores"
+                  )}
+                </Button>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="login" className="space-y-6">
+              <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
+                {/* Personalización de página de login */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Personalización de Página de Login</h3>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="login-title" className="block text-sm font-medium text-gray-700">
+                        Título Principal
+                      </label>
+                      <Input
+                        id="login-title"
+                        value={systemConfig.loginTitle || 'Lanzamiento'}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          loginTitle: e.target.value
+                        })}
+                        placeholder="Lanzamiento"
+                      />
+                      <p className="text-xs text-gray-500">
+                        Título principal que aparece en la página de login
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="login-subtitle" className="block text-sm font-medium text-gray-700">
+                        Subtítulo
+                      </label>
+                      <Input
+                        id="login-subtitle"
+                        value={systemConfig.loginSubtitle || '2025'}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          loginSubtitle: e.target.value
+                        })}
+                        placeholder="2025"
+                      />
+                      <p className="text-xs text-gray-500">
+                        Subtítulo que acompaña al título principal
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="login-welcome-text" className="block text-sm font-medium text-gray-700">
+                      Texto de Bienvenida
+                    </label>
+                    <Input
+                      id="login-welcome-text"
+                      value={systemConfig.loginWelcomeText || 'Bienvenido al reto de identificación de riesgos'}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        loginWelcomeText: e.target.value
+                      })}
+                      placeholder="Bienvenido al reto de identificación de riesgos"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Mensaje de bienvenida debajo del título
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="login-document-label" className="block text-sm font-medium text-gray-700">
+                        Etiqueta Campo Documento
+                      </label>
+                      <Input
+                        id="login-document-label"
+                        value={systemConfig.loginDocumentLabel || 'Número de documento'}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          loginDocumentLabel: e.target.value
+                        })}
+                        placeholder="Número de documento"
+                      />
+                      <p className="text-xs text-gray-500">
+                        Etiqueta del campo de número de documento
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="login-name-label" className="block text-sm font-medium text-gray-700">
+                        Etiqueta Campo Nombre
+                      </label>
+                      <Input
+                        id="login-name-label"
+                        value={systemConfig.loginNameLabel || 'Nombre completo'}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          loginNameLabel: e.target.value
+                        })}
+                        placeholder="Nombre completo"
+                      />
+                      <p className="text-xs text-gray-500">
+                        Etiqueta del campo de nombre completo
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="login-button-text" className="block text-sm font-medium text-gray-700">
+                      Texto del Botón de Login
+                    </label>
+                    <Input
+                      id="login-button-text"
+                      value={systemConfig.loginButtonText || 'Ingresar'}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        loginButtonText: e.target.value
+                      })}
+                      placeholder="Ingresar"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Texto que aparece en el botón principal de login
+                    </p>
+                  </div>
+                </div>
+
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    "Actualizar Página de Login"
+                  )}
+                </Button>
+              </form>
+            </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
 
       {/* Diálogo para crear/editar assets */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
