@@ -168,13 +168,15 @@ const AdminPage = () => {
         // Frontend customization fields
         appTitle: config.appTitle || "Lanzamiento 2025",
         backgroundImageUrl: config.backgroundImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png",
+        gradientStartColor: config.gradientStartColor || "#bb2558",
+        gradientEndColor: config.gradientEndColor || "#e8cf00",
         scanButtonText: config.scanButtonText || "¡Escanea aquí!",
         helpButtonText: config.helpButtonText || "Ayuda",
         siteMapButtonText: config.siteMapButtonText || "Mapa del Sitio",
         prizeButtonText: config.prizeButtonText || "Ver Código Premio",
         completionTitle: config.completionTitle || "¡Felicidades, has completado el reto!",
         loadingText: config.loadingText || "Cargando tu mapa..."
-      });
+      } as any);
     } catch (error) {
       console.error("Error loading system config:", error);
       // No mostramos un toast para no molestar al usuario si no hay config
@@ -227,13 +229,15 @@ const AdminPage = () => {
             mapGridSize: data.config.mapGridSize || "3x3",
             appTitle: data.config.appTitle || "Lanzamiento 2025",
             backgroundImageUrl: data.config.backgroundImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png",
+            gradientStartColor: data.config.gradientStartColor || "#bb2558",
+            gradientEndColor: data.config.gradientEndColor || "#e8cf00",
             scanButtonText: data.config.scanButtonText || "¡Escanea aquí!",
             helpButtonText: data.config.helpButtonText || "Ayuda",
             siteMapButtonText: data.config.siteMapButtonText || "Mapa del Sitio",
             prizeButtonText: data.config.prizeButtonText || "Ver Código Premio",
             completionTitle: data.config.completionTitle || "¡Felicidades, has completado el reto!",
             loadingText: data.config.loadingText || "Cargando tu mapa..."
-          });
+          } as any);
         }
         
         // También recargar la configuración para asegurar sincronización

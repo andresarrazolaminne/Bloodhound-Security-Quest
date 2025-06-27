@@ -151,3 +151,4 @@ Changelog:
 - June 27, 2025. Fixed modal display issue - modals now appear correctly when unlocking segments with custom content
 - June 27, 2025. Implemented complete frontend customization system - admin can now modify app titles, button texts, loading messages, and UI elements through dedicated "Personalización" tab with real-time persistence
 - June 27, 2025. Added comprehensive image management to frontend customization - admin can now control banner/cobranding images, footer logos, site map images, and background textures with live previews
+- June 27, 2025. Implemented gradient color selection system - admin can now customize background gradient colors with live preview and persistent storage
