@@ -2104,21 +2104,22 @@ const AdminPage = () => {
                       </div>
                     </div>
                   </div>
-                  </div>
                   
                   {/* Vista previa del degradado */}
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-gray-700">
-                      Vista Previa del Degradado
+                      Vista Previa del Degradado y Fondo
                     </label>
                     <div 
-                      className="w-full h-16 rounded-lg border border-gray-200 shadow-sm"
+                      className="w-full h-20 rounded-lg border border-gray-200 shadow-sm"
                       style={{
-                        background: `linear-gradient(175deg, ${systemConfig.gradientStartColor || '#bb2558'} 0%, ${systemConfig.gradientStartColor || '#bb2558'} 75%, ${systemConfig.gradientEndColor || '#e8cf00'} 100%)`
+                        background: `url('${systemConfig.backgroundImageUrl}') ${systemConfig.backgroundRepeat || 'repeat'}, ${systemConfig.gradientType || 'linear'}-gradient(${systemConfig.gradientDirection || '175deg'}, ${systemConfig.gradientStartColor || '#bb2558'} 0%${systemConfig.gradientMidColor ? `, ${systemConfig.gradientMidColor} 50%` : ''}, ${systemConfig.gradientEndColor || '#e8cf00'} 100%)`,
+                        backgroundSize: systemConfig.backgroundSize || 'auto',
+                        backgroundPosition: systemConfig.backgroundPosition || 'center'
                       }}
                     ></div>
                     <p className="text-xs text-gray-500">
-                      Así se verá el degradado de fondo en la aplicación
+                      Vista previa completa del fondo con imagen y degradado aplicados
                     </p>
                   </div>
                 </div>
@@ -2267,10 +2268,10 @@ const AdminPage = () => {
                 </Button>
               </form>
             </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-        </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    </TabsContent>
 
       {/* Diálogo para crear/editar assets */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -2512,7 +2513,6 @@ const AdminPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </Tabs>
     </div>
   );
 };
