@@ -11,6 +11,15 @@ export const systemConfig = pgTable("system_config", {
   cobrandingImageUrl: text("cobranding_image_url").notNull().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png'),
   mapGapSize: text("map_gap_size").notNull().default('medium'),
   mapGridSize: text("map_grid_size").notNull().default('3x3'),
+  // Frontend customization fields
+  appTitle: text("app_title").notNull().default('Lanzamiento 2025'),
+  backgroundImageUrl: text("background_image_url").notNull().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png'),
+  scanButtonText: text("scan_button_text").notNull().default('¡Escanea aquí!'),
+  helpButtonText: text("help_button_text").notNull().default('Ayuda'),
+  siteMapButtonText: text("site_map_button_text").notNull().default('Mapa del Sitio'),
+  prizeButtonText: text("prize_button_text").notNull().default('Ver Código Premio'),
+  completionTitle: text("completion_title").notNull().default('¡Felicidades, has completado el reto!'),
+  loadingText: text("loading_text").notNull().default('Cargando tu mapa...'),
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 });
 
@@ -23,6 +32,15 @@ export const systemConfigSchema = z.object({
   cobrandingImageUrl: z.string().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png'),
   mapGapSize: z.enum(['none', 'x-small', 'small', 'medium', 'large']).default('medium'),
   mapGridSize: z.enum(['3x3', '3x2', '2x3', '4x2', '2x4']).default('3x3'),
+  // Frontend customization fields
+  appTitle: z.string().default('Lanzamiento 2025'),
+  backgroundImageUrl: z.string().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png'),
+  scanButtonText: z.string().default('¡Escanea aquí!'),
+  helpButtonText: z.string().default('Ayuda'),
+  siteMapButtonText: z.string().default('Mapa del Sitio'),
+  prizeButtonText: z.string().default('Ver Código Premio'),
+  completionTitle: z.string().default('¡Felicidades, has completado el reto!'),
+  loadingText: z.string().default('Cargando tu mapa...'),
   updatedAt: z.date()
 });
 

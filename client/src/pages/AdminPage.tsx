@@ -91,7 +91,16 @@ const AdminPage = () => {
     footerLogoUrl: "",
     cobrandingImageUrl: "",
     mapGapSize: "medium" as 'none' | 'x-small' | 'small' | 'medium' | 'large',
-    mapGridSize: "3x3" as '3x3' | '3x2' | '2x3' | '4x2' | '2x4'
+    mapGridSize: "3x3" as '3x3' | '3x2' | '2x3' | '4x2' | '2x4',
+    // Frontend customization fields
+    appTitle: "",
+    backgroundImageUrl: "",
+    scanButtonText: "",
+    helpButtonText: "",
+    siteMapButtonText: "",
+    prizeButtonText: "",
+    completionTitle: "",
+    loadingText: ""
   });
   
   // Ranking de usuarios
@@ -155,7 +164,16 @@ const AdminPage = () => {
         footerLogoUrl: config.footerLogoUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png",
         cobrandingImageUrl: config.cobrandingImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png",
         mapGapSize: config.mapGapSize || "medium",
-        mapGridSize: config.mapGridSize || "3x3"
+        mapGridSize: config.mapGridSize || "3x3",
+        // Frontend customization fields
+        appTitle: config.appTitle || "Lanzamiento 2025",
+        backgroundImageUrl: config.backgroundImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png",
+        scanButtonText: config.scanButtonText || "¡Escanea aquí!",
+        helpButtonText: config.helpButtonText || "Ayuda",
+        siteMapButtonText: config.siteMapButtonText || "Mapa del Sitio",
+        prizeButtonText: config.prizeButtonText || "Ver Código Premio",
+        completionTitle: config.completionTitle || "¡Felicidades, has completado el reto!",
+        loadingText: config.loadingText || "Cargando tu mapa..."
       });
     } catch (error) {
       console.error("Error loading system config:", error);
