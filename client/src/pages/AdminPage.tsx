@@ -186,7 +186,15 @@ const AdminPage = () => {
         siteMapButtonText: config.siteMapButtonText || "Mapa del Sitio",
         prizeButtonText: config.prizeButtonText || "Ver Código Premio",
         completionTitle: config.completionTitle || "¡Felicidades, has completado el reto!",
-        loadingText: config.loadingText || "Cargando tu mapa..."
+        loadingText: config.loadingText || "Cargando tu mapa...",
+        loginTitle: config.loginTitle || "Lanzamiento",
+        loginSubtitle: config.loginSubtitle || "2025",
+        loginWelcomeText: config.loginWelcomeText || "Bienvenido al reto de identificación de riesgos",
+        loginButtonText: config.loginButtonText || "Ingresar",
+        loginDocumentLabel: config.loginDocumentLabel || "Número de documento",
+        loginNameLabel: config.loginNameLabel || "Nombre completo",
+        loginLogoImageUrl: config.loginLogoImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
+        preloadImageUrl: config.preloadImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png"
       } as any);
     } catch (error) {
       console.error("Error loading system config:", error);
@@ -250,7 +258,15 @@ const AdminPage = () => {
             siteMapButtonText: data.config.siteMapButtonText || "Mapa del Sitio",
             prizeButtonText: data.config.prizeButtonText || "Ver Código Premio",
             completionTitle: data.config.completionTitle || "¡Felicidades, has completado el reto!",
-            loadingText: data.config.loadingText || "Cargando tu mapa..."
+            loadingText: data.config.loadingText || "Cargando tu mapa...",
+            loginTitle: data.config.loginTitle || "Lanzamiento",
+            loginSubtitle: data.config.loginSubtitle || "2025",
+            loginWelcomeText: data.config.loginWelcomeText || "Bienvenido al reto de identificación de riesgos",
+            loginButtonText: data.config.loginButtonText || "Ingresar",
+            loginDocumentLabel: data.config.loginDocumentLabel || "Número de documento",
+            loginNameLabel: data.config.loginNameLabel || "Nombre completo",
+            loginLogoImageUrl: data.config.loginLogoImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
+            preloadImageUrl: data.config.preloadImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png"
           } as any);
         }
         
