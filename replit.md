@@ -155,3 +155,4 @@ Changelog:
 - June 27, 2025. Added complete login page customization through admin panel - admin can now personalize login titles, subtitles, welcome text, field labels, button text, logo image, and preload images
 - June 27, 2025. Reorganized admin customization panel into dedicated tabs (Personalización, Imágenes, Colores, Página Login) eliminating parameter duplications and improving organization
 - June 27, 2025. Implemented customizable preload and login images - BrainLoader component and AuthPage now dynamically load images from database configuration
+- June 27, 2025. Fixed JSX syntax errors and eliminated duplicated background configuration options between "Personalización" and "Colores" tabs - consolidated all background settings (image URL, gradient colors, positioning) into the "Colores" tab for better organization
