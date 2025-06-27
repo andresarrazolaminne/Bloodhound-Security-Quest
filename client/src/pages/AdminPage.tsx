@@ -1399,6 +1399,27 @@ const AdminPage = () => {
                 </div>
               </div>
             )}
+
+            {/* Campo de contenido de modal para segmentos normales */}
+            {!formData.isTrap && (
+              <div className="grid grid-cols-4 items-start gap-4">
+                <label htmlFor="modalContent" className="text-right mt-2">
+                  Contenido Modal (Opcional)
+                </label>
+                <div className="col-span-3 space-y-2">
+                  <textarea
+                    id="modalContent"
+                    value={formData.modalContent}
+                    onChange={(e) => setFormData({...formData, modalContent: e.target.value})}
+                    placeholder="<h2>¡Segmento Desbloqueado!</h2><p>Información adicional sobre este segmento...</p>"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px] font-mono text-sm"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Contenido HTML opcional que se mostrará en un modal cuando se desbloquee este segmento. Si está vacío, solo se mostrará el mensaje de éxito estándar.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           <DialogFooter>

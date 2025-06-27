@@ -1,0 +1,54 @@
+import React from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from '@/components/ui/button';
+import HtmlContent from './HtmlContent';
+
+interface SegmentContentModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  segmentId: number;
+  modalContent?: string;
+  title?: string;
+}
+
+const SegmentContentModal = ({ 
+  isOpen, 
+  onClose, 
+  segmentId, 
+  modalContent,
+  title 
+}: SegmentContentModalProps) => {
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh]">
+        <DialogHeader>
+          <DialogTitle>
+            {title || `Segmento ${segmentId} Desbloqueado`}
+          </DialogTitle>
+        </DialogHeader>
+        
+        <div className="prose prose-sm max-w-none overflow-y-auto max-h-[60vh] pr-2">
+          {modalContent ? (
+            <HtmlContent html={modalContent} />
+          ) : (
+            <div className="text-center py-8">
+              <div className="text-green-600 text-4xl mb-4">✅</div>
+              <h3 className="text-lg font-semibold mb-2">¡Segmento Desbloqueado!</h3>
+              <p className="text-gray-600">
+                Has desbloqueado exitosamente el segmento {segmentId}.
+              </p>
+            </div>
+          )}
+        </div>
+        
+        <DialogFooter>
+          <Button onClick={onClose} className="w-full">
+            Continuar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default SegmentContentModal;

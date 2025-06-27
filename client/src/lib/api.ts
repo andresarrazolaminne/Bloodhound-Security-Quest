@@ -24,6 +24,9 @@ export interface UnlockSegmentResponse {
   trapPoints?: number;
   message?: string;
   trapMessage?: string;
+  // Campos para modal de contenido opcional
+  modalContent?: string;
+  segmentTitle?: string;
 }
 
 export interface PrizeResponse {

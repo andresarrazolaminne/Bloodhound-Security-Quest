@@ -175,7 +175,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         unlockedSegments,
         totalSegments,
         completed: unlockedSegments === totalSegments,
-        redemptionCode
+        redemptionCode,
+        modalContent: segmentAsset.modalContent || null,
+        segmentTitle: segmentAsset.title || null
       });
     } catch (error) {
       if (error instanceof z.ZodError) {

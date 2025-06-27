@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, Loader2, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import TrapMessageModal from '@/components/TrapMessageModal';
+import SegmentContentModal from '@/components/SegmentContentModal';
 
 // Handler específico para códigos QR que vienen desde URLs externas
 const QRUnlockHandler = () => {
@@ -19,8 +20,11 @@ const QRUnlockHandler = () => {
     isTrap?: boolean;
     trapMessage?: string;
     trapPoints?: number;
+    modalContent?: string;
+    segmentTitle?: string;
   } | null>(null);
   const [showTrapModal, setShowTrapModal] = useState(false);
+  const [showSegmentModal, setShowSegmentModal] = useState(false);
 
   useEffect(() => {
     const handleUnlock = async () => {
@@ -101,8 +105,15 @@ const QRUnlockHandler = () => {
           setResult({
             success: true,
             message: `¡Segmento ${segmentId} desbloqueado exitosamente!`,
-            segmentId: parseInt(segmentId)
+            segmentId: parseInt(segmentId),
+            modalContent: unlockResponse.modalContent,
+            segmentTitle: unlockResponse.segmentTitle
           });
+
+          // Mostrar modal de contenido opcional si hay contenido disponible
+          if (unlockResponse.modalContent) {
+            setShowSegmentModal(true);
+          }
 
           toast({
             title: "¡Éxito!",
