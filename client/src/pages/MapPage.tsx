@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { OutlineBoxButton, BoxButton } from "@/components/ui/custom-button";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/context/UserContext";
-import { getUserSegments, unlockSegment as apiUnlockSegment, getUserPrize } from "@/lib/api";
+import { getUserSegments, unlockSegment as apiUnlockSegment, getUserPrize, getAllMapAssets } from "@/lib/api";
 import MapGrid from "@/components/MapGrid";
 import ProgressBar from "@/components/ProgressBar";
 import QRScanner from "@/components/QRScanner";
@@ -51,6 +51,8 @@ const MapPage = () => {
     mapGapSize: 'medium',
     mapGridSize: '3x3'
   });
+  
+  const [totalValidSegments, setTotalValidSegments] = useState(0);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -102,6 +104,11 @@ const MapPage = () => {
         .map(segment => segment.segmentId);
       
       setUnlockedSegments(unlockedSegmentIds);
+      
+      // Load map assets to calculate total valid segments (excluding traps)
+      const assetsResponse = await getAllMapAssets();
+      const validSegments = assetsResponse.assets.filter(asset => !asset.isTrap);
+      setTotalValidSegments(validSegments.length);
       
       // Load prize status
       const prizeResponse = await getUserPrize(currentUser.documentNumber);

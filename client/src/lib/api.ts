@@ -103,3 +103,12 @@ export const redeemPrize = async (redemptionCode: string): Promise<RedeemPrizeRe
   }
   return response.json();
 };
+
+// Get all map assets (for calculating total valid segments)
+export const getAllMapAssets = async (): Promise<{ assets: Array<{ isTrap: boolean; segmentId: number }> }> => {
+  const response = await apiRequest("GET", "/api/admin/map-assets");
+  if (!response.ok) {
+    throw response;
+  }
+  return response.json();
+};
