@@ -277,10 +277,7 @@ const MapPage = () => {
 
             <ProgressBar 
               progress={unlockedSegments.length} 
-              total={(() => {
-                const [columns, rows] = systemConfig.mapGridSize.split('x').map(Number);
-                return columns * rows;
-              })()} 
+              total={totalValidSegments || 6} 
             />
             
             <div className="flex justify-between items-center mb-4">
