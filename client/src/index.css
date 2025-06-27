@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Default background configuration */
+  --background-image-url: url('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png');
+  --background-size: auto;
+  --background-repeat: repeat;
+  --background-position: center;
+  --gradient-start-color: #bb2558;
+  --gradient-mid-color: '';
+  --gradient-end-color: #e8cf00;
+  --gradient-direction: 175deg;
+  --gradient-type: linear;
+}
+
 /* CSS variables for system configuration to prevent FOUC */
 :root {
   --primary-color: #bb2558;
@@ -42,9 +55,10 @@
 
 /* Map page background with advanced CSS variables */
 .map-page-bg {
-  background: var(--background-image-url) var(--background-repeat), var(--gradient-type)-gradient(var(--gradient-direction), var(--gradient-start-color) 0%, var(--gradient-end-color) 100%);
-  background-size: var(--background-size), cover;
-  background-position: var(--background-position), center;
+  background-image: var(--background-image-url, none), linear-gradient(var(--gradient-direction, 175deg), var(--gradient-start-color, #bb2558) 0%, var(--gradient-end-color, #e8cf00) 100%);
+  background-size: var(--background-size, auto), cover;
+  background-repeat: var(--background-repeat, repeat), no-repeat;
+  background-position: var(--background-position, center), center;
 }
 
 @keyframes float {
