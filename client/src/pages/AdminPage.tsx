@@ -95,6 +95,15 @@ const AdminPage = () => {
     // Frontend customization fields
     appTitle: "",
     backgroundImageUrl: "",
+    gradientStartColor: "#bb2558",
+    gradientEndColor: "#e8cf00",
+    // Login page customization
+    loginTitle: "Lanzamiento",
+    loginSubtitle: "2025",
+    loginWelcomeText: "Bienvenido al reto de identificación de riesgos",
+    loginButtonText: "Ingresar",
+    loginDocumentLabel: "Número de documento",
+    loginNameLabel: "Nombre completo",
     scanButtonText: "",
     helpButtonText: "",
     siteMapButtonText: "",
@@ -2251,6 +2260,7 @@ const AdminPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </Tabs>
     </div>
   );
 };

@@ -19,6 +19,19 @@ const AuthPage = () => {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { setCurrentUser } = useUser();
+  
+  // System configuration for login page customization
+  const [systemConfig, setSystemConfig] = useState({
+    loginTitle: 'Lanzamiento',
+    loginSubtitle: '2025',
+    loginWelcomeText: 'Bienvenido al reto de identificación de riesgos',
+    loginButtonText: 'Ingresar',
+    loginDocumentLabel: 'Número de documento',
+    loginNameLabel: 'Nombre completo',
+    backgroundImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
+    gradientStartColor: '#bb2558',
+    gradientEndColor: '#e8cf00'
+  });
 
   // Cargar el último usuario que se logueó
   useEffect(() => {
