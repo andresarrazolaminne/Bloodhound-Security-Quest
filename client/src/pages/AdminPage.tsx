@@ -1220,7 +1220,7 @@ const AdminPage = () => {
 
       {/* Diálogo para crear/editar assets */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {dialogMode === "create" ? "Crear Nuevo Segmento" : "Editar Segmento"}
@@ -1233,7 +1233,15 @@ const AdminPage = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <Tabs defaultValue="basic" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="basic">Configuración Básica</TabsTrigger>
+              <TabsTrigger value="security">Seguridad y QR</TabsTrigger>
+              <TabsTrigger value="content">Contenido y Modales</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="basic" className="space-y-4 py-4">
+              {/* Configuración básica del segmento */}
             <div className="grid grid-cols-4 items-center gap-4">
               <label htmlFor="segmentId" className="text-right">
                 ID Segmento
@@ -1320,6 +1328,10 @@ const AdminPage = () => {
                 rows={3}
               />
             </div>
+            </TabsContent>
+
+            <TabsContent value="security" className="space-y-4 py-4">
+              {/* Configuración de seguridad y QR */}
 
             <div className="grid grid-cols-4 items-center gap-4">
               <label htmlFor="securityCode" className="text-right">
@@ -1379,48 +1391,55 @@ const AdminPage = () => {
               </div>
             </div>
 
-            {/* Campo de mensaje HTML para QR trampa */}
-            {formData.isTrap && (
-              <div className="grid grid-cols-4 items-start gap-4">
-                <label htmlFor="trapMessage" className="text-right mt-2">
-                  Mensaje Trampa
-                </label>
-                <div className="col-span-3 space-y-2">
-                  <textarea
-                    id="trapMessage"
-                    value={formData.trapMessage}
-                    onChange={(e) => setFormData({...formData, trapMessage: e.target.value})}
-                    placeholder="<h2>¡Situación Segura!</h2><p>Esta situación <strong>NO presenta riesgos</strong> reales. Has identificado correctamente una trampa.</p>"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px] font-mono text-sm"
-                  />
-                  <p className="text-xs text-gray-500">
-                    Mensaje HTML personalizable que se mostrará cuando alguien escanee este QR trampa. Puedes usar etiquetas como &lt;h2&gt;, &lt;p&gt;, &lt;strong&gt;, etc.
-                  </p>
-                </div>
-              </div>
-            )}
 
-            {/* Campo de contenido de modal para segmentos normales */}
-            {!formData.isTrap && (
-              <div className="grid grid-cols-4 items-start gap-4">
-                <label htmlFor="modalContent" className="text-right mt-2">
-                  Contenido Modal (Opcional)
-                </label>
-                <div className="col-span-3 space-y-2">
-                  <textarea
-                    id="modalContent"
-                    value={formData.modalContent}
-                    onChange={(e) => setFormData({...formData, modalContent: e.target.value})}
-                    placeholder="<h2>¡Segmento Desbloqueado!</h2><p>Información adicional sobre este segmento...</p>"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px] font-mono text-sm"
-                  />
-                  <p className="text-xs text-gray-500">
-                    Contenido HTML opcional que se mostrará en un modal cuando se desbloquee este segmento. Si está vacío, solo se mostrará el mensaje de éxito estándar.
-                  </p>
+            </TabsContent>
+
+            <TabsContent value="content" className="space-y-4 py-4">
+              {/* Configuración de contenido y modales */}
+              
+              {/* Campo de mensaje HTML para QR trampa */}
+              {formData.isTrap && (
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <label htmlFor="trapMessage" className="text-right mt-2">
+                    Mensaje Trampa
+                  </label>
+                  <div className="col-span-3 space-y-2">
+                    <textarea
+                      id="trapMessage"
+                      value={formData.trapMessage}
+                      onChange={(e) => setFormData({...formData, trapMessage: e.target.value})}
+                      placeholder="<h2>¡Situación Segura!</h2><p>Esta situación <strong>NO presenta riesgos</strong> reales. Has identificado correctamente una trampa.</p>"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px] font-mono text-sm"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Mensaje HTML personalizable que se mostrará cuando alguien escanee este QR trampa. Puedes usar etiquetas como &lt;h2&gt;, &lt;p&gt;, &lt;strong&gt;, etc.
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+
+              {/* Campo de contenido de modal para segmentos normales */}
+              {!formData.isTrap && (
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <label htmlFor="modalContent" className="text-right mt-2">
+                    Contenido Modal (Opcional)
+                  </label>
+                  <div className="col-span-3 space-y-2">
+                    <textarea
+                      id="modalContent"
+                      value={formData.modalContent}
+                      onChange={(e) => setFormData({...formData, modalContent: e.target.value})}
+                      placeholder="<h2>¡Segmento Desbloqueado!</h2><p>Información adicional sobre este segmento...</p>"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px] font-mono text-sm"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Contenido HTML opcional que se mostrará en un modal cuando se desbloquee este segmento. Si está vacío, solo se mostrará el mensaje de éxito estándar.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
