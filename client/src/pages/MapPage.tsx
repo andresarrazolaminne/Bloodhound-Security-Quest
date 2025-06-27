@@ -123,7 +123,7 @@ const MapPage = () => {
           const config = data.config || {};
           
           // Merge with default values to ensure all fields are present
-          setSystemConfig({
+          const newConfig = {
             instructionsText: config.instructionsText || '',
             siteMapImageUrl: config.siteMapImageUrl || 'https://i.pinimg.com/736x/df/93/10/df93101fdd1057543ae9a6bf2ff16b1c.jpg',
             footerLogoUrl: config.footerLogoUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png',
@@ -146,7 +146,21 @@ const MapPage = () => {
             prizeButtonText: config.prizeButtonText || 'Ver Código Premio',
             completionTitle: config.completionTitle || '¡Felicidades, has completado el reto!',
             loadingText: config.loadingText || 'Cargando tu mapa...'
-          });
+          };
+          
+          setSystemConfig(newConfig);
+          
+          // Update CSS custom properties immediately to prevent flash
+          const timestamp = Date.now();
+          document.documentElement.style.setProperty('--background-image-url', newConfig.backgroundImageUrl ? `url('${newConfig.backgroundImageUrl}?t=${timestamp}')` : '');
+          document.documentElement.style.setProperty('--background-size', newConfig.backgroundSize);
+          document.documentElement.style.setProperty('--background-repeat', newConfig.backgroundRepeat);
+          document.documentElement.style.setProperty('--background-position', newConfig.backgroundPosition);
+          document.documentElement.style.setProperty('--gradient-start-color', newConfig.gradientStartColor);
+          document.documentElement.style.setProperty('--gradient-mid-color', newConfig.gradientMidColor);
+          document.documentElement.style.setProperty('--gradient-end-color', newConfig.gradientEndColor);
+          document.documentElement.style.setProperty('--gradient-direction', newConfig.gradientDirection);
+          document.documentElement.style.setProperty('--gradient-type', newConfig.gradientType);
         }
       } catch (error) {
         console.error('Error loading system config:', error);
@@ -307,9 +321,7 @@ const MapPage = () => {
   }
 
   return (
-    <div className="flex flex-col min-h-screen" style={{
-      background: `url('${systemConfig.backgroundImageUrl}') repeat, linear-gradient(175deg, ${systemConfig.gradientStartColor} 0%, ${systemConfig.gradientStartColor} 75%, ${systemConfig.gradientEndColor} 100%)`
-    }}>
+    <div className="flex flex-col min-h-screen map-page-bg">
       {/* Header */}
       <header className="bg-primary text-white shadow-md">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">

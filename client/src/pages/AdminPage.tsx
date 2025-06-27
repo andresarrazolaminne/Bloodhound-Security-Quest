@@ -249,6 +249,18 @@ const AdminPage = () => {
           description: "La personalización del frontend se ha guardado correctamente"
         });
         
+        // Apply CSS custom properties immediately to prevent flash
+        const timestamp = Date.now();
+        document.documentElement.style.setProperty('--background-image-url', data.config.backgroundImageUrl ? `url('${data.config.backgroundImageUrl}?t=${timestamp}')` : '');
+        document.documentElement.style.setProperty('--background-size', data.config.backgroundSize || 'auto');
+        document.documentElement.style.setProperty('--background-repeat', data.config.backgroundRepeat || 'repeat');
+        document.documentElement.style.setProperty('--background-position', data.config.backgroundPosition || 'center');
+        document.documentElement.style.setProperty('--gradient-start-color', data.config.gradientStartColor || '#bb2558');
+        document.documentElement.style.setProperty('--gradient-mid-color', data.config.gradientMidColor || '');
+        document.documentElement.style.setProperty('--gradient-end-color', data.config.gradientEndColor || '#e8cf00');
+        document.documentElement.style.setProperty('--gradient-direction', data.config.gradientDirection || '175deg');
+        document.documentElement.style.setProperty('--gradient-type', data.config.gradientType || 'linear');
+        
         // Emit custom event to notify other components about the configuration update
         window.dispatchEvent(new CustomEvent('systemConfigUpdated'));
         
