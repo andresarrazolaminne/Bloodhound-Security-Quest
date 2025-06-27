@@ -2272,6 +2272,7 @@ const AdminPage = () => {
         </CardContent>
       </Card>
     </TabsContent>
+  </Tabs>
 
       {/* Diálogo para crear/editar assets */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -2513,6 +2514,7 @@ const AdminPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </Tabs>
     </div>
   );
 };
