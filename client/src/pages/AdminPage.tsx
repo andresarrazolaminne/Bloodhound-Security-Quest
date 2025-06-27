@@ -199,6 +199,42 @@ const AdminPage = () => {
     }
   };
 
+  // Función para actualizar la configuración del sistema
+  const handleUpdateSystemConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      setLoadingAssets(true);
+      
+      const response = await apiRequest("POST", "/api/system-config", {
+        body: JSON.stringify(systemConfig),
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Configuración actualizada",
+          description: "La personalización del frontend se ha guardado correctamente"
+        });
+        
+        // Recargar la configuración para reflejar los cambios
+        await fetchSystemConfig();
+      } else {
+        throw new Error("Error al actualizar la configuración");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Error al actualizar la configuración del sistema",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingAssets(false);
+    }
+  };
+
   // Cargar assets de segmentos del mapa y configuración del sistema al iniciar
   useEffect(() => {
     fetchMapAssets();
@@ -419,7 +455,7 @@ const AdminPage = () => {
       </div>
 
       <Tabs defaultValue="prizes" className="max-w-5xl mx-auto">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 mb-6">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-7 mb-6">
           <TabsTrigger value="prizes">Validación de Premios</TabsTrigger>
           <TabsTrigger value="segments">Segmentos del Mapa</TabsTrigger>
           <TabsTrigger value="qrgenerator">Generador de QR</TabsTrigger>
@@ -430,6 +466,7 @@ const AdminPage = () => {
               <span>Analíticas</span>
             </div>
           </TabsTrigger>
+          <TabsTrigger value="frontend">Personalización</TabsTrigger>
           <TabsTrigger value="config">Configuración</TabsTrigger>
         </TabsList>
 
@@ -1231,6 +1268,188 @@ const AdminPage = () => {
             </CardHeader>
             <CardContent className="pt-6">
               <AnalyticsTab />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="frontend">
+          <Card className="w-full">
+            <CardHeader className="bg-primary text-white">
+              <CardTitle className="text-xl">Personalización del Frontend</CardTitle>
+              <CardDescription className="text-white/80">
+                Personaliza títulos, textos de botones y elementos visuales de la aplicación
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
+                {/* Títulos y elementos principales */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Títulos Principales</h3>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="app-title" className="block text-sm font-medium text-gray-700">
+                      Título de la Aplicación
+                    </label>
+                    <Input
+                      id="app-title"
+                      value={systemConfig.appTitle}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        appTitle: e.target.value
+                      })}
+                      placeholder="Lanzamiento 2025"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Texto que aparece en el encabezado de la aplicación (actualmente: "Lanzamiento 2025")
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="completion-title" className="block text-sm font-medium text-gray-700">
+                      Título de Completación
+                    </label>
+                    <Input
+                      id="completion-title"
+                      value={systemConfig.completionTitle}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        completionTitle: e.target.value
+                      })}
+                      placeholder="¡Felicidades, has completado el reto!"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Título que se muestra cuando el usuario completa todos los segmentos
+                    </p>
+                  </div>
+                </div>
+
+                {/* Textos de botones */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Textos de Botones</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="scan-button-text" className="block text-sm font-medium text-gray-700">
+                        Texto del Botón de Escaneo
+                      </label>
+                      <Input
+                        id="scan-button-text"
+                        value={systemConfig.scanButtonText}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          scanButtonText: e.target.value
+                        })}
+                        placeholder="¡Escanea aquí!"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="help-button-text" className="block text-sm font-medium text-gray-700">
+                        Texto del Botón de Ayuda
+                      </label>
+                      <Input
+                        id="help-button-text"
+                        value={systemConfig.helpButtonText}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          helpButtonText: e.target.value
+                        })}
+                        placeholder="Ayuda"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="sitemap-button-text" className="block text-sm font-medium text-gray-700">
+                        Texto del Botón de Mapa del Sitio
+                      </label>
+                      <Input
+                        id="sitemap-button-text"
+                        value={systemConfig.siteMapButtonText}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          siteMapButtonText: e.target.value
+                        })}
+                        placeholder="Mapa del Sitio"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="prize-button-text" className="block text-sm font-medium text-gray-700">
+                        Texto del Botón de Premio
+                      </label>
+                      <Input
+                        id="prize-button-text"
+                        value={systemConfig.prizeButtonText}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          prizeButtonText: e.target.value
+                        })}
+                        placeholder="Ver Código Premio"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mensajes y textos auxiliares */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Mensajes del Sistema</h3>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="loading-text" className="block text-sm font-medium text-gray-700">
+                      Texto de Carga
+                    </label>
+                    <Input
+                      id="loading-text"
+                      value={systemConfig.loadingText}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        loadingText: e.target.value
+                      })}
+                      placeholder="Cargando tu mapa..."
+                    />
+                    <p className="text-xs text-gray-500">
+                      Mensaje que se muestra mientras carga el mapa
+                    </p>
+                  </div>
+                </div>
+
+                {/* Imágenes y fondos */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Imágenes y Fondos</h3>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="background-image-url" className="block text-sm font-medium text-gray-700">
+                      URL de Imagen de Fondo
+                    </label>
+                    <Input
+                      id="background-image-url"
+                      type="url"
+                      value={systemConfig.backgroundImageUrl}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        backgroundImageUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/fondo.png"
+                    />
+                    <p className="text-xs text-gray-500">
+                      URL de la imagen de textura de fondo de la aplicación
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-4 border-t">
+                  <Button type="submit" disabled={loadingAssets}>
+                    {loadingAssets ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Actualizando...
+                      </>
+                    ) : (
+                      "Actualizar Personalización"
+                    )}
+                  </Button>
+                </div>
+              </form>
             </CardContent>
           </Card>
         </TabsContent>
