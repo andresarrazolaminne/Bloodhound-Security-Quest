@@ -20,16 +20,16 @@ const SegmentContentModal = ({
 }: SegmentContentModalProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh]">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {title || `Segmento ${segmentId} Desbloqueado`}
           </DialogTitle>
         </DialogHeader>
         
-        <div className="prose prose-sm max-w-none overflow-y-auto max-h-[60vh] pr-2">
+        <div className="prose prose-sm max-w-none overflow-y-auto max-h-[70vh] pr-2">
           {modalContent ? (
-            <HtmlContent html={modalContent} />
+            <HtmlContent html={modalContent} className="iframe-responsive" />
           ) : (
             <div className="text-center py-8">
               <div className="text-green-600 text-4xl mb-4">✅</div>
