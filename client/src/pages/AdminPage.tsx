@@ -209,12 +209,34 @@ const AdminPage = () => {
       const response = await apiRequest("POST", "/api/admin/system-config", systemConfig);
       
       if (response.ok) {
+        const data = await response.json();
+        
         toast({
           title: "Configuración actualizada",
           description: "La personalización del frontend se ha guardado correctamente"
         });
         
-        // Recargar la configuración para reflejar los cambios
+        // Actualizar el estado local con los datos guardados
+        if (data.config) {
+          setSystemConfig({
+            instructionsText: data.config.instructionsText || "",
+            siteMapImageUrl: data.config.siteMapImageUrl || "",
+            footerLogoUrl: data.config.footerLogoUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png",
+            cobrandingImageUrl: data.config.cobrandingImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png",
+            mapGapSize: data.config.mapGapSize || "medium",
+            mapGridSize: data.config.mapGridSize || "3x3",
+            appTitle: data.config.appTitle || "Lanzamiento 2025",
+            backgroundImageUrl: data.config.backgroundImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png",
+            scanButtonText: data.config.scanButtonText || "¡Escanea aquí!",
+            helpButtonText: data.config.helpButtonText || "Ayuda",
+            siteMapButtonText: data.config.siteMapButtonText || "Mapa del Sitio",
+            prizeButtonText: data.config.prizeButtonText || "Ver Código Premio",
+            completionTitle: data.config.completionTitle || "¡Felicidades, has completado el reto!",
+            loadingText: data.config.loadingText || "Cargando tu mapa..."
+          });
+        }
+        
+        // También recargar la configuración para asegurar sincronización
         await fetchSystemConfig();
       } else {
         throw new Error("Error al actualizar la configuración");

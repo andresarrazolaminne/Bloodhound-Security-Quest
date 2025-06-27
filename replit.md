@@ -149,3 +149,4 @@ Changelog:
 - June 27, 2025. Fixed modalContent saving issue - iframe content now saves correctly in admin panel
 - June 27, 2025. Reorganized admin segment configuration into organized tabs for better usability
 - June 27, 2025. Fixed modal display issue - modals now appear correctly when unlocking segments with custom content
+- June 27, 2025. Implemented complete frontend customization system - admin can now modify app titles, button texts, loading messages, and UI elements through dedicated "Personalización" tab with real-time persistence
