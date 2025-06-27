@@ -48,6 +48,12 @@ const MapPage = () => {
     siteMapImageUrl: string;
     footerLogoUrl: string;
     cobrandingImageUrl: string;
+    backgroundSize: string;
+    backgroundRepeat: string;
+    backgroundPosition: string;
+    gradientMidColor: string;
+    gradientDirection: string;
+    gradientType: string;
     mapGapSize: 'none' | 'x-small' | 'small' | 'medium' | 'large';
     mapGridSize: '3x3' | '3x2' | '2x3' | '4x2' | '2x4';
     appTitle: string;
@@ -65,6 +71,12 @@ const MapPage = () => {
     siteMapImageUrl: 'https://i.pinimg.com/736x/df/93/10/df93101fdd1057543ae9a6bf2ff16b1c.jpg',
     footerLogoUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png',
     cobrandingImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png',
+    backgroundSize: 'auto',
+    backgroundRepeat: 'repeat',
+    backgroundPosition: 'center',
+    gradientMidColor: '',
+    gradientDirection: '175deg',
+    gradientType: 'linear',
     mapGapSize: 'medium',
     mapGridSize: '3x3',
     appTitle: 'Lanzamiento 2025',
@@ -120,8 +132,14 @@ const MapPage = () => {
             mapGridSize: config.mapGridSize || '3x3',
             appTitle: config.appTitle || 'Lanzamiento 2025',
             backgroundImageUrl: config.backgroundImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
+            backgroundSize: config.backgroundSize || 'auto',
+            backgroundRepeat: config.backgroundRepeat || 'repeat',
+            backgroundPosition: config.backgroundPosition || 'center',
             gradientStartColor: config.gradientStartColor || '#bb2558',
+            gradientMidColor: config.gradientMidColor || '',
             gradientEndColor: config.gradientEndColor || '#e8cf00',
+            gradientDirection: config.gradientDirection || '175deg',
+            gradientType: config.gradientType || 'linear',
             scanButtonText: config.scanButtonText || '¡Escanea aquí!',
             helpButtonText: config.helpButtonText || 'Ayuda',
             siteMapButtonText: config.siteMapButtonText || 'Mapa del Sitio',

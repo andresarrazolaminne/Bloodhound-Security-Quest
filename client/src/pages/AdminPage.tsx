@@ -2514,7 +2514,7 @@ const AdminPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Tabs>
+      </Tabs>
     </div>
   );
 };
