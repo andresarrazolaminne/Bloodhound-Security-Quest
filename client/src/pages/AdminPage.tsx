@@ -1491,108 +1491,25 @@ const AdminPage = () => {
                   </div>
                 </div>
 
-                {/* Imágenes y fondos */}
+                <div className="flex justify-end pt-4 border-t">
+                  <Button type="submit" disabled={loadingAssets}>
+                    {loadingAssets ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Actualizando...
+                      </>
+                    ) : (
+                      "Actualizar Personalización"
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="images" className="space-y-6">
+              <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Imágenes y Fondos</h3>
-                  
-                  <div className="space-y-2">
-                    <label htmlFor="background-image-url" className="block text-sm font-medium text-gray-700">
-                      URL de Imagen de Fondo
-                    </label>
-                    <Input
-                      id="background-image-url"
-                      type="url"
-                      value={systemConfig.backgroundImageUrl}
-                      onChange={(e) => setSystemConfig({
-                        ...systemConfig,
-                        backgroundImageUrl: e.target.value
-                      })}
-                      placeholder="https://ejemplo.com/fondo.png"
-                    />
-                    <p className="text-xs text-gray-500">
-                      URL de la imagen de textura de fondo de la aplicación
-                    </p>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label htmlFor="gradient-start-color" className="block text-sm font-medium text-gray-700">
-                        Color Inicial del Degradado
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          id="gradient-start-color"
-                          type="color"
-                          value={(systemConfig as any).gradientStartColor || '#bb2558'}
-                          onChange={(e) => setSystemConfig({
-                            ...systemConfig,
-                            gradientStartColor: e.target.value
-                          } as any)}
-                          className="w-16 h-10 rounded cursor-pointer border-2"
-                        />
-                        <Input
-                          type="text"
-                          value={(systemConfig as any).gradientStartColor || '#bb2558'}
-                          onChange={(e) => setSystemConfig({
-                            ...systemConfig,
-                            gradientStartColor: e.target.value
-                          } as any)}
-                          placeholder="#bb2558"
-                          className="flex-1 font-mono text-sm"
-                        />
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        Color de inicio del degradado de fondo
-                      </p>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label htmlFor="gradient-end-color" className="block text-sm font-medium text-gray-700">
-                        Color Final del Degradado
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          id="gradient-end-color"
-                          type="color"
-                          value={(systemConfig as any).gradientEndColor || '#e8cf00'}
-                          onChange={(e) => setSystemConfig({
-                            ...systemConfig,
-                            gradientEndColor: e.target.value
-                          } as any)}
-                          className="w-16 h-10 rounded cursor-pointer border-2"
-                        />
-                        <Input
-                          type="text"
-                          value={(systemConfig as any).gradientEndColor || '#e8cf00'}
-                          onChange={(e) => setSystemConfig({
-                            ...systemConfig,
-                            gradientEndColor: e.target.value
-                          } as any)}
-                          placeholder="#e8cf00"
-                          className="flex-1 font-mono text-sm"
-                        />
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        Color final del degradado de fondo
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Vista previa del degradado */}
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Vista Previa del Degradado
-                    </label>
-                    <div 
-                      className="w-full h-16 rounded-lg border border-gray-200 shadow-sm"
-                      style={{
-                        background: `linear-gradient(175deg, ${(systemConfig as any).gradientStartColor || '#bb2558'} 0%, ${(systemConfig as any).gradientStartColor || '#bb2558'} 75%, ${(systemConfig as any).gradientEndColor || '#e8cf00'} 100%)`
-                      }}
-                    ></div>
-                    <p className="text-xs text-gray-500">
-                      Así se verá el degradado de fondo en la aplicación
-                    </p>
-                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Imágenes del Sistema</h3>
                   
                   <div className="space-y-2">
                     <label htmlFor="cobranding-image-url" className="block text-sm font-medium text-gray-700">
@@ -1703,34 +1620,7 @@ const AdminPage = () => {
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Gestión de Imágenes</h3>
                   
-                  <div className="space-y-2">
-                    <label htmlFor="background-image-url" className="block text-sm font-medium text-gray-700">
-                      URL de Imagen de Fondo (Textura)
-                    </label>
-                    <Input
-                      id="background-image-url"
-                      type="url"
-                      value={systemConfig.backgroundImageUrl}
-                      onChange={(e) => setSystemConfig({
-                        ...systemConfig,
-                        backgroundImageUrl: e.target.value
-                      })}
-                      placeholder="https://ejemplo.com/fondo.png"
-                    />
-                    <p className="text-xs text-gray-500">
-                      URL de la imagen de textura de fondo de la aplicación
-                    </p>
-                    {systemConfig.backgroundImageUrl && (
-                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
-                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
-                        <img 
-                          src={systemConfig.backgroundImageUrl} 
-                          alt="Vista previa fondo" 
-                          className="h-16 w-32 object-cover border border-gray-200 rounded"
-                        />
-                      </div>
-                    )}
-                  </div>
+
                   
                   <div className="space-y-2">
                     <label htmlFor="cobranding-image-url" className="block text-sm font-medium text-gray-700">
@@ -1893,9 +1783,39 @@ const AdminPage = () => {
 
             <TabsContent value="colors" className="space-y-6">
               <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
-                {/* Colores del degradado */}
+                {/* Configuración completa del fondo */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Colores del Degradado de Fondo</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Configuración Completa del Fondo</h3>
+                  
+                  {/* URL de imagen de fondo */}
+                  <div className="space-y-2">
+                    <label htmlFor="background-image-url" className="block text-sm font-medium text-gray-700">
+                      URL de Imagen de Fondo (Textura)
+                    </label>
+                    <Input
+                      id="background-image-url"
+                      type="url"
+                      value={systemConfig.backgroundImageUrl}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        backgroundImageUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/fondo.png"
+                    />
+                    <p className="text-xs text-gray-500">
+                      URL de la imagen de textura de fondo de la aplicación
+                    </p>
+                    {systemConfig.backgroundImageUrl && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
+                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                        <img 
+                          src={systemConfig.backgroundImageUrl} 
+                          alt="Vista previa fondo" 
+                          className="h-16 w-32 object-cover border border-gray-200 rounded"
+                        />
+                      </div>
+                    )}
+                  </div>
                   
                   {/* Configuración avanzada del degradado */}
                   <div className="space-y-4">
