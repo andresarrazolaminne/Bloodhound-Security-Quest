@@ -1683,6 +1683,16 @@ const AdminPage = () => {
                     <p className="text-xs text-gray-500">
                       URL de la imagen de textura de fondo de la aplicación
                     </p>
+                    {systemConfig.backgroundImageUrl && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
+                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                        <img 
+                          src={systemConfig.backgroundImageUrl} 
+                          alt="Vista previa fondo" 
+                          className="h-16 w-32 object-cover border border-gray-200 rounded"
+                        />
+                      </div>
+                    )}
                   </div>
                   
                   <div className="space-y-2">
