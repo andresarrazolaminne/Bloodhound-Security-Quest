@@ -1462,20 +1462,20 @@ const AdminPage = () => {
                         <Input
                           id="gradient-start-color"
                           type="color"
-                          value={systemConfig.gradientStartColor}
+                          value={(systemConfig as any).gradientStartColor || '#bb2558'}
                           onChange={(e) => setSystemConfig({
                             ...systemConfig,
                             gradientStartColor: e.target.value
-                          })}
+                          } as any)}
                           className="w-16 h-10 rounded cursor-pointer border-2"
                         />
                         <Input
                           type="text"
-                          value={systemConfig.gradientStartColor}
+                          value={(systemConfig as any).gradientStartColor || '#bb2558'}
                           onChange={(e) => setSystemConfig({
                             ...systemConfig,
                             gradientStartColor: e.target.value
-                          })}
+                          } as any)}
                           placeholder="#bb2558"
                           className="flex-1 font-mono text-sm"
                         />
@@ -1493,20 +1493,20 @@ const AdminPage = () => {
                         <Input
                           id="gradient-end-color"
                           type="color"
-                          value={systemConfig.gradientEndColor}
+                          value={(systemConfig as any).gradientEndColor || '#e8cf00'}
                           onChange={(e) => setSystemConfig({
                             ...systemConfig,
                             gradientEndColor: e.target.value
-                          })}
+                          } as any)}
                           className="w-16 h-10 rounded cursor-pointer border-2"
                         />
                         <Input
                           type="text"
-                          value={systemConfig.gradientEndColor}
+                          value={(systemConfig as any).gradientEndColor || '#e8cf00'}
                           onChange={(e) => setSystemConfig({
                             ...systemConfig,
                             gradientEndColor: e.target.value
-                          })}
+                          } as any)}
                           placeholder="#e8cf00"
                           className="flex-1 font-mono text-sm"
                         />

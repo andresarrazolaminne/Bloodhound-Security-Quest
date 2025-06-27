@@ -478,8 +478,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           instructionsText: "Bienvenido a nuestra aplicación. Sigue las instrucciones para participar.",
           siteMapImageUrl: "https://placehold.co/1200x800/e2e8f0/64748b?text=Mapa+del+Sitio",
           footerLogoUrl: "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png",
+          cobrandingImageUrl: "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png",
           mapGapSize: "medium",
-          mapGridSize: "3x3"
+          mapGridSize: "3x3",
+          appTitle: 'Lanzamiento 2025',
+          backgroundImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
+          gradientStartColor: '#bb2558',
+          gradientEndColor: '#e8cf00',
+          scanButtonText: '¡Escanea aquí!',
+          helpButtonText: 'Ayuda',
+          siteMapButtonText: 'Mapa del Sitio',
+          prizeButtonText: 'Ver Código Premio',
+          completionTitle: '¡Felicidades, has completado el reto!',
+          loadingText: 'Cargando tu mapa...'
         }
       });
     }
