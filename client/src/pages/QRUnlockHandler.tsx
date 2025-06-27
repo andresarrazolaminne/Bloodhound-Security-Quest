@@ -113,6 +113,12 @@ const QRUnlockHandler = () => {
           // Mostrar modal de contenido opcional si hay contenido disponible
           if (unlockResponse.modalContent) {
             setShowSegmentModal(true);
+            // No redirigir automáticamente si hay modal - solo después de cerrarlo
+          } else {
+            // Solo redirigir automáticamente si NO hay modal
+            setTimeout(() => {
+              setLocation('/map');
+            }, 3000);
           }
 
           toast({
@@ -120,11 +126,6 @@ const QRUnlockHandler = () => {
             description: `Segmento ${segmentId} desbloqueado`,
           });
         }
-
-        // Redirigir al mapa después de mostrar el resultado
-        setTimeout(() => {
-          setLocation('/map');
-        }, 3000);
 
       } catch (error: any) {
         console.error('QRUnlockHandler - Error:', error);

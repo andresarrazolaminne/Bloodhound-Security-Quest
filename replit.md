@@ -148,3 +148,4 @@ Changelog:
 - June 26, 2025. Added false points ranking system and admin controls for trap QR management
 - June 27, 2025. Fixed modalContent saving issue - iframe content now saves correctly in admin panel
 - June 27, 2025. Reorganized admin segment configuration into organized tabs for better usability
+- June 27, 2025. Fixed modal display issue - modals now appear correctly when unlocking segments with custom content
