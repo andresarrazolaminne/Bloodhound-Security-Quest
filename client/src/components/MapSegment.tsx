@@ -86,8 +86,23 @@ const MapSegment = ({ id, imageUrl, altText, unlocked, className }: MapSegmentPr
   };
   
   const handleSegmentClick = () => {
-    if (unlocked && asset?.redirectUrl) {
-      window.open(asset.redirectUrl, "_blank", "noopener,noreferrer");
+    if (unlocked) {
+      // Si hay contenido modal, mostrar el modal
+      if (asset?.modalContent) {
+        // Disparar evento para mostrar el modal del segmento
+        const event = new CustomEvent('showSegmentModal', {
+          detail: {
+            segmentId: id,
+            modalContent: asset.modalContent,
+            segmentTitle: asset.title
+          }
+        });
+        window.dispatchEvent(event);
+      } 
+      // Si hay URL de redirección, abrir en nueva pestaña
+      else if (asset?.redirectUrl) {
+        window.open(asset.redirectUrl, "_blank", "noopener,noreferrer");
+      }
     }
   };
 
