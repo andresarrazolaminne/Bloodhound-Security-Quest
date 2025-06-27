@@ -66,6 +66,7 @@ export const mapSegmentAssets = pgTable("map_segment_assets", {
   securityCode: text("security_code").notNull().default(""), // Nuevo campo para código de seguridad
   isTrap: boolean("is_trap").default(false), // Campo para indicar si es un QR trampa
   trapMessage: text("trap_message"), // Mensaje HTML personalizable para QR trampa
+  modalContent: text("modal_content"), // Contenido HTML opcional para modal al desbloquear
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
@@ -106,6 +107,7 @@ export const insertMapSegmentAssetsSchema = createInsertSchema(mapSegmentAssets)
   securityCode: true,
   isTrap: true,
   trapMessage: true,
+  modalContent: true,
 });
 
 export const insertTrapPointsSchema = createInsertSchema(trapPoints).pick({

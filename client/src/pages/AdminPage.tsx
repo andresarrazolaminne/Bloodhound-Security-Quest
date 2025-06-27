@@ -63,6 +63,7 @@ interface MapAssetFormData {
   securityCode: string;
   isTrap: boolean;
   trapMessage: string;
+  modalContent: string;
   generateNewCode?: boolean;
 }
 
@@ -115,6 +116,7 @@ const AdminPage = () => {
     securityCode: "",
     isTrap: false,
     trapMessage: "",
+    modalContent: "",
     generateNewCode: false
   });
   
@@ -230,6 +232,7 @@ const AdminPage = () => {
       securityCode: "",
       isTrap: false,
       trapMessage: "",
+      modalContent: "",
       generateNewCode: true
     });
     setDialogOpen(true);
@@ -248,6 +251,7 @@ const AdminPage = () => {
       securityCode: asset.securityCode || "",
       isTrap: asset.isTrap || false,
       trapMessage: (asset as any).trapMessage || "",
+      modalContent: (asset as any).modalContent || "",
       generateNewCode: false
     });
     setDialogOpen(true);
