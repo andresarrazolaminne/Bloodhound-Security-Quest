@@ -414,7 +414,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: z.string().nullable().optional(),
         securityCode: z.string().optional(),
         isTrap: z.boolean().optional(),
-        trapMessage: z.string().nullable().optional()
+        trapMessage: z.string().nullable().optional(),
+        modalContent: z.string().nullable().optional()
       }).parse(req.body);
       
       // Generar un código de seguridad aleatorio si se solicita explícitamente
@@ -425,6 +426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedAsset = await storage.updateMapSegmentAsset(segmentId, updatedData);
       return res.status(200).json({ asset: updatedAsset });
     } catch (error) {
+      console.error('Error updating map asset:', error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
           message: "Datos inválidos", 
