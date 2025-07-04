@@ -68,6 +68,8 @@ const MapPage = () => {
     loadingText: string;
     headerLogoImageUrl: string;
     headerLogoSize: number;
+    headerBackgroundColor: string;
+    headerTextColor: string;
   }>({
     instructionsText: '',
     siteMapImageUrl: 'https://i.pinimg.com/736x/df/93/10/df93101fdd1057543ae9a6bf2ff16b1c.jpg',
@@ -92,7 +94,9 @@ const MapPage = () => {
     completionTitle: '¡Felicidades, has completado el reto!',
     loadingText: 'Cargando tu mapa...',
     headerLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
-    headerLogoSize: 32
+    headerLogoSize: 32,
+    headerBackgroundColor: '#3b82f6',
+    headerTextColor: '#ffffff'
   });
   
   const [totalValidSegments, setTotalValidSegments] = useState(0);
@@ -152,19 +156,21 @@ const MapPage = () => {
             completionTitle: config.completionTitle || '¡Felicidades, has completado el reto!',
             loadingText: config.loadingText || 'Cargando tu mapa...',
             headerLogoImageUrl: config.headerLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
-            headerLogoSize: config.headerLogoSize || 32
+            headerLogoSize: config.headerLogoSize || 32,
+            headerBackgroundColor: config.headerBackgroundColor || '#3b82f6',
+            headerTextColor: config.headerTextColor || '#ffffff'
           };
           
           // Preload footer image before setting state to prevent flash
           const footerImg = new Image();
           footerImg.onload = () => {
             setFooterImageLoaded(true);
-            setSystemConfig(newConfig);
+            setSystemConfig(newConfig as any);
           };
           footerImg.onerror = () => {
             // Fallback: still set config even if image fails
             setFooterImageLoaded(true);
-            setSystemConfig(newConfig);
+            setSystemConfig(newConfig as any);
           };
           footerImg.src = newConfig.footerLogoUrl;
           
@@ -341,7 +347,13 @@ const MapPage = () => {
   return (
     <div className="flex flex-col min-h-screen map-page-bg">
       {/* Header */}
-      <header className="bg-primary text-white shadow-md">
+      <header 
+        className="shadow-md"
+        style={{ 
+          backgroundColor: systemConfig.headerBackgroundColor,
+          color: systemConfig.headerTextColor 
+        }}
+      >
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <img 
             src={systemConfig.headerLogoImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png"} 
@@ -351,14 +363,28 @@ const MapPage = () => {
           />
           <div className="flex items-center">
             <div className="mr-3">
-              <p className="text-sm font-medium">{currentUser.name}</p>
-              <p className="text-xs opacity-80">{currentUser.documentNumber}</p>
+              <p className="text-sm font-medium" style={{ color: systemConfig.headerTextColor }}>
+                {currentUser.name}
+              </p>
+              <p className="text-xs opacity-80" style={{ color: systemConfig.headerTextColor }}>
+                {currentUser.documentNumber}
+              </p>
             </div>
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={handleLogout}
-              className="bg-primary-foreground/10 hover:bg-primary-foreground/20 rounded-full"
+              className="rounded-full"
+              style={{
+                backgroundColor: `${systemConfig.headerTextColor}10`,
+                color: systemConfig.headerTextColor
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = `${systemConfig.headerTextColor}20`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = `${systemConfig.headerTextColor}10`;
+              }}
             >
               <svg 
                 xmlns="http://www.w3.org/2000/svg" 

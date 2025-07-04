@@ -113,6 +113,9 @@ const AdminPage = () => {
     successTextColor: "#059669",
     errorTextColor: "#dc2626",
     warningTextColor: "#d97706",
+    // UI component colors
+    headerBackgroundColor: "#3b82f6",
+    headerTextColor: "#ffffff",
     // Login page customization
     loginTitle: "Lanzamiento",
     loginSubtitle: "2025",
@@ -215,6 +218,9 @@ const AdminPage = () => {
         successTextColor: config.successTextColor || "#059669",
         errorTextColor: config.errorTextColor || "#dc2626",
         warningTextColor: config.warningTextColor || "#d97706",
+        // UI component colors
+        headerBackgroundColor: config.headerBackgroundColor || "#3b82f6",
+        headerTextColor: config.headerTextColor || "#ffffff",
         scanButtonText: config.scanButtonText || "¡Escanea aquí!",
         helpButtonText: config.helpButtonText || "Ayuda",
         siteMapButtonText: config.siteMapButtonText || "Mapa del Sitio",
@@ -2167,41 +2173,58 @@ const AdminPage = () => {
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Vista Previa de Colores de Texto
                           </label>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-white rounded-lg border-2 border-gray-200">
-                            <div className="space-y-2">
-                              <h4 style={{ color: systemConfig.titleTextColor }} className="text-xl font-bold">
-                                Título Principal
-                              </h4>
-                              <p style={{ color: systemConfig.primaryTextColor }} className="text-base">
-                                Texto principal del contenido
-                              </p>
-                              <p style={{ color: systemConfig.secondaryTextColor }} className="text-sm">
-                                Texto secundario o descripción
-                              </p>
-                              <a href="#" style={{ color: systemConfig.linkTextColor }} className="text-sm underline">
-                                Enlace de ejemplo
-                              </a>
+                          <div className="space-y-4 p-4 bg-white rounded-lg border-2 border-gray-200">
+                            {/* Header Preview */}
+                            <div 
+                              className="rounded-lg p-3 shadow-sm"
+                              style={{ 
+                                backgroundColor: systemConfig.headerBackgroundColor,
+                                color: systemConfig.headerTextColor 
+                              }}
+                            >
+                              <div className="flex justify-between items-center">
+                                <div className="text-sm font-medium">Vista Previa del Header</div>
+                                <div className="text-xs opacity-80">Usuario: John Doe</div>
+                              </div>
                             </div>
-                            <div className="space-y-2">
-                              <button 
-                                style={{ 
-                                  backgroundColor: systemConfig.gradientStartColor, 
-                                  color: systemConfig.buttonTextColor 
-                                }} 
-                                className="px-4 py-2 rounded text-sm font-medium"
-                              >
-                                Botón de Ejemplo
-                              </button>
-                              <div className="space-y-1">
-                                <p style={{ color: systemConfig.successTextColor }} className="text-sm">
-                                  ✓ Mensaje de éxito
+
+                            {/* Content Preview */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <h4 style={{ color: systemConfig.titleTextColor }} className="text-xl font-bold">
+                                  Título Principal
+                                </h4>
+                                <p style={{ color: systemConfig.primaryTextColor }} className="text-base">
+                                  Texto principal del contenido
                                 </p>
-                                <p style={{ color: systemConfig.warningTextColor }} className="text-sm">
-                                  ⚠ Mensaje de advertencia
+                                <p style={{ color: systemConfig.secondaryTextColor }} className="text-sm">
+                                  Texto secundario o descripción
                                 </p>
-                                <p style={{ color: systemConfig.errorTextColor }} className="text-sm">
-                                  ✗ Mensaje de error
-                                </p>
+                                <a href="#" style={{ color: systemConfig.linkTextColor }} className="text-sm underline">
+                                  Enlace de ejemplo
+                                </a>
+                              </div>
+                              <div className="space-y-2">
+                                <button 
+                                  style={{ 
+                                    backgroundColor: systemConfig.gradientStartColor, 
+                                    color: systemConfig.buttonTextColor 
+                                  }} 
+                                  className="px-4 py-2 rounded text-sm font-medium"
+                                >
+                                  Botón de Ejemplo
+                                </button>
+                                <div className="space-y-1">
+                                  <p style={{ color: systemConfig.successTextColor }} className="text-sm">
+                                    ✓ Mensaje de éxito
+                                  </p>
+                                  <p style={{ color: systemConfig.warningTextColor }} className="text-sm">
+                                    ⚠ Mensaje de advertencia
+                                  </p>
+                                  <p style={{ color: systemConfig.errorTextColor }} className="text-sm">
+                                    ✗ Mensaje de error
+                                  </p>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -2316,6 +2339,65 @@ const AdminPage = () => {
                                 onChange={(e) => setSystemConfig({
                                   ...systemConfig,
                                   buttonTextColor: e.target.value
+                                })}
+                                placeholder="#ffffff"
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* UI Component Colors */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label htmlFor="header-background-color" className="block text-sm font-medium text-gray-700">
+                              Color de Fondo del Header
+                            </label>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                id="header-background-color"
+                                type="color"
+                                value={systemConfig.headerBackgroundColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  headerBackgroundColor: e.target.value
+                                })}
+                                className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                              />
+                              <Input
+                                type="text"
+                                value={systemConfig.headerBackgroundColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  headerBackgroundColor: e.target.value
+                                })}
+                                placeholder="#3b82f6"
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label htmlFor="header-text-color" className="block text-sm font-medium text-gray-700">
+                              Color de Texto del Header
+                            </label>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                id="header-text-color"
+                                type="color"
+                                value={systemConfig.headerTextColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  headerTextColor: e.target.value
+                                })}
+                                className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                              />
+                              <Input
+                                type="text"
+                                value={systemConfig.headerTextColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  headerTextColor: e.target.value
                                 })}
                                 placeholder="#ffffff"
                                 className="flex-1"
@@ -2460,7 +2542,9 @@ const AdminPage = () => {
                                 linkTextColor: '#3b82f6',
                                 successTextColor: '#059669',
                                 errorTextColor: '#dc2626',
-                                warningTextColor: '#d97706'
+                                warningTextColor: '#d97706',
+                                headerBackgroundColor: '#3b82f6',
+                                headerTextColor: '#ffffff'
                               })}
                               className="h-8 text-xs"
                             >
@@ -2479,7 +2563,9 @@ const AdminPage = () => {
                                 linkTextColor: '#60a5fa',
                                 successTextColor: '#34d399',
                                 errorTextColor: '#f87171',
-                                warningTextColor: '#fbbf24'
+                                warningTextColor: '#fbbf24',
+                                headerBackgroundColor: '#1e293b',
+                                headerTextColor: '#f8fafc'
                               })}
                               className="h-8 text-xs"
                             >
@@ -2498,7 +2584,9 @@ const AdminPage = () => {
                                 linkTextColor: '#6366f1',
                                 successTextColor: '#10b981',
                                 errorTextColor: '#ef4444',
-                                warningTextColor: '#f59e0b'
+                                warningTextColor: '#f59e0b',
+                                headerBackgroundColor: '#6366f1',
+                                headerTextColor: '#ffffff'
                               })}
                               className="h-8 text-xs"
                             >
@@ -2517,7 +2605,9 @@ const AdminPage = () => {
                                 linkTextColor: '#0ea5e9',
                                 successTextColor: '#22c55e',
                                 errorTextColor: '#e11d48',
-                                warningTextColor: '#eab308'
+                                warningTextColor: '#eab308',
+                                headerBackgroundColor: '#020617',
+                                headerTextColor: '#f1f5f9'
                               })}
                               className="h-8 text-xs"
                             >
