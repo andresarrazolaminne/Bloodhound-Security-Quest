@@ -182,7 +182,7 @@ const AdminPage = () => {
         instructionsText: config.instructionsText || "",
         siteMapImageUrl: config.siteMapImageUrl || "",
         footerLogoUrl: config.footerLogoUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png",
-        cobrandingImageUrl: config.cobrandingImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png",
+        cobrandingImageUrl: config.cobrandingImageUrl || "",
         mapGapSize: config.mapGapSize || "medium",
         mapGridSize: config.mapGridSize || "3x3",
         // Frontend customization fields
