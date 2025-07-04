@@ -1751,6 +1751,35 @@ const AdminPage = () => {
                   </div>
                   
                   <div className="space-y-2">
+                    <label htmlFor="header-logo-image-url" className="block text-sm font-medium text-gray-700">
+                      URL de Logo del Header
+                    </label>
+                    <Input
+                      id="header-logo-image-url"
+                      type="url"
+                      value={systemConfig.headerLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        headerLogoImageUrl: e.target.value
+                      })}
+                      placeholder="https://ejemplo.com/logo-header.png"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Logo que aparece en la parte superior izquierda del header de la aplicación (reemplaza el título)
+                    </p>
+                    {systemConfig.headerLogoImageUrl && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
+                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                        <img 
+                          src={systemConfig.headerLogoImageUrl} 
+                          alt="Vista previa logo header" 
+                          className="h-8 object-contain border border-gray-200 rounded"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
                     <label htmlFor="preload-image-url" className="block text-sm font-medium text-gray-700">
                       URL de Imagen de Precarga
                     </label>

@@ -330,6 +330,9 @@ export class DatabaseStorage implements IStorage {
     backgroundImageUrl?: string;
     gradientStartColor?: string;
     gradientEndColor?: string;
+    loginLogoImageUrl?: string;
+    headerLogoImageUrl?: string;
+    preloadImageUrl?: string;
     scanButtonText?: string;
     helpButtonText?: string;
     siteMapButtonText?: string;

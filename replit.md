@@ -131,8 +131,19 @@ This is a QR code-based treasure hunt application where users scan QR codes to u
 
 **Environment Configuration:**
 - `DATABASE_URL` - PostgreSQL connection string
+- `SESSION_SECRET` - Session encryption key
+- `ADMIN_PASSWORD` - Admin panel access (optional)
 - Port 5000 for local development
 - Port 80 for external access via Replit
+
+**Production Deployment:**
+- Debian/Ubuntu server deployment guide: `DEPLOYMENT_GUIDE.md`
+- Automated installation script: `deploy-debian.sh`
+- PM2 process management with clustering
+- Nginx reverse proxy with SSL support
+- PostgreSQL 16 database with automated backups
+- UFW firewall and Fail2Ban security
+- Automated SSL certificates via Let's Encrypt
 
 ## User Preferences
 
@@ -156,3 +167,4 @@ Changelog:
 - June 27, 2025. Reorganized admin customization panel into dedicated tabs (Personalización, Imágenes, Colores, Página Login) eliminating parameter duplications and improving organization
 - June 27, 2025. Implemented customizable preload and login images - BrainLoader component and AuthPage now dynamically load images from database configuration
 - June 27, 2025. Fixed JSX syntax errors and eliminated duplicated background configuration options between "Personalización" and "Colores" tabs - consolidated all background settings (image URL, gradient colors, positioning) into the "Colores" tab for better organization
+- June 27, 2025. Created comprehensive Debian deployment documentation including DEPLOYMENT_GUIDE.md with step-by-step instructions, automated deploy-debian.sh installation script, and DEPENDENCIES.md with complete dependency list for production server deployment
