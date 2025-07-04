@@ -1775,10 +1775,378 @@ const AdminPage = () => {
                 </TabsContent>
 
                 <TabsContent value="colors" className="space-y-6">
-                  <div className="text-center p-8 bg-gray-50 rounded-lg">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Configuración de Colores</h3>
-                    <p className="text-gray-600">La configuración de colores estará disponible próximamente.</p>
-                  </div>
+                  <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
+                    {/* Gradient Color Configuration */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2 bg-gradient-to-r from-pink-50 to-purple-50 px-3 py-2 rounded-t-lg">
+                        🎨 Configuración de Gradiente de Fondo
+                      </h3>
+                      <div className="bg-gradient-to-r from-pink-50 to-purple-50 p-4 rounded-b-lg space-y-4">
+                        {/* Live Preview */}
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Vista Previa del Gradiente
+                          </label>
+                          <div 
+                            className="h-20 w-full rounded-lg border-2 border-gray-200"
+                            style={{
+                              background: systemConfig.gradientType === 'linear' 
+                                ? `linear-gradient(${systemConfig.gradientDirection}, ${systemConfig.gradientStartColor}${systemConfig.gradientMidColor ? `, ${systemConfig.gradientMidColor}` : ''}, ${systemConfig.gradientEndColor})`
+                                : `radial-gradient(circle, ${systemConfig.gradientStartColor}${systemConfig.gradientMidColor ? `, ${systemConfig.gradientMidColor}` : ''}, ${systemConfig.gradientEndColor})`
+                            }}
+                          />
+                        </div>
+
+                        {/* Gradient Type Selection */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label htmlFor="gradient-type" className="block text-sm font-medium text-gray-700">
+                              Tipo de Gradiente
+                            </label>
+                            <select
+                              id="gradient-type"
+                              value={systemConfig.gradientType}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                gradientType: e.target.value
+                              })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="linear">Lineal</option>
+                              <option value="radial">Radial</option>
+                            </select>
+                          </div>
+
+                          {/* Gradient Direction - only for linear */}
+                          {systemConfig.gradientType === 'linear' && (
+                            <div className="space-y-2">
+                              <label htmlFor="gradient-direction" className="block text-sm font-medium text-gray-700">
+                                Dirección del Gradiente
+                              </label>
+                              <select
+                                id="gradient-direction"
+                                value={systemConfig.gradientDirection}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  gradientDirection: e.target.value
+                                })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="0deg">Hacia Arriba (0°)</option>
+                                <option value="90deg">Hacia Derecha (90°)</option>
+                                <option value="180deg">Hacia Abajo (180°)</option>
+                                <option value="270deg">Hacia Izquierda (270°)</option>
+                                <option value="45deg">Diagonal Superior Derecha (45°)</option>
+                                <option value="135deg">Diagonal Inferior Derecha (135°)</option>
+                                <option value="225deg">Diagonal Inferior Izquierda (225°)</option>
+                                <option value="315deg">Diagonal Superior Izquierda (315°)</option>
+                                <option value="175deg">Personalizado (175°)</option>
+                              </select>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Color Pickers */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <label htmlFor="gradient-start-color" className="block text-sm font-medium text-gray-700">
+                              Color Inicial
+                            </label>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                id="gradient-start-color"
+                                type="color"
+                                value={systemConfig.gradientStartColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  gradientStartColor: e.target.value
+                                })}
+                                className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                              />
+                              <Input
+                                type="text"
+                                value={systemConfig.gradientStartColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  gradientStartColor: e.target.value
+                                })}
+                                placeholder="#bb2558"
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label htmlFor="gradient-mid-color" className="block text-sm font-medium text-gray-700">
+                              Color Intermedio (Opcional)
+                            </label>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                id="gradient-mid-color"
+                                type="color"
+                                value={systemConfig.gradientMidColor || '#ffffff'}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  gradientMidColor: e.target.value
+                                })}
+                                className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                              />
+                              <Input
+                                type="text"
+                                value={systemConfig.gradientMidColor || ''}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  gradientMidColor: e.target.value
+                                })}
+                                placeholder="#ffffff (opcional)"
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label htmlFor="gradient-end-color" className="block text-sm font-medium text-gray-700">
+                              Color Final
+                            </label>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                id="gradient-end-color"
+                                type="color"
+                                value={systemConfig.gradientEndColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  gradientEndColor: e.target.value
+                                })}
+                                className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                              />
+                              <Input
+                                type="text"
+                                value={systemConfig.gradientEndColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  gradientEndColor: e.target.value
+                                })}
+                                placeholder="#e8cf00"
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Gradient Quick Presets */}
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Presets de Gradiente
+                          </label>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSystemConfig({
+                                ...systemConfig,
+                                gradientStartColor: '#bb2558',
+                                gradientMidColor: '',
+                                gradientEndColor: '#e8cf00',
+                                gradientType: 'linear',
+                                gradientDirection: '175deg'
+                              })}
+                              className="h-8 text-xs"
+                            >
+                              Predeterminado
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSystemConfig({
+                                ...systemConfig,
+                                gradientStartColor: '#667eea',
+                                gradientMidColor: '',
+                                gradientEndColor: '#764ba2',
+                                gradientType: 'linear',
+                                gradientDirection: '135deg'
+                              })}
+                              className="h-8 text-xs"
+                            >
+                              Azul-Púrpura
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSystemConfig({
+                                ...systemConfig,
+                                gradientStartColor: '#f093fb',
+                                gradientMidColor: '',
+                                gradientEndColor: '#f5576c',
+                                gradientType: 'linear',
+                                gradientDirection: '90deg'
+                              })}
+                              className="h-8 text-xs"
+                            >
+                              Rosa
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSystemConfig({
+                                ...systemConfig,
+                                gradientStartColor: '#4facfe',
+                                gradientMidColor: '',
+                                gradientEndColor: '#00f2fe',
+                                gradientType: 'linear',
+                                gradientDirection: '180deg'
+                              })}
+                              className="h-8 text-xs"
+                            >
+                              Cian
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Background Image Configuration */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2 bg-green-50 px-3 py-2 rounded-t-lg">
+                        🖼️ Configuración de Imagen de Fondo
+                      </h3>
+                      <div className="bg-green-50 p-4 rounded-b-lg space-y-4">
+                        <div className="space-y-2">
+                          <label htmlFor="background-image-url" className="block text-sm font-medium text-gray-700">
+                            URL de Imagen de Fondo (Textura)
+                          </label>
+                          <Input
+                            id="background-image-url"
+                            type="url"
+                            value={systemConfig.backgroundImageUrl}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              backgroundImageUrl: e.target.value
+                            })}
+                            placeholder="https://ejemplo.com/textura.png"
+                          />
+                          <p className="text-xs text-gray-500">
+                            URL de una imagen de textura que se aplicará sobre el gradiente
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <label htmlFor="background-size" className="block text-sm font-medium text-gray-700">
+                              Tamaño de Imagen
+                            </label>
+                            <select
+                              id="background-size"
+                              value={systemConfig.backgroundSize}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                backgroundSize: e.target.value
+                              })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="auto">Automático</option>
+                              <option value="cover">Cubrir (Cover)</option>
+                              <option value="contain">Contener (Contain)</option>
+                              <option value="100%">100% Ancho</option>
+                              <option value="50%">50% Ancho</option>
+                              <option value="200px">200px</option>
+                              <option value="300px">300px</option>
+                            </select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label htmlFor="background-repeat" className="block text-sm font-medium text-gray-700">
+                              Repetición
+                            </label>
+                            <select
+                              id="background-repeat"
+                              value={systemConfig.backgroundRepeat}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                backgroundRepeat: e.target.value
+                              })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="repeat">Repetir (Repeat)</option>
+                              <option value="no-repeat">No Repetir</option>
+                              <option value="repeat-x">Repetir Horizontal</option>
+                              <option value="repeat-y">Repetir Vertical</option>
+                              <option value="round">Redondear (Round)</option>
+                              <option value="space">Espaciar (Space)</option>
+                            </select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label htmlFor="background-position" className="block text-sm font-medium text-gray-700">
+                              Posición
+                            </label>
+                            <select
+                              id="background-position"
+                              value={systemConfig.backgroundPosition}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                backgroundPosition: e.target.value
+                              })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="center">Centro</option>
+                              <option value="top">Arriba</option>
+                              <option value="bottom">Abajo</option>
+                              <option value="left">Izquierda</option>
+                              <option value="right">Derecha</option>
+                              <option value="top left">Arriba Izquierda</option>
+                              <option value="top right">Arriba Derecha</option>
+                              <option value="bottom left">Abajo Izquierda</option>
+                              <option value="bottom right">Abajo Derecha</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Combined Preview */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2 bg-yellow-50 px-3 py-2 rounded-t-lg">
+                        👁️ Vista Previa Combinada
+                      </h3>
+                      <div className="bg-yellow-50 p-4 rounded-b-lg">
+                        <div 
+                          className="h-32 w-full rounded-lg border-2 border-gray-200 flex items-center justify-center"
+                          style={{
+                            background: systemConfig.gradientType === 'linear' 
+                              ? `linear-gradient(${systemConfig.gradientDirection}, ${systemConfig.gradientStartColor}${systemConfig.gradientMidColor ? `, ${systemConfig.gradientMidColor}` : ''}, ${systemConfig.gradientEndColor})`
+                              : `radial-gradient(circle, ${systemConfig.gradientStartColor}${systemConfig.gradientMidColor ? `, ${systemConfig.gradientMidColor}` : ''}, ${systemConfig.gradientEndColor})`,
+                            backgroundImage: systemConfig.backgroundImageUrl ? `url(${systemConfig.backgroundImageUrl})` : 'none',
+                            backgroundSize: systemConfig.backgroundSize,
+                            backgroundRepeat: systemConfig.backgroundRepeat,
+                            backgroundPosition: systemConfig.backgroundPosition
+                          }}
+                        >
+                          <div className="bg-white/80 px-4 py-2 rounded-lg text-sm font-medium text-gray-800">
+                            Vista Previa del Fondo Final
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Esta es una vista previa de cómo se verá el fondo con el gradiente y la imagen de textura combinados
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Submit Button */}
+                    <Button type="submit" disabled={updatingConfig} className="w-full">
+                      {updatingConfig ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Actualizando Configuración de Colores...
+                        </>
+                      ) : (
+                        "Actualizar Configuración de Colores"
+                      )}
+                    </Button>
+                  </form>
                 </TabsContent>
 
                 <TabsContent value="login" className="space-y-6">
