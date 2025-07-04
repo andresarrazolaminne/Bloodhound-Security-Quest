@@ -1364,10 +1364,177 @@ const AdminPage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="text-center p-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Personalización Frontend</h3>
-                <p className="text-gray-600">Esta sección está siendo optimizada. Funcionalidad temporalmente simplificada.</p>
-              </div>
+              <Tabs defaultValue="customization" className="w-full">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="customization">Personalización</TabsTrigger>
+                  <TabsTrigger value="images">Imágenes</TabsTrigger>
+                  <TabsTrigger value="colors">Colores</TabsTrigger>
+                  <TabsTrigger value="login">Página Login</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="customization" className="space-y-6">
+                  <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
+                    {/* Títulos y elementos principales */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Títulos Principales</h3>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label htmlFor="app-title" className="block text-sm font-medium text-gray-700">
+                            Título de la Aplicación
+                          </label>
+                          <Input
+                            id="app-title"
+                            value={systemConfig.appTitle}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              appTitle: e.target.value
+                            })}
+                            placeholder="Lanzamiento 2025"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <label htmlFor="completion-title" className="block text-sm font-medium text-gray-700">
+                            Título de Completación
+                          </label>
+                          <Input
+                            id="completion-title"
+                            value={systemConfig.completionTitle}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              completionTitle: e.target.value
+                            })}
+                            placeholder="¡Felicidades, has completado el reto!"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Textos de botones */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Textos de Botones</h3>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label htmlFor="scan-button-text" className="block text-sm font-medium text-gray-700">
+                            Texto del Botón de Escaneo
+                          </label>
+                          <Input
+                            id="scan-button-text"
+                            value={systemConfig.scanButtonText}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              scanButtonText: e.target.value
+                            })}
+                            placeholder="¡Escanea aquí!"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <label htmlFor="help-button-text" className="block text-sm font-medium text-gray-700">
+                            Texto del Botón de Ayuda
+                          </label>
+                          <Input
+                            id="help-button-text"
+                            value={systemConfig.helpButtonText}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              helpButtonText: e.target.value
+                            })}
+                            placeholder="Ayuda"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <label htmlFor="sitemap-button-text" className="block text-sm font-medium text-gray-700">
+                            Texto del Botón de Mapa del Sitio
+                          </label>
+                          <Input
+                            id="sitemap-button-text"
+                            value={systemConfig.siteMapButtonText}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              siteMapButtonText: e.target.value
+                            })}
+                            placeholder="Mapa del Sitio"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <label htmlFor="prize-button-text" className="block text-sm font-medium text-gray-700">
+                            Texto del Botón de Premio
+                          </label>
+                          <Input
+                            id="prize-button-text"
+                            value={systemConfig.prizeButtonText}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              prizeButtonText: e.target.value
+                            })}
+                            placeholder="Ver Código Premio"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Mensajes y textos auxiliares */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Mensajes del Sistema</h3>
+                      
+                      <div className="space-y-2">
+                        <label htmlFor="loading-text" className="block text-sm font-medium text-gray-700">
+                          Texto de Carga
+                        </label>
+                        <Input
+                          id="loading-text"
+                          value={systemConfig.loadingText}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            loadingText: e.target.value
+                          })}
+                          placeholder="Cargando tu mapa..."
+                        />
+                        <p className="text-xs text-gray-500">
+                          Mensaje que se muestra durante las pantallas de carga
+                        </p>
+                      </div>
+                    </div>
+
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Actualizando...
+                        </>
+                      ) : (
+                        "Actualizar Personalización"
+                      )}
+                    </Button>
+                  </form>
+                </TabsContent>
+
+                <TabsContent value="images" className="space-y-6">
+                  <div className="text-center p-8 bg-gray-50 rounded-lg">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Gestión de Imágenes</h3>
+                    <p className="text-gray-600">La gestión de imágenes estará disponible próximamente.</p>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="colors" className="space-y-6">
+                  <div className="text-center p-8 bg-gray-50 rounded-lg">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Configuración de Colores</h3>
+                    <p className="text-gray-600">La configuración de colores estará disponible próximamente.</p>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="login" className="space-y-6">
+                  <div className="text-center p-8 bg-gray-50 rounded-lg">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Configuración de Página de Login</h3>
+                    <p className="text-gray-600">La configuración de página de login estará disponible próximamente.</p>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </TabsContent>
