@@ -387,14 +387,16 @@ const MapPage = () => {
           </div>
         ) : (
           <>
-            {/* Cobranding Logo */}
-            <div className="flex justify-center mb-6 bg-white/20 py-3 rounded-lg">
-              <img 
-                src={systemConfig.cobrandingImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png"} 
-                alt="Cobranding" 
-                className="h-12 object-contain"
-              />
-            </div>
+            {/* Cobranding Logo - only show if URL is provided */}
+            {systemConfig.cobrandingImageUrl && systemConfig.cobrandingImageUrl.trim() !== "" && (
+              <div className="flex justify-center mb-6 bg-white/20 py-3 rounded-lg">
+                <img 
+                  src={systemConfig.cobrandingImageUrl} 
+                  alt="Cobranding" 
+                  className="h-12 object-contain"
+                />
+              </div>
+            )}
 
             <ProgressBar 
               progress={unlockedSegments.length} 

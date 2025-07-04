@@ -29,7 +29,8 @@ const RegistrationPage = () => {
     backgroundImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
     gradientStartColor: '#bb2558',
     gradientEndColor: '#e8cf00',
-    loginLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
+    loginLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
+    registrationImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
   });
 
   // Load system configuration for consistent styling
@@ -62,7 +63,8 @@ const RegistrationPage = () => {
               backgroundImageUrl: config.backgroundImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
               gradientStartColor: config.gradientStartColor || '#bb2558',
               gradientEndColor: config.gradientEndColor || '#e8cf00',
-              loginLogoImageUrl: loginLogoUrl
+              loginLogoImageUrl: loginLogoUrl,
+              registrationImageUrl: config.registrationImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
             });
             setIsLoadingConfig(false);
           };
@@ -78,8 +80,9 @@ const RegistrationPage = () => {
               backgroundImageUrl: config.backgroundImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
               gradientStartColor: config.gradientStartColor || '#bb2558',
               gradientEndColor: config.gradientEndColor || '#e8cf00',
-              loginLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
-            });
+              loginLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
+              registrationImageUrl: config.registrationImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
+            } as any);
             setIsLoadingConfig(false);
           };
           img.src = loginLogoUrl;
