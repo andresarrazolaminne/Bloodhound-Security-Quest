@@ -179,8 +179,6 @@ const RegistrationPage = () => {
       <Card className="w-full max-w-md bg-white/90 backdrop-blur-sm shadow-xl border-0">
         <CardContent className="pt-8 pb-8 px-6">
           <div className="flex flex-col items-center justify-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">{systemConfig.loginTitle}</h1>
-            
             {/* Logo personalizable */}
             <div className="relative my-3">
               <img 
