@@ -22,6 +22,15 @@ export const systemConfig = pgTable("system_config", {
   gradientMidColor: text("gradient_mid_color"),
   gradientDirection: text("gradient_direction").notNull().default('175deg'),
   gradientType: text("gradient_type").notNull().default('linear'),
+  // Text colors configuration
+  primaryTextColor: text("primary_text_color").notNull().default('#1a1a1a'),
+  secondaryTextColor: text("secondary_text_color").notNull().default('#6b7280'),
+  titleTextColor: text("title_text_color").notNull().default('#111827'),
+  buttonTextColor: text("button_text_color").notNull().default('#ffffff'),
+  linkTextColor: text("link_text_color").notNull().default('#3b82f6'),
+  successTextColor: text("success_text_color").notNull().default('#059669'),
+  errorTextColor: text("error_text_color").notNull().default('#dc2626'),
+  warningTextColor: text("warning_text_color").notNull().default('#d97706'),
   // Login page customization
   loginTitle: text("login_title").notNull().default('Lanzamiento'),
   loginSubtitle: text("login_subtitle").notNull().default('2025'),

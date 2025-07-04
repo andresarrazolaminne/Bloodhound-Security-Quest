@@ -104,6 +104,15 @@ const AdminPage = () => {
     gradientMidColor: "",
     gradientDirection: "175deg",
     gradientType: "linear" as 'linear' | 'radial',
+    // Text colors configuration
+    primaryTextColor: "#1a1a1a",
+    secondaryTextColor: "#6b7280",
+    titleTextColor: "#111827",
+    buttonTextColor: "#ffffff",
+    linkTextColor: "#3b82f6",
+    successTextColor: "#059669",
+    errorTextColor: "#dc2626",
+    warningTextColor: "#d97706",
     // Login page customization
     loginTitle: "Lanzamiento",
     loginSubtitle: "2025",
@@ -197,6 +206,15 @@ const AdminPage = () => {
         gradientMidColor: config.gradientMidColor || "",
         gradientDirection: config.gradientDirection || "175deg",
         gradientType: config.gradientType || "linear",
+        // Text colors configuration
+        primaryTextColor: config.primaryTextColor || "#1a1a1a",
+        secondaryTextColor: config.secondaryTextColor || "#6b7280",
+        titleTextColor: config.titleTextColor || "#111827",
+        buttonTextColor: config.buttonTextColor || "#ffffff",
+        linkTextColor: config.linkTextColor || "#3b82f6",
+        successTextColor: config.successTextColor || "#059669",
+        errorTextColor: config.errorTextColor || "#dc2626",
+        warningTextColor: config.warningTextColor || "#d97706",
         scanButtonText: config.scanButtonText || "¡Escanea aquí!",
         helpButtonText: config.helpButtonText || "Ayuda",
         siteMapButtonText: config.siteMapButtonText || "Mapa del Sitio",
@@ -2135,6 +2153,378 @@ const AdminPage = () => {
                         <p className="text-xs text-gray-500 mt-2">
                           Esta es una vista previa de cómo se verá el fondo con el gradiente y la imagen de textura combinados
                         </p>
+                      </div>
+                    </div>
+
+                    {/* Text Colors Configuration */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2 bg-blue-50 px-3 py-2 rounded-t-lg">
+                        🔤 Configuración de Colores de Texto
+                      </h3>
+                      <div className="bg-blue-50 p-4 rounded-b-lg space-y-4">
+                        {/* Preview Section */}
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Vista Previa de Colores de Texto
+                          </label>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-white rounded-lg border-2 border-gray-200">
+                            <div className="space-y-2">
+                              <h4 style={{ color: systemConfig.titleTextColor }} className="text-xl font-bold">
+                                Título Principal
+                              </h4>
+                              <p style={{ color: systemConfig.primaryTextColor }} className="text-base">
+                                Texto principal del contenido
+                              </p>
+                              <p style={{ color: systemConfig.secondaryTextColor }} className="text-sm">
+                                Texto secundario o descripción
+                              </p>
+                              <a href="#" style={{ color: systemConfig.linkTextColor }} className="text-sm underline">
+                                Enlace de ejemplo
+                              </a>
+                            </div>
+                            <div className="space-y-2">
+                              <button 
+                                style={{ 
+                                  backgroundColor: systemConfig.gradientStartColor, 
+                                  color: systemConfig.buttonTextColor 
+                                }} 
+                                className="px-4 py-2 rounded text-sm font-medium"
+                              >
+                                Botón de Ejemplo
+                              </button>
+                              <div className="space-y-1">
+                                <p style={{ color: systemConfig.successTextColor }} className="text-sm">
+                                  ✓ Mensaje de éxito
+                                </p>
+                                <p style={{ color: systemConfig.warningTextColor }} className="text-sm">
+                                  ⚠ Mensaje de advertencia
+                                </p>
+                                <p style={{ color: systemConfig.errorTextColor }} className="text-sm">
+                                  ✗ Mensaje de error
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Primary Text Colors */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label htmlFor="title-text-color" className="block text-sm font-medium text-gray-700">
+                              Color de Títulos
+                            </label>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                id="title-text-color"
+                                type="color"
+                                value={systemConfig.titleTextColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  titleTextColor: e.target.value
+                                })}
+                                className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                              />
+                              <Input
+                                type="text"
+                                value={systemConfig.titleTextColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  titleTextColor: e.target.value
+                                })}
+                                placeholder="#111827"
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label htmlFor="primary-text-color" className="block text-sm font-medium text-gray-700">
+                              Color de Texto Principal
+                            </label>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                id="primary-text-color"
+                                type="color"
+                                value={systemConfig.primaryTextColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  primaryTextColor: e.target.value
+                                })}
+                                className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                              />
+                              <Input
+                                type="text"
+                                value={systemConfig.primaryTextColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  primaryTextColor: e.target.value
+                                })}
+                                placeholder="#1a1a1a"
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label htmlFor="secondary-text-color" className="block text-sm font-medium text-gray-700">
+                              Color de Texto Secundario
+                            </label>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                id="secondary-text-color"
+                                type="color"
+                                value={systemConfig.secondaryTextColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  secondaryTextColor: e.target.value
+                                })}
+                                className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                              />
+                              <Input
+                                type="text"
+                                value={systemConfig.secondaryTextColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  secondaryTextColor: e.target.value
+                                })}
+                                placeholder="#6b7280"
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label htmlFor="button-text-color" className="block text-sm font-medium text-gray-700">
+                              Color de Texto de Botones
+                            </label>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                id="button-text-color"
+                                type="color"
+                                value={systemConfig.buttonTextColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  buttonTextColor: e.target.value
+                                })}
+                                className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                              />
+                              <Input
+                                type="text"
+                                value={systemConfig.buttonTextColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  buttonTextColor: e.target.value
+                                })}
+                                placeholder="#ffffff"
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Interactive and Status Colors */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label htmlFor="link-text-color" className="block text-sm font-medium text-gray-700">
+                              Color de Enlaces
+                            </label>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                id="link-text-color"
+                                type="color"
+                                value={systemConfig.linkTextColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  linkTextColor: e.target.value
+                                })}
+                                className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                              />
+                              <Input
+                                type="text"
+                                value={systemConfig.linkTextColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  linkTextColor: e.target.value
+                                })}
+                                placeholder="#3b82f6"
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label htmlFor="success-text-color" className="block text-sm font-medium text-gray-700">
+                              Color de Texto de Éxito
+                            </label>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                id="success-text-color"
+                                type="color"
+                                value={systemConfig.successTextColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  successTextColor: e.target.value
+                                })}
+                                className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                              />
+                              <Input
+                                type="text"
+                                value={systemConfig.successTextColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  successTextColor: e.target.value
+                                })}
+                                placeholder="#059669"
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label htmlFor="warning-text-color" className="block text-sm font-medium text-gray-700">
+                              Color de Texto de Advertencia
+                            </label>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                id="warning-text-color"
+                                type="color"
+                                value={systemConfig.warningTextColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  warningTextColor: e.target.value
+                                })}
+                                className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                              />
+                              <Input
+                                type="text"
+                                value={systemConfig.warningTextColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  warningTextColor: e.target.value
+                                })}
+                                placeholder="#d97706"
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label htmlFor="error-text-color" className="block text-sm font-medium text-gray-700">
+                              Color de Texto de Error
+                            </label>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                id="error-text-color"
+                                type="color"
+                                value={systemConfig.errorTextColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  errorTextColor: e.target.value
+                                })}
+                                className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                              />
+                              <Input
+                                type="text"
+                                value={systemConfig.errorTextColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  errorTextColor: e.target.value
+                                })}
+                                placeholder="#dc2626"
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Quick Text Color Presets */}
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Presets de Colores de Texto
+                          </label>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSystemConfig({
+                                ...systemConfig,
+                                primaryTextColor: '#1a1a1a',
+                                secondaryTextColor: '#6b7280',
+                                titleTextColor: '#111827',
+                                buttonTextColor: '#ffffff',
+                                linkTextColor: '#3b82f6',
+                                successTextColor: '#059669',
+                                errorTextColor: '#dc2626',
+                                warningTextColor: '#d97706'
+                              })}
+                              className="h-8 text-xs"
+                            >
+                              Predeterminado
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSystemConfig({
+                                ...systemConfig,
+                                primaryTextColor: '#f8fafc',
+                                secondaryTextColor: '#cbd5e1',
+                                titleTextColor: '#ffffff',
+                                buttonTextColor: '#1e293b',
+                                linkTextColor: '#60a5fa',
+                                successTextColor: '#34d399',
+                                errorTextColor: '#f87171',
+                                warningTextColor: '#fbbf24'
+                              })}
+                              className="h-8 text-xs"
+                            >
+                              Modo Oscuro
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSystemConfig({
+                                ...systemConfig,
+                                primaryTextColor: '#374151',
+                                secondaryTextColor: '#9ca3af',
+                                titleTextColor: '#1f2937',
+                                buttonTextColor: '#ffffff',
+                                linkTextColor: '#6366f1',
+                                successTextColor: '#10b981',
+                                errorTextColor: '#ef4444',
+                                warningTextColor: '#f59e0b'
+                              })}
+                              className="h-8 text-xs"
+                            >
+                              Profesional
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSystemConfig({
+                                ...systemConfig,
+                                primaryTextColor: '#0f172a',
+                                secondaryTextColor: '#64748b',
+                                titleTextColor: '#020617',
+                                buttonTextColor: '#f1f5f9',
+                                linkTextColor: '#0ea5e9',
+                                successTextColor: '#22c55e',
+                                errorTextColor: '#e11d48',
+                                warningTextColor: '#eab308'
+                              })}
+                              className="h-8 text-xs"
+                            >
+                              Alto Contraste
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
