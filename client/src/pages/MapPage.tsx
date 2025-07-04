@@ -66,6 +66,7 @@ const MapPage = () => {
     prizeButtonText: string;
     completionTitle: string;
     loadingText: string;
+    headerLogoImageUrl: string;
   }>({
     instructionsText: '',
     siteMapImageUrl: 'https://i.pinimg.com/736x/df/93/10/df93101fdd1057543ae9a6bf2ff16b1c.jpg',
@@ -88,7 +89,8 @@ const MapPage = () => {
     siteMapButtonText: 'Mapa del Sitio',
     prizeButtonText: 'Ver Código Premio',
     completionTitle: '¡Felicidades, has completado el reto!',
-    loadingText: 'Cargando tu mapa...'
+    loadingText: 'Cargando tu mapa...',
+    headerLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
   });
   
   const [totalValidSegments, setTotalValidSegments] = useState(0);
@@ -145,7 +147,8 @@ const MapPage = () => {
             siteMapButtonText: config.siteMapButtonText || 'Mapa del Sitio',
             prizeButtonText: config.prizeButtonText || 'Ver Código Premio',
             completionTitle: config.completionTitle || '¡Felicidades, has completado el reto!',
-            loadingText: config.loadingText || 'Cargando tu mapa...'
+            loadingText: config.loadingText || 'Cargando tu mapa...',
+            headerLogoImageUrl: config.headerLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
           };
           
           setSystemConfig(newConfig);
@@ -326,7 +329,7 @@ const MapPage = () => {
       <header className="bg-primary text-white shadow-md">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <img 
-            src={(systemConfig as any).headerLogoImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png"} 
+            src={systemConfig.headerLogoImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png"} 
             alt="Logo" 
             className="h-8 object-contain"
           />
