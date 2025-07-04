@@ -76,6 +76,18 @@ export const systemConfigSchema = z.object({
   gradientMidColor: z.string().optional(),
   gradientDirection: z.string().default('175deg'),
   gradientType: z.enum(['linear', 'radial']).default('linear'),
+  // Text colors configuration
+  primaryTextColor: z.string().default('#1a1a1a'),
+  secondaryTextColor: z.string().default('#6b7280'),
+  titleTextColor: z.string().default('#111827'),
+  buttonTextColor: z.string().default('#ffffff'),
+  linkTextColor: z.string().default('#3b82f6'),
+  successTextColor: z.string().default('#059669'),
+  errorTextColor: z.string().default('#dc2626'),
+  warningTextColor: z.string().default('#d97706'),
+  // UI component colors
+  headerBackgroundColor: z.string().default('#3b82f6'),
+  headerTextColor: z.string().default('#ffffff'),
   // Login page customization
   loginTitle: z.string().default('Lanzamiento'),
   loginSubtitle: z.string().default('2025'),

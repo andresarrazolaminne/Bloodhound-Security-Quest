@@ -330,7 +330,20 @@ const AdminPage = () => {
             loginLogoImageUrl: data.config.loginLogoImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
             headerLogoImageUrl: data.config.headerLogoImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
             headerLogoSize: data.config.headerLogoSize || 32,
-            preloadImageUrl: data.config.preloadImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png"
+            preloadImageUrl: data.config.preloadImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
+            registrationImageUrl: data.config.registrationImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
+            // Text colors configuration
+            primaryTextColor: data.config.primaryTextColor || "#1a1a1a",
+            secondaryTextColor: data.config.secondaryTextColor || "#6b7280",
+            titleTextColor: data.config.titleTextColor || "#111827",
+            buttonTextColor: data.config.buttonTextColor || "#ffffff",
+            linkTextColor: data.config.linkTextColor || "#3b82f6",
+            successTextColor: data.config.successTextColor || "#059669",
+            errorTextColor: data.config.errorTextColor || "#dc2626",
+            warningTextColor: data.config.warningTextColor || "#d97706",
+            // UI component colors
+            headerBackgroundColor: data.config.headerBackgroundColor || "#3b82f6",
+            headerTextColor: data.config.headerTextColor || "#ffffff"
           } as any);
         }
         
