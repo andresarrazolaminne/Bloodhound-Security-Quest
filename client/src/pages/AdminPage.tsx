@@ -82,6 +82,7 @@ const AdminPage = () => {
   const [mapAssets, setMapAssets] = useState<MapSegmentAsset[]>([]);
   const [loadingAssets, setLoadingAssets] = useState(false);
   const [seedingData, setSeedingData] = useState(false);
+  const [updatingConfig, setUpdatingConfig] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<MapSegmentAsset | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
@@ -244,6 +245,7 @@ const AdminPage = () => {
     
     try {
       setLoadingAssets(true);
+      setUpdatingConfig(true);
       
       const response = await apiRequest("POST", "/api/admin/system-config", systemConfig);
       
@@ -321,6 +323,7 @@ const AdminPage = () => {
       });
     } finally {
       setLoadingAssets(false);
+      setUpdatingConfig(false);
     }
   };
 
@@ -1808,7 +1811,7 @@ const AdminPage = () => {
                               value={systemConfig.gradientType}
                               onChange={(e) => setSystemConfig({
                                 ...systemConfig,
-                                gradientType: e.target.value
+                                gradientType: e.target.value as any
                               })}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
@@ -2043,7 +2046,7 @@ const AdminPage = () => {
                               value={systemConfig.backgroundSize}
                               onChange={(e) => setSystemConfig({
                                 ...systemConfig,
-                                backgroundSize: e.target.value
+                                backgroundSize: e.target.value as any
                               })}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
@@ -2066,7 +2069,7 @@ const AdminPage = () => {
                               value={systemConfig.backgroundRepeat}
                               onChange={(e) => setSystemConfig({
                                 ...systemConfig,
-                                backgroundRepeat: e.target.value
+                                backgroundRepeat: e.target.value as any
                               })}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
@@ -2088,7 +2091,7 @@ const AdminPage = () => {
                               value={systemConfig.backgroundPosition}
                               onChange={(e) => setSystemConfig({
                                 ...systemConfig,
-                                backgroundPosition: e.target.value
+                                backgroundPosition: e.target.value as any
                               })}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
