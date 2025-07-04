@@ -1,23 +1,14 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { login } from "@/lib/api";
 import { useUser } from "@/context/UserContext";
+import { login } from "@/lib/api";
 import BrainLoader from "@/components/BrainLoader";
 
-// Nombre de la clave para almacenar el último documento utilizado
-const LAST_USER_KEY = "last_login_document";
-
 const AuthPage = () => {
-  const [documentNumber, setDocumentNumber] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingLastUser, setIsLoadingLastUser] = useState(true);
-  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
-  const [loginImageLoaded, setLoginImageLoaded] = useState(false);
-  const [lastDocument, setLastDocument] = useState<string | null>(null);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { setCurrentUser } = useUser();
@@ -34,35 +25,33 @@ const AuthPage = () => {
     gradientStartColor: '#bb2558',
     gradientEndColor: '#e8cf00',
     loginLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
-    preloadImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
+    preloadImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
+    headerLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
+    headerLogoSize: 32,
+    headerBackgroundColor: '#3b82f6',
+    headerTextColor: '#ffffff',
+    loadingText: 'Cargando tu mapa...'
   });
+  
+  const [documentNumber, setDocumentNumber] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+  const [loginImageLoaded, setLoginImageLoaded] = useState(false);
+  
+  const lastDocument = localStorage.getItem('lastDocument');
 
-  // Load system configuration for login page customization
   useEffect(() => {
     const loadSystemConfig = async () => {
       try {
-        const response = await fetch('/api/system-config?t=' + Date.now());
-        if (response.ok) {
-          const data = await response.json();
-          const config = data.config || {};
-          
-          // Update CSS custom properties immediately to prevent flash
-          const timestamp = Date.now();
-          document.documentElement.style.setProperty('--background-image-url', config.backgroundImageUrl ? `url('${config.backgroundImageUrl}?t=${timestamp}')` : '');
-          document.documentElement.style.setProperty('--background-size', config.backgroundSize || 'auto');
-          document.documentElement.style.setProperty('--background-repeat', config.backgroundRepeat || 'repeat');
-          document.documentElement.style.setProperty('--background-position', config.backgroundPosition || 'center');
-          document.documentElement.style.setProperty('--gradient-start-color', config.gradientStartColor || '#bb2558');
-          document.documentElement.style.setProperty('--gradient-mid-color', config.gradientMidColor || '');
-          document.documentElement.style.setProperty('--gradient-end-color', config.gradientEndColor || '#e8cf00');
-          document.documentElement.style.setProperty('--gradient-direction', config.gradientDirection || '175deg');
-          document.documentElement.style.setProperty('--gradient-type', config.gradientType || 'linear');
-          document.documentElement.style.setProperty('--login-logo-image-url', config.loginLogoImageUrl ? `url('${config.loginLogoImageUrl}?t=${timestamp}')` : '');
-          document.documentElement.style.setProperty('--preload-image-url', config.preloadImageUrl ? `url('${config.preloadImageUrl}?t=${timestamp}')` : '');
-          document.documentElement.style.setProperty('--auth-bg-image', `url('${config.backgroundImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png'}')`);
-          
-          const loginLogoUrl = config.loginLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png';
-          
+        const response = await fetch('/api/system-config');
+        if (!response.ok) throw new Error('Failed to load config');
+        const data = await response.json();
+        const config = data.config;
+        
+        // Determine which image to use for login
+        const loginLogoUrl = config.loginLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png';
+        
+        if (loginLogoUrl) {
           // Preload the login logo image before setting the state
           const img = new Image();
           img.onload = () => {
@@ -78,7 +67,12 @@ const AuthPage = () => {
               gradientStartColor: config.gradientStartColor || '#bb2558',
               gradientEndColor: config.gradientEndColor || '#e8cf00',
               loginLogoImageUrl: loginLogoUrl,
-              preloadImageUrl: config.preloadImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
+              preloadImageUrl: config.preloadImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
+              headerLogoImageUrl: config.headerLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
+              headerLogoSize: config.headerLogoSize || 32,
+              headerBackgroundColor: config.headerBackgroundColor || '#3b82f6',
+              headerTextColor: config.headerTextColor || '#ffffff',
+              loadingText: config.loadingText || 'Cargando tu mapa...'
             });
           };
           img.onerror = () => {
@@ -95,68 +89,26 @@ const AuthPage = () => {
               gradientStartColor: config.gradientStartColor || '#bb2558',
               gradientEndColor: config.gradientEndColor || '#e8cf00',
               loginLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
-              preloadImageUrl: config.preloadImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
+              preloadImageUrl: config.preloadImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
+              headerLogoImageUrl: config.headerLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
+              headerLogoSize: config.headerLogoSize || 32,
+              headerBackgroundColor: config.headerBackgroundColor || '#3b82f6',
+              headerTextColor: config.headerTextColor || '#ffffff',
+              loadingText: config.loadingText || 'Cargando tu mapa...'
             });
           };
           img.src = loginLogoUrl;
         }
-      } catch (error) {
-        console.error('Error loading system configuration:', error);
-      } finally {
+        
         setIsLoadingConfig(false);
+      } catch (error) {
+        console.error('Error loading system config:', error);
+        setIsLoadingConfig(false);
+        setLoginImageLoaded(true);
       }
     };
-
+    
     loadSystemConfig();
-    
-    // Listen for custom events to reload configuration
-    const handleConfigUpdate = () => {
-      loadSystemConfig();
-    };
-    
-    window.addEventListener('systemConfigUpdated', handleConfigUpdate);
-    
-    return () => {
-      window.removeEventListener('systemConfigUpdated', handleConfigUpdate);
-    };
-  }, []);
-
-  // Cargar el último usuario que se logueó
-  useEffect(() => {
-    try {
-      const savedDocument = localStorage.getItem(LAST_USER_KEY);
-      if (savedDocument) {
-        setLastDocument(savedDocument);
-        
-        // Intentar autologin automático si hay un documento guardado
-        const autoLogin = async () => {
-          try {
-            const response = await login(savedDocument);
-            setCurrentUser(response.user);
-            
-            // Verificar si hay un redirect pendiente
-            const urlParams = new URLSearchParams(window.location.search);
-            const redirectUrl = urlParams.get('redirect');
-            if (redirectUrl) {
-              setLocation(decodeURIComponent(redirectUrl));
-            } else {
-              setLocation("/map");
-            }
-          } catch (error) {
-            console.log("No se pudo hacer auto-login con el documento guardado");
-            setDocumentNumber(savedDocument || "");
-          } finally {
-            setIsLoadingLastUser(false);
-          }
-        };
-        
-        autoLogin();
-      } else {
-        setIsLoadingLastUser(false);
-      }
-    } catch (e) {
-      setIsLoadingLastUser(false);
-    }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -171,33 +123,36 @@ const AuthPage = () => {
       return;
     }
 
+    setIsLoading(true);
+    
     try {
-      setIsLoading(true);
       const response = await login(documentNumber);
       
-      // Guardar el documento para futuros logins
-      localStorage.setItem(LAST_USER_KEY, documentNumber);
-      setLastDocument(documentNumber);
-      
-      setCurrentUser(response.user);
-      
-      // Verificar si hay un redirect pendiente
-      const urlParams = new URLSearchParams(window.location.search);
-      const redirectUrl = urlParams.get('redirect');
-      if (redirectUrl) {
-        setLocation(decodeURIComponent(redirectUrl));
+      if (response.user) {
+        setCurrentUser(response.user);
+        localStorage.setItem('lastDocument', documentNumber);
+        setLocation('/map');
+        
+        toast({
+          title: "¡Bienvenido!",
+          description: "Has iniciado sesión correctamente",
+          variant: "default"
+        });
       } else {
-        setLocation("/map");
+        // Usuario no existe, redirigir a registro
+        localStorage.setItem('tempDocument', documentNumber);
+        setLocation('/register');
       }
-      
-    } catch (error) {
-      // If user doesn't exist, redirect to registration
-      if ((error as Response)?.status === 404) {
-        setLocation(`/register?documentNumber=${documentNumber}`);
+    } catch (error: any) {
+      console.error('Login error:', error);
+      if (error.status === 404) {
+        // Usuario no existe, redirigir a registro
+        localStorage.setItem('tempDocument', documentNumber);
+        setLocation('/register');
       } else {
         toast({
           title: "Error",
-          description: "No pudimos iniciar sesión. Inténtalo de nuevo.",
+          description: error.message || "Error al iniciar sesión",
           variant: "destructive"
         });
       }
@@ -205,23 +160,21 @@ const AuthPage = () => {
       setIsLoading(false);
     }
   };
-  
-  // Función para limpiar el último usuario y mostrar el formulario normal
+
   const handleChangeUser = () => {
-    setLastDocument(null);
-    setDocumentNumber("");
-    localStorage.removeItem(LAST_USER_KEY);
+    localStorage.removeItem('lastDocument');
+    setLocation('/auth');
   };
 
-  // Mostrar pantalla de carga mientras verificamos si hay un usuario guardado
-  if (isLoadingLastUser) {
+  // Mostrar loader mientras se cargan las configuraciones
+  if (isLoadingConfig || !loginImageLoaded) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4 map-page-bg">
-        <Card className="w-full max-w-md bg-white/90 backdrop-blur-sm shadow-xl">
-          <CardContent className="pt-6 flex flex-col items-center justify-center py-12">
-            <BrainLoader size="large" text="Iniciando sesión automáticamente..." />
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center min-h-screen text-white map-page-bg">
+        <BrainLoader 
+          text={systemConfig.loadingText || 'Cargando tu mapa...'}
+          className="flex flex-col items-center"
+          size="large"
+        />
       </div>
     );
   }
@@ -229,104 +182,129 @@ const AuthPage = () => {
   // Mostrar interfaz normal de login con transición suave
   return (
     <div 
-      className={`flex flex-col items-center justify-center min-h-screen p-4 text-white map-page-bg transition-opacity duration-300 ${isLoadingConfig ? 'opacity-0' : 'opacity-100'}`}>
-      <Card className="w-full max-w-md bg-white/90 backdrop-blur-sm shadow-xl border-0">
-        <CardContent className="pt-8 pb-8 px-6">
-          <div className="flex flex-col items-center justify-center mb-8">
-            {/* Imagen de logo personalizable */}
-            <div className="relative my-3">
-              <img 
-                src={systemConfig.loginLogoImageUrl} 
-                alt="Logo" 
-                className="w-24 h-24 object-contain animate-pulse"
-              />
-              <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-3/4 h-1 bg-yellow-300/20 rounded-full blur-md"></div>
+      className={`flex flex-col min-h-screen text-white map-page-bg transition-opacity duration-300 ${isLoadingConfig ? 'opacity-0' : 'opacity-100'}`}>
+      
+      {/* Header */}
+      <header 
+        className="shadow-md"
+        style={{ 
+          backgroundColor: systemConfig.headerBackgroundColor,
+          color: systemConfig.headerTextColor 
+        }}
+      >
+        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+          <img 
+            src={systemConfig.headerLogoImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png"} 
+            alt="Logo" 
+            className="object-contain"
+            style={{ height: `${systemConfig.headerLogoSize}px` }}
+          />
+          <div className="flex items-center">
+            {/* Espacio vacío para el usuario cuando no está logueado */}
+          </div>
+        </div>
+      </header>
+
+      {/* Contenido principal */}
+      <div className="flex flex-col items-center justify-center flex-1 p-4">
+        <Card className="w-full max-w-md bg-white/90 backdrop-blur-sm shadow-xl border-0">
+          <CardContent className="pt-8 pb-8 px-6">
+            <div className="flex flex-col items-center justify-center mb-8">
+              {/* Imagen de logo personalizable */}
+              <div className="relative my-3">
+                <img 
+                  src={systemConfig.loginLogoImageUrl} 
+                  alt="Logo" 
+                  className="w-24 h-24 object-contain animate-pulse"
+                />
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-3/4 h-1 bg-yellow-300/20 rounded-full blur-md"></div>
+              </div>
+              
+              <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">{systemConfig.loginSubtitle}</h2>
+              <p className="text-gray-600 text-center max-w-xs">
+                {lastDocument 
+                  ? systemConfig.loginWelcomeText 
+                  : systemConfig.loginWelcomeText
+                }
+              </p>
             </div>
             
-            <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">{systemConfig.loginSubtitle}</h2>
-            <p className="text-gray-600 text-center max-w-xs">
-              {lastDocument 
-                ? systemConfig.loginWelcomeText 
-                : systemConfig.loginWelcomeText
-              }
-            </p>
-          </div>
-          
-          {lastDocument ? (
-            <div className="space-y-5 mb-4">
-              <div className="bg-gray-50/80 p-5 rounded-lg border border-gray-100 text-center shadow-sm">
-                <div className="text-sm text-gray-500 mb-1">Documento guardado</div>
-                <div className="text-xl font-medium text-gray-800">{lastDocument}</div>
+            {lastDocument ? (
+              <div className="space-y-5 mb-4">
+                <div className="bg-gray-50/80 p-5 rounded-lg border border-gray-100 text-center shadow-sm">
+                  <div className="text-sm text-gray-500 mb-1">Documento guardado</div>
+                  <div className="text-xl font-medium text-gray-800">{lastDocument}</div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <Button 
+                    onClick={() => {
+                      setDocumentNumber(lastDocument);
+                      handleSubmit(new Event('submit') as unknown as React.FormEvent);
+                    }}
+                    className="w-full py-6 text-base"
+                    disabled={isLoading}
+                  >
+                    {systemConfig.loginButtonText}
+                    {isLoading && <BrainLoader size="small" className="ml-2" />}
+                  </Button>
+                  
+                  <Button 
+                    variant="outline"
+                    onClick={handleChangeUser}
+                    className="w-full py-6 text-base"
+                  >
+                    Cambiar Usuario
+                  </Button>
+                </div>
               </div>
-              
-              <div className="grid grid-cols-2 gap-3">
-                <Button 
-                  onClick={() => {
-                    setDocumentNumber(lastDocument);
-                    handleSubmit(new Event('submit') as unknown as React.FormEvent);
-                  }}
-                  className="w-full py-6 text-base"
-                  disabled={isLoading}
-                >
-                  {systemConfig.loginButtonText}
-                  {isLoading && <BrainLoader size="small" className="ml-2" />}
-                </Button>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-3">
+                  <label htmlFor="document-number" className="block text-base font-medium text-gray-700">
+                    {systemConfig.loginDocumentLabel}
+                  </label>
+                  <Input
+                    id="document-number"
+                    type="text"
+                    value={documentNumber}
+                    onChange={(e) => setDocumentNumber(e.target.value)}
+                    placeholder="Ingresa tu cédula"
+                    className="w-full py-6 text-lg bg-white/80"
+                    required
+                  />
+                </div>
                 
                 <Button 
-                  variant="outline"
-                  onClick={handleChangeUser}
-                  className="w-full py-6 text-base"
+                  type="submit"
+                  className="w-full flex items-center justify-center py-6 text-base mt-8"
+                  disabled={isLoading}
                 >
-                  Cambiar Usuario
+                  <span>{isLoading ? "Iniciando sesión..." : systemConfig.loginButtonText}</span>
+                  {isLoading ? (
+                    <BrainLoader size="small" className="ml-2" />
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 ml-2"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 7l5 5m0 0l-5 5m5-5H6"
+                      />
+                    </svg>
+                  )}
                 </Button>
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-3">
-                <label htmlFor="document-number" className="block text-base font-medium text-gray-700">
-                  {systemConfig.loginDocumentLabel}
-                </label>
-                <Input
-                  id="document-number"
-                  type="text"
-                  value={documentNumber}
-                  onChange={(e) => setDocumentNumber(e.target.value)}
-                  placeholder="Ingresa tu cédula"
-                  className="w-full py-6 text-lg bg-white/80"
-                  required
-                />
-              </div>
-              
-              <Button 
-                type="submit"
-                className="w-full flex items-center justify-center py-6 text-base mt-8"
-                disabled={isLoading}
-              >
-                <span>{isLoading ? "Iniciando sesión..." : systemConfig.loginButtonText}</span>
-                {isLoading ? (
-                  <BrainLoader size="small" className="ml-2" />
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5 ml-2"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 7l5 5m0 0l-5 5m5-5H6"
-                    />
-                  </svg>
-                )}
-              </Button>
-            </form>
-          )}
-        </CardContent>
-      </Card>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

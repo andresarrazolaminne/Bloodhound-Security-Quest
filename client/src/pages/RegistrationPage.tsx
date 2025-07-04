@@ -30,7 +30,11 @@ const RegistrationPage = () => {
     gradientStartColor: '#bb2558',
     gradientEndColor: '#e8cf00',
     loginLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
-    registrationImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
+    registrationImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
+    headerLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
+    headerLogoSize: 32,
+    headerBackgroundColor: '#3b82f6',
+    headerTextColor: '#ffffff'
   });
 
   // Load system configuration for consistent styling
@@ -64,7 +68,11 @@ const RegistrationPage = () => {
               gradientStartColor: config.gradientStartColor || '#bb2558',
               gradientEndColor: config.gradientEndColor || '#e8cf00',
               loginLogoImageUrl: loginLogoUrl,
-              registrationImageUrl: config.registrationImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
+              registrationImageUrl: config.registrationImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
+              headerLogoImageUrl: config.headerLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
+              headerLogoSize: config.headerLogoSize || 32,
+              headerBackgroundColor: config.headerBackgroundColor || '#3b82f6',
+              headerTextColor: config.headerTextColor || '#ffffff'
             });
             setIsLoadingConfig(false);
           };
@@ -175,7 +183,31 @@ const RegistrationPage = () => {
   }
 
   return (
-    <div className={`flex flex-col items-center justify-center min-h-screen p-4 text-white map-page-bg transition-opacity duration-300 ${isLoadingConfig ? 'opacity-0' : 'opacity-100'}`}>
+    <div className={`flex flex-col min-h-screen text-white map-page-bg transition-opacity duration-300 ${isLoadingConfig ? 'opacity-0' : 'opacity-100'}`}>
+      
+      {/* Header */}
+      <header 
+        className="shadow-md"
+        style={{ 
+          backgroundColor: systemConfig.headerBackgroundColor,
+          color: systemConfig.headerTextColor 
+        }}
+      >
+        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+          <img 
+            src={systemConfig.headerLogoImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png"} 
+            alt="Logo" 
+            className="object-contain"
+            style={{ height: `${systemConfig.headerLogoSize}px` }}
+          />
+          <div className="flex items-center">
+            {/* Espacio vacío para el usuario cuando no está logueado */}
+          </div>
+        </div>
+      </header>
+
+      {/* Contenido principal */}
+      <div className="flex flex-col items-center justify-center flex-1 p-4">
       <Card className="w-full max-w-md bg-white/90 backdrop-blur-sm shadow-xl border-0">
         <CardContent className="pt-8 pb-8 px-6">
           <div className="flex flex-col items-center justify-center mb-8">
@@ -267,6 +299,7 @@ const RegistrationPage = () => {
           </form>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 };
