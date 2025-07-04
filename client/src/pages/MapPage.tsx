@@ -132,7 +132,7 @@ const MapPage = () => {
             instructionsText: config.instructionsText || '',
             siteMapImageUrl: config.siteMapImageUrl || 'https://i.pinimg.com/736x/df/93/10/df93101fdd1057543ae9a6bf2ff16b1c.jpg',
             footerLogoUrl: config.footerLogoUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png',
-            cobrandingImageUrl: config.cobrandingImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png',
+            cobrandingImageUrl: config.cobrandingImageUrl || '',
             mapGapSize: config.mapGapSize || 'medium',
             mapGridSize: config.mapGridSize || '3x3',
             appTitle: config.appTitle || 'Lanzamiento 2025',
