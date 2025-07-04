@@ -29,7 +29,9 @@ export const systemConfig = pgTable("system_config", {
   loginButtonText: text("login_button_text").notNull().default('Ingresar'),
   loginDocumentLabel: text("login_document_label").notNull().default('Número de documento'),
   loginNameLabel: text("login_name_label").notNull().default('Nombre completo'),
+  // Image management system - organized by usage type
   loginLogoImageUrl: text("login_logo_image_url").notNull().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'),
+  registrationImageUrl: text("registration_image_url").notNull().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'),
   headerLogoImageUrl: text("header_logo_image_url").notNull().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'),
   headerLogoSize: integer("header_logo_size").notNull().default(32), // Size in pixels (height)
   preloadImageUrl: text("preload_image_url").notNull().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'),
@@ -70,6 +72,7 @@ export const systemConfigSchema = z.object({
   loginDocumentLabel: z.string().default('Número de documento'),
   loginNameLabel: z.string().default('Nombre completo'),
   loginLogoImageUrl: z.string().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'),
+  registrationImageUrl: z.string().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'),
   headerLogoImageUrl: z.string().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'),
   headerLogoSize: z.number().default(32),
   preloadImageUrl: z.string().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'),

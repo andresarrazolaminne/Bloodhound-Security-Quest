@@ -1522,98 +1522,249 @@ const AdminPage = () => {
 
             <TabsContent value="images" className="space-y-6">
               <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Imágenes del Sistema</h3>
-                  
-                  <div className="space-y-2">
-                    <label htmlFor="cobranding-image-url" className="block text-sm font-medium text-gray-700">
-                      URL de Imagen del Banner (Cobranding)
-                    </label>
-                    <Input
-                      id="cobranding-image-url"
-                      type="url"
-                      value={systemConfig.cobrandingImageUrl}
-                      onChange={(e) => setSystemConfig({
-                        ...systemConfig,
-                        cobrandingImageUrl: e.target.value
-                      })}
-                      placeholder="https://ejemplo.com/banner.png"
-                    />
-                    <p className="text-xs text-gray-500">
-                      Imagen que aparece en la parte superior del mapa (banner de marcas)
-                    </p>
-                    {systemConfig.cobrandingImageUrl && (
-                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
-                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
-                        <img 
-                          src={systemConfig.cobrandingImageUrl} 
-                          alt="Vista previa banner" 
-                          className="h-12 object-contain border border-gray-200 rounded"
-                        />
-                      </div>
-                    )}
+                <div className="space-y-8">
+                  <div className="text-center">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">Gestión de Imágenes</h3>
+                    <p className="text-sm text-gray-600">Configure las cinco imágenes principales del sistema</p>
                   </div>
                   
-                  <div className="space-y-2">
-                    <label htmlFor="footer-logo-url" className="block text-sm font-medium text-gray-700">
-                      URL de Imagen del Footer (Logos de Patrocinadores)
-                    </label>
-                    <Input
-                      id="footer-logo-url"
-                      type="url"
-                      value={systemConfig.footerLogoUrl}
-                      onChange={(e) => setSystemConfig({
-                        ...systemConfig,
-                        footerLogoUrl: e.target.value
-                      })}
-                      placeholder="https://ejemplo.com/logos-footer.png"
-                    />
-                    <p className="text-xs text-gray-500">
-                      Imagen con logos de patrocinadores que aparece en el pie de página
-                    </p>
-                    {systemConfig.footerLogoUrl && (
-                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
-                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
-                        <img 
-                          src={systemConfig.footerLogoUrl} 
-                          alt="Vista previa footer" 
-                          className="max-h-16 object-contain border border-gray-200 rounded w-full"
-                        />
-                      </div>
-                    )}
+                  {/* 1. Imagen de Login */}
+                  <div className="p-6 bg-blue-50 rounded-lg border-2 border-blue-200">
+                    <h4 className="text-lg font-semibold text-blue-900 mb-4 flex items-center">
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                      </svg>
+                      1. Imagen de Login
+                    </h4>
+                    <div className="space-y-2">
+                      <Input
+                        id="login-logo-image-url"
+                        type="url"
+                        value={systemConfig.loginLogoImageUrl}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          loginLogoImageUrl: e.target.value
+                        })}
+                        placeholder="https://ejemplo.com/logo-login.png"
+                      />
+                      <p className="text-xs text-blue-700">
+                        Logo/imagen que aparece en la página de login entre el título y subtítulo
+                      </p>
+                      {systemConfig.loginLogoImageUrl && (
+                        <div className="mt-2 p-2 bg-white rounded-md">
+                          <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                          <img 
+                            src={systemConfig.loginLogoImageUrl} 
+                            alt="Vista previa logo login" 
+                            className="h-16 object-contain border border-gray-200 rounded"
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <label htmlFor="site-map-image-url" className="block text-sm font-medium text-gray-700">
-                      URL de Imagen del Mapa del Sitio
-                    </label>
-                    <Input
-                      id="site-map-image-url"
-                      type="url"
-                      value={systemConfig.siteMapImageUrl}
-                      onChange={(e) => setSystemConfig({
-                        ...systemConfig,
-                        siteMapImageUrl: e.target.value
-                      })}
-                      placeholder="https://ejemplo.com/mapa-completo.png"
-                    />
-                    <p className="text-xs text-gray-500">
-                      Imagen que se muestra en el modal "Mapa del Sitio"
-                    </p>
-                    {systemConfig.siteMapImageUrl && (
-                      <div className="mt-2 p-2 bg-gray-50 rounded-md">
-                        <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
-                        <img 
-                          src={systemConfig.siteMapImageUrl} 
-                          alt="Vista previa mapa del sitio" 
-                          className="max-h-20 object-contain border border-gray-200 rounded"
+
+                  {/* 2. Imagen de Registro */}
+                  <div className="p-6 bg-green-50 rounded-lg border-2 border-green-200">
+                    <h4 className="text-lg font-semibold text-green-900 mb-4 flex items-center">
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                      </svg>
+                      2. Imagen de Registro
+                    </h4>
+                    <div className="space-y-2">
+                      <Input
+                        id="registration-image-url"
+                        type="url"
+                        value={systemConfig.registrationImageUrl}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          registrationImageUrl: e.target.value
+                        })}
+                        placeholder="https://ejemplo.com/logo-registro.png"
+                      />
+                      <p className="text-xs text-green-700">
+                        Logo/imagen que aparece en la página de registro de nuevos usuarios
+                      </p>
+                      {systemConfig.registrationImageUrl && (
+                        <div className="mt-2 p-2 bg-white rounded-md">
+                          <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                          <img 
+                            src={systemConfig.registrationImageUrl} 
+                            alt="Vista previa logo registro" 
+                            className="h-16 object-contain border border-gray-200 rounded"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 3. Logo del Header */}
+                  <div className="p-6 bg-purple-50 rounded-lg border-2 border-purple-200">
+                    <h4 className="text-lg font-semibold text-purple-900 mb-4 flex items-center">
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                      </svg>
+                      3. Logo del Header
+                    </h4>
+                    <div className="space-y-2">
+                      <Input
+                        id="header-logo-image-url"
+                        type="url"
+                        value={systemConfig.headerLogoImageUrl}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          headerLogoImageUrl: e.target.value
+                        })}
+                        placeholder="https://ejemplo.com/logo-header.png"
+                      />
+                      <p className="text-xs text-purple-700">
+                        Logo que aparece en la cabecera del mapa principal
+                      </p>
+                      
+                      {/* Control de tamaño del logo del header */}
+                      <div className="mt-4">
+                        <label htmlFor="header-logo-size" className="block text-sm font-medium text-purple-700 mb-2">
+                          Tamaño del Logo del Header: {systemConfig.headerLogoSize}px
+                        </label>
+                        <input
+                          id="header-logo-size"
+                          type="range"
+                          min="16"
+                          max="128"
+                          value={systemConfig.headerLogoSize}
+                          onChange={(e) => setSystemConfig({
+                            ...systemConfig,
+                            headerLogoSize: parseInt(e.target.value)
+                          })}
+                          className="w-full h-2 bg-purple-200 rounded-lg appearance-none cursor-pointer"
                         />
+                        <div className="flex justify-between text-xs text-purple-600 mt-1">
+                          <span>16px</span>
+                          <span>128px</span>
+                        </div>
                       </div>
-                    )}
+                      
+                      {systemConfig.headerLogoImageUrl && (
+                        <div className="mt-2 p-2 bg-white rounded-md">
+                          <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                          <img 
+                            src={systemConfig.headerLogoImageUrl} 
+                            alt="Vista previa logo header" 
+                            style={{ height: `${systemConfig.headerLogoSize}px` }}
+                            className="object-contain border border-gray-200 rounded"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 4. Imagen del Footer */}
+                  <div className="p-6 bg-orange-50 rounded-lg border-2 border-orange-200">
+                    <h4 className="text-lg font-semibold text-orange-900 mb-4 flex items-center">
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                      </svg>
+                      4. Imagen del Footer
+                    </h4>
+                    <div className="space-y-2">
+                      <Input
+                        id="footer-logo-url"
+                        type="url"
+                        value={systemConfig.footerLogoUrl}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          footerLogoUrl: e.target.value
+                        })}
+                        placeholder="https://ejemplo.com/logos-footer.png"
+                      />
+                      <p className="text-xs text-orange-700">
+                        Imagen con logos de patrocinadores que aparece en el pie de página
+                      </p>
+                      {systemConfig.footerLogoUrl && (
+                        <div className="mt-2 p-2 bg-white rounded-md">
+                          <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                          <img 
+                            src={systemConfig.footerLogoUrl} 
+                            alt="Vista previa footer" 
+                            className="max-h-16 object-contain border border-gray-200 rounded w-full"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 5. Imagen del Mapa del Sitio */}
+                  <div className="p-6 bg-indigo-50 rounded-lg border-2 border-indigo-200">
+                    <h4 className="text-lg font-semibold text-indigo-900 mb-4 flex items-center">
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 4m0 13V4m0 0L9 7" />
+                      </svg>
+                      5. Imagen del Mapa del Sitio
+                    </h4>
+                    <div className="space-y-2">
+                      <Input
+                        id="site-map-image-url"
+                        type="url"
+                        value={systemConfig.siteMapImageUrl}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          siteMapImageUrl: e.target.value
+                        })}
+                        placeholder="https://ejemplo.com/mapa-sitio.png"
+                      />
+                      <p className="text-xs text-indigo-700">
+                        Imagen del mapa que se muestra en el modal "Mapa del Sitio"
+                      </p>
+                      {systemConfig.siteMapImageUrl && (
+                        <div className="mt-2 p-2 bg-white rounded-md">
+                          <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                          <img 
+                            src={systemConfig.siteMapImageUrl} 
+                            alt="Vista previa mapa del sitio" 
+                            className="max-h-32 object-contain border border-gray-200 rounded w-full"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Imagen adicional: Banner/Cobranding */}
+                  <div className="p-6 bg-yellow-50 rounded-lg border-2 border-yellow-200">
+                    <h4 className="text-lg font-semibold text-yellow-900 mb-4 flex items-center">
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m-9 4v10a2 2 0 002 2h6a2 2 0 002-2V8M7 8h10M7 8L5.5 6.5M17 8l1.5-1.5" />
+                      </svg>
+                      Imagen del Banner (Cobranding)
+                    </h4>
+                    <div className="space-y-2">
+                      <Input
+                        id="cobranding-image-url"
+                        type="url"
+                        value={systemConfig.cobrandingImageUrl}
+                        onChange={(e) => setSystemConfig({
+                          ...systemConfig,
+                          cobrandingImageUrl: e.target.value
+                        })}
+                        placeholder="https://ejemplo.com/banner-cobranding.png"
+                      />
+                      <p className="text-xs text-yellow-700">
+                        Imagen que aparece en la parte superior del mapa (banner de marcas y cobranding)
+                      </p>
+                      {systemConfig.cobrandingImageUrl && (
+                        <div className="mt-2 p-2 bg-white rounded-md">
+                          <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
+                          <img 
+                            src={systemConfig.cobrandingImageUrl} 
+                            alt="Vista previa banner cobranding" 
+                            className="h-12 object-contain border border-gray-200 rounded w-full"
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-4 border-t">
+                <div className="flex justify-end pt-6 border-t">
                   <Button type="submit" disabled={loadingAssets}>
                     {loadingAssets ? (
                       <>
@@ -1621,18 +1772,12 @@ const AdminPage = () => {
                         Actualizando...
                       </>
                     ) : (
-                      "Actualizar Personalización"
+                      "Actualizar Imágenes"
                     )}
                   </Button>
                 </div>
               </form>
             </TabsContent>
-
-            <TabsContent value="images" className="space-y-6">
-              <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
-                {/* Imágenes y fondos */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Gestión de Imágenes</h3>
                   
 
                   

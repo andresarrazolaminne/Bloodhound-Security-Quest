@@ -181,7 +181,7 @@ const RegistrationPage = () => {
             {/* Logo personalizable */}
             <div className="relative my-3">
               <img 
-                src={systemConfig.loginLogoImageUrl} 
+                src={systemConfig.registrationImageUrl} 
                 alt="Logo" 
                 className="w-24 h-24 object-contain animate-pulse"
               />
