@@ -9,7 +9,8 @@ interface BrainLoaderProps {
 
 const BrainLoader = ({ className, size = "medium", text }: BrainLoaderProps) => {
   const [isVisible, setIsVisible] = useState(false);
-  const [preloadImageUrl, setPreloadImageUrl] = useState("https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Cerebro.png");
+  const [preloadImageUrl, setPreloadImageUrl] = useState<string | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
   
   // Control de tamaño
   const sizeClasses = {
@@ -19,19 +20,41 @@ const BrainLoader = ({ className, size = "medium", text }: BrainLoaderProps) => 
   };
   
   useEffect(() => {
-    setIsVisible(true);
-    
-    // Load system configuration for preload image
+    // Load system configuration for preload image FIRST, before showing anything
     const loadPreloadImage = async () => {
       try {
         const response = await fetch('/api/system-config?t=' + Date.now());
         if (response.ok) {
           const data = await response.json();
           const config = data.config || {};
-          setPreloadImageUrl(config.preloadImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Cerebro.png");
+          const imageUrl = config.preloadImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png";
+          
+          // Preload the image before setting it
+          const img = new Image();
+          img.onload = () => {
+            setPreloadImageUrl(imageUrl);
+            setImageLoaded(true);
+            setIsVisible(true);
+          };
+          img.onerror = () => {
+            // Fallback to default image if the configured one fails
+            setPreloadImageUrl("https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png");
+            setImageLoaded(true);
+            setIsVisible(true);
+          };
+          img.src = imageUrl;
+        } else {
+          // Fallback if API fails
+          setPreloadImageUrl("https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png");
+          setImageLoaded(true);
+          setIsVisible(true);
         }
       } catch (error) {
         console.error('Error loading preload image configuration:', error);
+        // Fallback if everything fails
+        setPreloadImageUrl("https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png");
+        setImageLoaded(true);
+        setIsVisible(true);
       }
     };
 
@@ -39,6 +62,8 @@ const BrainLoader = ({ className, size = "medium", text }: BrainLoaderProps) => 
     
     // Listen for custom events to reload image configuration
     const handleConfigUpdate = () => {
+      setImageLoaded(false);
+      setIsVisible(false);
       loadPreloadImage();
     };
     
@@ -49,6 +74,21 @@ const BrainLoader = ({ className, size = "medium", text }: BrainLoaderProps) => 
     };
   }, []);
   
+  // Don't render anything until the image is loaded and URL is ready
+  if (!imageLoaded || !preloadImageUrl) {
+    return (
+      <div className={cn(
+        "flex flex-col items-center justify-center",
+        className
+      )}>
+        {/* Minimal fallback while loading configuration */}
+        <div className={cn("relative", sizeClasses[size])}>
+          <div className="w-full h-full bg-gray-200 animate-pulse rounded-lg"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={cn(
       "flex flex-col items-center justify-center opacity-0 transition-opacity duration-300",

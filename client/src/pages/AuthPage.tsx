@@ -16,6 +16,7 @@ const AuthPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingLastUser, setIsLoadingLastUser] = useState(true);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+  const [loginImageLoaded, setLoginImageLoaded] = useState(false);
   const [lastDocument, setLastDocument] = useState<string | null>(null);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -60,19 +61,44 @@ const AuthPage = () => {
           document.documentElement.style.setProperty('--preload-image-url', config.preloadImageUrl ? `url('${config.preloadImageUrl}?t=${timestamp}')` : '');
           document.documentElement.style.setProperty('--auth-bg-image', `url('${config.backgroundImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png'}')`);
           
-          setSystemConfig({
-            loginTitle: config.loginTitle || 'Lanzamiento',
-            loginSubtitle: config.loginSubtitle || '2025',
-            loginWelcomeText: config.loginWelcomeText || 'Bienvenido al reto de identificación de riesgos',
-            loginButtonText: config.loginButtonText || 'Ingresar',
-            loginDocumentLabel: config.loginDocumentLabel || 'Número de documento',
-            loginNameLabel: config.loginNameLabel || 'Nombre completo',
-            backgroundImageUrl: config.backgroundImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
-            gradientStartColor: config.gradientStartColor || '#bb2558',
-            gradientEndColor: config.gradientEndColor || '#e8cf00',
-            loginLogoImageUrl: config.loginLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
-            preloadImageUrl: config.preloadImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
-          });
+          const loginLogoUrl = config.loginLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png';
+          
+          // Preload the login logo image before setting the state
+          const img = new Image();
+          img.onload = () => {
+            setLoginImageLoaded(true);
+            setSystemConfig({
+              loginTitle: config.loginTitle || 'Lanzamiento',
+              loginSubtitle: config.loginSubtitle || '2025',
+              loginWelcomeText: config.loginWelcomeText || 'Bienvenido al reto de identificación de riesgos',
+              loginButtonText: config.loginButtonText || 'Ingresar',
+              loginDocumentLabel: config.loginDocumentLabel || 'Número de documento',
+              loginNameLabel: config.loginNameLabel || 'Nombre completo',
+              backgroundImageUrl: config.backgroundImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
+              gradientStartColor: config.gradientStartColor || '#bb2558',
+              gradientEndColor: config.gradientEndColor || '#e8cf00',
+              loginLogoImageUrl: loginLogoUrl,
+              preloadImageUrl: config.preloadImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
+            });
+          };
+          img.onerror = () => {
+            // Fallback to default image if loading fails
+            setLoginImageLoaded(true);
+            setSystemConfig({
+              loginTitle: config.loginTitle || 'Lanzamiento',
+              loginSubtitle: config.loginSubtitle || '2025',
+              loginWelcomeText: config.loginWelcomeText || 'Bienvenido al reto de identificación de riesgos',
+              loginButtonText: config.loginButtonText || 'Ingresar',
+              loginDocumentLabel: config.loginDocumentLabel || 'Número de documento',
+              loginNameLabel: config.loginNameLabel || 'Nombre completo',
+              backgroundImageUrl: config.backgroundImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
+              gradientStartColor: config.gradientStartColor || '#bb2558',
+              gradientEndColor: config.gradientEndColor || '#e8cf00',
+              loginLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
+              preloadImageUrl: config.preloadImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
+            });
+          };
+          img.src = loginLogoUrl;
         }
       } catch (error) {
         console.error('Error loading system configuration:', error);

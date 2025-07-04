@@ -96,6 +96,7 @@ const MapPage = () => {
   });
   
   const [totalValidSegments, setTotalValidSegments] = useState(0);
+  const [footerImageLoaded, setFooterImageLoaded] = useState(false);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -154,7 +155,18 @@ const MapPage = () => {
             headerLogoSize: config.headerLogoSize || 32
           };
           
-          setSystemConfig(newConfig);
+          // Preload footer image before setting state to prevent flash
+          const footerImg = new Image();
+          footerImg.onload = () => {
+            setFooterImageLoaded(true);
+            setSystemConfig(newConfig);
+          };
+          footerImg.onerror = () => {
+            // Fallback: still set config even if image fails
+            setFooterImageLoaded(true);
+            setSystemConfig(newConfig);
+          };
+          footerImg.src = newConfig.footerLogoUrl;
           
           // Update CSS custom properties immediately to prevent flash
           const timestamp = Date.now();
@@ -646,18 +658,20 @@ const MapPage = () => {
       )}
       
       {/* Footer con logos de patrocinadores */}
-      <footer className="mt-auto pb-8 pt-6 px-4">
-        <div className="container mx-auto">
-          <div className="bg-white/95 rounded-lg shadow-lg px-4 py-3 w-full flex items-center justify-center">
-            <img 
-              src={systemConfig.footerLogoUrl} 
-              alt="Logos patrocinadores" 
-              style={{ width: '100%', objectFit: 'contain', height: 'auto', maxHeight: '120px' }}
-              className="w-full"
-            />
+      {footerImageLoaded && (
+        <footer className="mt-auto pb-8 pt-6 px-4">
+          <div className="container mx-auto">
+            <div className="bg-white/95 rounded-lg shadow-lg px-4 py-3 w-full flex items-center justify-center">
+              <img 
+                src={systemConfig.footerLogoUrl} 
+                alt="Logos patrocinadores" 
+                style={{ width: '100%', objectFit: 'contain', height: 'auto', maxHeight: '120px' }}
+                className="w-full"
+              />
+            </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      )}
     </div>
   );
 };

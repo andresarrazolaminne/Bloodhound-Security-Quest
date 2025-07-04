@@ -12,10 +12,88 @@ const RegistrationPage = () => {
   const [name, setName] = useState("");
   const [documentNumber, setDocumentNumber] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [, setLocation] = useLocation();
   const [location] = useLocation();
   const { toast } = useToast();
   const { setCurrentUser } = useUser();
+  
+  // System configuration for consistent styling
+  const [systemConfig, setSystemConfig] = useState({
+    loginTitle: 'Registro',
+    loginSubtitle: 'Usuario Nuevo',
+    loginWelcomeText: 'Completa tu registro para acceder al reto',
+    loginButtonText: 'Crear mi cuenta',
+    loginDocumentLabel: 'Número de documento',
+    loginNameLabel: 'Nombre completo',
+    backgroundImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
+    gradientStartColor: '#bb2558',
+    gradientEndColor: '#e8cf00',
+    loginLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
+  });
+
+  // Load system configuration for consistent styling
+  useEffect(() => {
+    const loadSystemConfig = async () => {
+      try {
+        const response = await fetch('/api/system-config?t=' + Date.now());
+        if (response.ok) {
+          const data = await response.json();
+          const config = data.config || {};
+          
+          // Update CSS custom properties for consistent styling
+          const timestamp = Date.now();
+          document.documentElement.style.setProperty('--background-image-url', config.backgroundImageUrl ? `url('${config.backgroundImageUrl}?t=${timestamp}')` : '');
+          document.documentElement.style.setProperty('--gradient-start-color', config.gradientStartColor || '#bb2558');
+          document.documentElement.style.setProperty('--gradient-end-color', config.gradientEndColor || '#e8cf00');
+          
+          const loginLogoUrl = config.loginLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png';
+          
+          // Preload the login logo image before showing the page
+          const img = new Image();
+          img.onload = () => {
+            setSystemConfig({
+              loginTitle: config.loginTitle || 'Registro',
+              loginSubtitle: config.loginSubtitle || 'Usuario Nuevo',
+              loginWelcomeText: config.loginWelcomeText || 'Completa tu registro para acceder al reto',
+              loginButtonText: 'Crear mi cuenta',
+              loginDocumentLabel: config.loginDocumentLabel || 'Número de documento',
+              loginNameLabel: config.loginNameLabel || 'Nombre completo',
+              backgroundImageUrl: config.backgroundImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
+              gradientStartColor: config.gradientStartColor || '#bb2558',
+              gradientEndColor: config.gradientEndColor || '#e8cf00',
+              loginLogoImageUrl: loginLogoUrl
+            });
+            setIsLoadingConfig(false);
+          };
+          img.onerror = () => {
+            // Fallback if image fails to load
+            setSystemConfig({
+              loginTitle: config.loginTitle || 'Registro',
+              loginSubtitle: config.loginSubtitle || 'Usuario Nuevo', 
+              loginWelcomeText: config.loginWelcomeText || 'Completa tu registro para acceder al reto',
+              loginButtonText: 'Crear mi cuenta',
+              loginDocumentLabel: config.loginDocumentLabel || 'Número de documento',
+              loginNameLabel: config.loginNameLabel || 'Nombre completo',
+              backgroundImageUrl: config.backgroundImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
+              gradientStartColor: config.gradientStartColor || '#bb2558',
+              gradientEndColor: config.gradientEndColor || '#e8cf00',
+              loginLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
+            });
+            setIsLoadingConfig(false);
+          };
+          img.src = loginLogoUrl;
+        } else {
+          setIsLoadingConfig(false);
+        }
+      } catch (error) {
+        console.error('Error loading system configuration:', error);
+        setIsLoadingConfig(false);
+      }
+    };
+
+    loadSystemConfig();
+  }, []);
 
   // Extract document number from URL query parameters
   useEffect(() => {
@@ -80,28 +158,39 @@ const RegistrationPage = () => {
     }
   };
 
+  // Show loading screen while configuration is loading
+  if (isLoadingConfig) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 map-page-bg">
+        <Card className="w-full max-w-md bg-white/90 backdrop-blur-sm shadow-xl">
+          <CardContent className="pt-6 flex flex-col items-center justify-center py-12">
+            <BrainLoader size="large" text="Cargando configuración..." />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 text-white"
-      style={{
-        background: "url('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png') repeat, linear-gradient(175deg, #bb2558 0%, #bb2558 75%, #e8cf00 100%)"
-      }}>
+    <div className={`flex flex-col items-center justify-center min-h-screen p-4 text-white map-page-bg transition-opacity duration-300 ${isLoadingConfig ? 'opacity-0' : 'opacity-100'}`}>
       <Card className="w-full max-w-md bg-white/90 backdrop-blur-sm shadow-xl border-0">
         <CardContent className="pt-8 pb-8 px-6">
           <div className="flex flex-col items-center justify-center mb-8">
-            {/* Imagen de luz */}
-            <div className="relative mb-4">
+            <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">{systemConfig.loginTitle}</h1>
+            
+            {/* Logo personalizable */}
+            <div className="relative my-3">
               <img 
-                src="https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png" 
-                alt="Luz" 
+                src={systemConfig.loginLogoImageUrl} 
+                alt="Logo" 
                 className="w-24 h-24 object-contain animate-pulse"
               />
               <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-3/4 h-1 bg-yellow-300/20 rounded-full blur-md"></div>
             </div>
             
-            <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">Bienvenido</h1>
-            <p className="text-gray-600 text-center max-w-xs">
-              Es tu primera vez, por favor completa tus datos para acceder al mapa
-            </p>
+            <h2 className="text-xl font-semibold text-gray-700 mb-1 text-center">{systemConfig.loginSubtitle}</h2>
+            <p className="text-center text-gray-600 text-sm">{systemConfig.loginWelcomeText}</p>
+            
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -110,7 +199,7 @@ const RegistrationPage = () => {
             <div className="space-y-4">
               <div className="space-y-2">
                 <label htmlFor="document-number" className="block text-base font-medium text-gray-700">
-                  Número de Documento
+                  {systemConfig.loginDocumentLabel}
                 </label>
                 <Input
                   id="document-number"
@@ -125,7 +214,7 @@ const RegistrationPage = () => {
 
               <div className="space-y-2">
                 <label htmlFor="user-name" className="block text-base font-medium text-gray-700">
-                  Nombre Completo
+                  {systemConfig.loginNameLabel}
                 </label>
                 <Input
                   id="user-name"
@@ -145,7 +234,7 @@ const RegistrationPage = () => {
                 className="w-full flex items-center justify-center py-6 text-base"
                 disabled={isLoading}
               >
-                <span>{isLoading ? "Registrando..." : "Crear mi cuenta"}</span>
+                <span>{isLoading ? "Registrando..." : systemConfig.loginButtonText}</span>
                 {isLoading ? (
                   <BrainLoader size="small" className="ml-2" />
                 ) : (
