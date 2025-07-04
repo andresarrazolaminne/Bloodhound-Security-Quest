@@ -1757,21 +1757,21 @@ const AdminPage = () => {
                     <Input
                       id="header-logo-image-url"
                       type="url"
-                      value={systemConfig.headerLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'}
+                      value={(systemConfig as any).headerLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'}
                       onChange={(e) => setSystemConfig({
                         ...systemConfig,
                         headerLogoImageUrl: e.target.value
-                      })}
+                      } as any)}
                       placeholder="https://ejemplo.com/logo-header.png"
                     />
                     <p className="text-xs text-gray-500">
                       Logo que aparece en la parte superior izquierda del header de la aplicación (reemplaza el título)
                     </p>
-                    {systemConfig.headerLogoImageUrl && (
+                    {(systemConfig as any).headerLogoImageUrl && (
                       <div className="mt-2 p-2 bg-gray-50 rounded-md">
                         <p className="text-xs text-gray-600 mb-2">Vista previa:</p>
                         <img 
-                          src={systemConfig.headerLogoImageUrl} 
+                          src={(systemConfig as any).headerLogoImageUrl} 
                           alt="Vista previa logo header" 
                           className="h-8 object-contain border border-gray-200 rounded"
                         />

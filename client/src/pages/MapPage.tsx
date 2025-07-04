@@ -326,7 +326,7 @@ const MapPage = () => {
       <header className="bg-primary text-white shadow-md">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <img 
-            src={systemConfig.headerLogoImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png"} 
+            src={(systemConfig as any).headerLogoImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png"} 
             alt="Logo" 
             className="h-8 object-contain"
           />
