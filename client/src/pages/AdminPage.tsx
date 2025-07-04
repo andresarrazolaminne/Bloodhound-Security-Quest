@@ -111,6 +111,9 @@ const AdminPage = () => {
     loginDocumentLabel: "Número de documento",
     loginNameLabel: "Nombre completo",
     loginLogoImageUrl: "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
+    registrationImageUrl: "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
+    headerLogoImageUrl: "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
+    headerLogoSize: 32,
     preloadImageUrl: "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
     scanButtonText: "",
     helpButtonText: "",
@@ -206,6 +209,9 @@ const AdminPage = () => {
         loginDocumentLabel: config.loginDocumentLabel || "Número de documento",
         loginNameLabel: config.loginNameLabel || "Nombre completo",
         loginLogoImageUrl: config.loginLogoImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
+        registrationImageUrl: config.registrationImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
+        headerLogoImageUrl: config.headerLogoImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
+        headerLogoSize: config.headerLogoSize || 32,
         preloadImageUrl: config.preloadImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png"
       } as any);
     } catch (error) {
@@ -1547,7 +1553,7 @@ const AdminPage = () => {
                               value={systemConfig.backgroundSize}
                               onChange={(e) => setSystemConfig({
                                 ...systemConfig,
-                                backgroundSize: e.target.value
+                                backgroundSize: e.target.value as any
                               })}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
@@ -1567,7 +1573,7 @@ const AdminPage = () => {
                               value={systemConfig.backgroundRepeat}
                               onChange={(e) => setSystemConfig({
                                 ...systemConfig,
-                                backgroundRepeat: e.target.value
+                                backgroundRepeat: e.target.value as any
                               })}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
@@ -1587,7 +1593,7 @@ const AdminPage = () => {
                               value={systemConfig.backgroundPosition}
                               onChange={(e) => setSystemConfig({
                                 ...systemConfig,
-                                backgroundPosition: e.target.value
+                                backgroundPosition: e.target.value as any
                               })}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
