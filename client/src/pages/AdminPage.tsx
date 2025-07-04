@@ -296,6 +296,8 @@ const AdminPage = () => {
             loginDocumentLabel: data.config.loginDocumentLabel || "Número de documento",
             loginNameLabel: data.config.loginNameLabel || "Nombre completo",
             loginLogoImageUrl: data.config.loginLogoImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
+            headerLogoImageUrl: data.config.headerLogoImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
+            headerLogoSize: data.config.headerLogoSize || 32,
             preloadImageUrl: data.config.preloadImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png"
           } as any);
         }
@@ -1773,10 +1775,32 @@ const AdminPage = () => {
                         <img 
                           src={(systemConfig as any).headerLogoImageUrl} 
                           alt="Vista previa logo header" 
-                          className="h-8 object-contain border border-gray-200 rounded"
+                          className="object-contain border border-gray-200 rounded"
+                          style={{ height: `${(systemConfig as any).headerLogoSize || 32}px` }}
                         />
                       </div>
                     )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="header-logo-size" className="block text-sm font-medium text-gray-700">
+                      Tamaño del Logo del Header (px)
+                    </label>
+                    <Input
+                      id="header-logo-size"
+                      type="number"
+                      min="16"
+                      max="128"
+                      value={(systemConfig as any).headerLogoSize || 32}
+                      onChange={(e) => setSystemConfig({
+                        ...systemConfig,
+                        headerLogoSize: parseInt(e.target.value) || 32
+                      } as any)}
+                      placeholder="32"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Altura del logo en píxeles (recomendado: 24-64px)
+                    </p>
                   </div>
                   
                   <div className="space-y-2">

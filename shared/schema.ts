@@ -31,6 +31,7 @@ export const systemConfig = pgTable("system_config", {
   loginNameLabel: text("login_name_label").notNull().default('Nombre completo'),
   loginLogoImageUrl: text("login_logo_image_url").notNull().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'),
   headerLogoImageUrl: text("header_logo_image_url").notNull().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'),
+  headerLogoSize: integer("header_logo_size").notNull().default(32), // Size in pixels (height)
   preloadImageUrl: text("preload_image_url").notNull().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'),
   scanButtonText: text("scan_button_text").notNull().default('¡Escanea aquí!'),
   helpButtonText: text("help_button_text").notNull().default('Ayuda'),
@@ -70,6 +71,7 @@ export const systemConfigSchema = z.object({
   loginNameLabel: z.string().default('Nombre completo'),
   loginLogoImageUrl: z.string().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'),
   headerLogoImageUrl: z.string().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'),
+  headerLogoSize: z.number().default(32),
   preloadImageUrl: z.string().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'),
   scanButtonText: z.string().default('¡Escanea aquí!'),
   helpButtonText: z.string().default('Ayuda'),

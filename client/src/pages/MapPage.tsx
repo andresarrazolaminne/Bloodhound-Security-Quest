@@ -67,6 +67,7 @@ const MapPage = () => {
     completionTitle: string;
     loadingText: string;
     headerLogoImageUrl: string;
+    headerLogoSize: number;
   }>({
     instructionsText: '',
     siteMapImageUrl: 'https://i.pinimg.com/736x/df/93/10/df93101fdd1057543ae9a6bf2ff16b1c.jpg',
@@ -90,7 +91,8 @@ const MapPage = () => {
     prizeButtonText: 'Ver Código Premio',
     completionTitle: '¡Felicidades, has completado el reto!',
     loadingText: 'Cargando tu mapa...',
-    headerLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
+    headerLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
+    headerLogoSize: 32
   });
   
   const [totalValidSegments, setTotalValidSegments] = useState(0);
@@ -148,7 +150,8 @@ const MapPage = () => {
             prizeButtonText: config.prizeButtonText || 'Ver Código Premio',
             completionTitle: config.completionTitle || '¡Felicidades, has completado el reto!',
             loadingText: config.loadingText || 'Cargando tu mapa...',
-            headerLogoImageUrl: config.headerLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
+            headerLogoImageUrl: config.headerLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
+            headerLogoSize: config.headerLogoSize || 32
           };
           
           setSystemConfig(newConfig);
@@ -331,7 +334,8 @@ const MapPage = () => {
           <img 
             src={systemConfig.headerLogoImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png"} 
             alt="Logo" 
-            className="h-8 object-contain"
+            className="object-contain"
+            style={{ height: `${systemConfig.headerLogoSize}px` }}
           />
           <div className="flex items-center">
             <div className="mr-3">
