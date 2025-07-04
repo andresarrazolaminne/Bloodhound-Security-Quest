@@ -1515,10 +1515,257 @@ const AdminPage = () => {
                 </TabsContent>
 
                 <TabsContent value="images" className="space-y-6">
-                  <div className="text-center p-8 bg-gray-50 rounded-lg">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Gestión de Imágenes</h3>
-                    <p className="text-gray-600">La gestión de imágenes estará disponible próximamente.</p>
-                  </div>
+                  <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
+                    {/* Background Settings */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2 bg-blue-50 px-3 py-2 rounded-t-lg">
+                        🖼️ Fondo de Página
+                      </h3>
+                      <div className="bg-blue-50 p-4 rounded-b-lg space-y-4">
+                        <div className="space-y-2">
+                          <label htmlFor="background-image-url" className="block text-sm font-medium text-gray-700">
+                            URL de Imagen de Fondo
+                          </label>
+                          <Input
+                            id="background-image-url"
+                            value={systemConfig.backgroundImageUrl}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              backgroundImageUrl: e.target.value
+                            })}
+                            placeholder="https://example.com/background.jpg"
+                          />
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <label htmlFor="background-size" className="block text-sm font-medium text-gray-700">
+                              Tamaño
+                            </label>
+                            <select
+                              id="background-size"
+                              value={systemConfig.backgroundSize}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                backgroundSize: e.target.value
+                              })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="auto">Auto</option>
+                              <option value="cover">Cubrir</option>
+                              <option value="contain">Contener</option>
+                              <option value="100% 100%">Estirar</option>
+                            </select>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <label htmlFor="background-repeat" className="block text-sm font-medium text-gray-700">
+                              Repetir
+                            </label>
+                            <select
+                              id="background-repeat"
+                              value={systemConfig.backgroundRepeat}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                backgroundRepeat: e.target.value
+                              })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="no-repeat">No repetir</option>
+                              <option value="repeat">Repetir</option>
+                              <option value="repeat-x">Repetir X</option>
+                              <option value="repeat-y">Repetir Y</option>
+                            </select>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <label htmlFor="background-position" className="block text-sm font-medium text-gray-700">
+                              Posición
+                            </label>
+                            <select
+                              id="background-position"
+                              value={systemConfig.backgroundPosition}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                backgroundPosition: e.target.value
+                              })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="center">Centro</option>
+                              <option value="top">Arriba</option>
+                              <option value="bottom">Abajo</option>
+                              <option value="left">Izquierda</option>
+                              <option value="right">Derecha</option>
+                              <option value="top left">Arriba Izquierda</option>
+                              <option value="top right">Arriba Derecha</option>
+                              <option value="bottom left">Abajo Izquierda</option>
+                              <option value="bottom right">Abajo Derecha</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Login Page Images */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2 bg-green-50 px-3 py-2 rounded-t-lg">
+                        🔐 Imágenes de Páginas de Acceso
+                      </h3>
+                      <div className="bg-green-50 p-4 rounded-b-lg space-y-4">
+                        <div className="space-y-2">
+                          <label htmlFor="login-logo-url" className="block text-sm font-medium text-gray-700">
+                            Logo de Página de Login
+                          </label>
+                          <Input
+                            id="login-logo-url"
+                            value={systemConfig.loginLogoImageUrl}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              loginLogoImageUrl: e.target.value
+                            })}
+                            placeholder="https://example.com/login-logo.png"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <label htmlFor="registration-image-url" className="block text-sm font-medium text-gray-700">
+                            Imagen de Página de Registro
+                          </label>
+                          <Input
+                            id="registration-image-url"
+                            value={systemConfig.registrationImageUrl}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              registrationImageUrl: e.target.value
+                            })}
+                            placeholder="https://example.com/registration-image.png"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <label htmlFor="preload-image-url" className="block text-sm font-medium text-gray-700">
+                            Imagen de Carga (Preload)
+                          </label>
+                          <Input
+                            id="preload-image-url"
+                            value={systemConfig.preloadImageUrl}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              preloadImageUrl: e.target.value
+                            })}
+                            placeholder="https://example.com/preload-image.png"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Header and Footer Images */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2 bg-yellow-50 px-3 py-2 rounded-t-lg">
+                        🎯 Logos y Elementos de Interfaz
+                      </h3>
+                      <div className="bg-yellow-50 p-4 rounded-b-lg space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label htmlFor="header-logo-url" className="block text-sm font-medium text-gray-700">
+                              Logo del Header
+                            </label>
+                            <Input
+                              id="header-logo-url"
+                              value={systemConfig.headerLogoImageUrl}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                headerLogoImageUrl: e.target.value
+                              })}
+                              placeholder="https://example.com/header-logo.png"
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <label htmlFor="header-logo-size" className="block text-sm font-medium text-gray-700">
+                              Tamaño del Logo del Header (px)
+                            </label>
+                            <Input
+                              id="header-logo-size"
+                              type="number"
+                              min="16"
+                              max="128"
+                              value={systemConfig.headerLogoSize}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                headerLogoSize: parseInt(e.target.value)
+                              })}
+                              placeholder="32"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <label htmlFor="footer-logo-url" className="block text-sm font-medium text-gray-700">
+                            Logo del Footer
+                          </label>
+                          <Input
+                            id="footer-logo-url"
+                            value={systemConfig.footerLogoUrl}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              footerLogoUrl: e.target.value
+                            })}
+                            placeholder="https://example.com/footer-logo.png"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Banner and Site Map Images */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2 bg-purple-50 px-3 py-2 rounded-t-lg">
+                        🏷️ Banner y Mapa del Sitio
+                      </h3>
+                      <div className="bg-purple-50 p-4 rounded-b-lg space-y-4">
+                        <div className="space-y-2">
+                          <label htmlFor="cobranding-image-url" className="block text-sm font-medium text-gray-700">
+                            Imagen de Banner/Cobranding
+                          </label>
+                          <Input
+                            id="cobranding-image-url"
+                            value={systemConfig.cobrandingImageUrl}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              cobrandingImageUrl: e.target.value
+                            })}
+                            placeholder="https://example.com/banner.png"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <label htmlFor="site-map-image-url" className="block text-sm font-medium text-gray-700">
+                            Imagen del Mapa del Sitio
+                          </label>
+                          <Input
+                            id="site-map-image-url"
+                            value={systemConfig.siteMapImageUrl}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              siteMapImageUrl: e.target.value
+                            })}
+                            placeholder="https://example.com/site-map.png"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Actualizando...
+                        </>
+                      ) : (
+                        "Actualizar Configuración de Imágenes"
+                      )}
+                    </Button>
+                  </form>
                 </TabsContent>
 
                 <TabsContent value="colors" className="space-y-6">
