@@ -37,6 +37,7 @@ const AuthPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [loginImageLoaded, setLoginImageLoaded] = useState(false);
+  const [hasAttemptedLogin, setHasAttemptedLogin] = useState(false);
   
   const lastDocument = localStorage.getItem('lastDocument');
 
@@ -111,26 +112,21 @@ const AuthPage = () => {
     loadSystemConfig();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!documentNumber.trim()) {
-      toast({
-        title: "Error",
-        description: "Por favor ingresa tu número de documento",
-        variant: "destructive"
-      });
+  const performLogin = async (docNumber: string) => {
+    // Prevent double submission
+    if (isLoading) {
       return;
     }
 
     setIsLoading(true);
+    setHasAttemptedLogin(true);
     
     try {
-      const response = await login(documentNumber);
+      const response = await login(docNumber);
       
       if (response.user) {
         setCurrentUser(response.user);
-        localStorage.setItem('lastDocument', documentNumber);
+        localStorage.setItem('lastDocument', docNumber);
         setLocation('/map');
         
         toast({
@@ -140,25 +136,62 @@ const AuthPage = () => {
         });
       } else {
         // Usuario no existe, redirigir a registro
-        localStorage.setItem('tempDocument', documentNumber);
+        localStorage.setItem('tempDocument', docNumber);
         setLocation('/register');
       }
     } catch (error: any) {
-      console.error('Login error:', error);
       if (error.status === 404) {
         // Usuario no existe, redirigir a registro
-        localStorage.setItem('tempDocument', documentNumber);
+        localStorage.setItem('tempDocument', docNumber);
         setLocation('/register');
-      } else {
+      } else if (error.status === 400) {
+        // Error de validación - mostrar mensaje específico
         toast({
           title: "Error",
-          description: error.message || "Error al iniciar sesión",
+          description: "Número de documento inválido",
+          variant: "destructive"
+        });
+      } else {
+        // Try to get error message from response
+        let errorMessage = "Error al iniciar sesión";
+        if (error instanceof Response) {
+          try {
+            const errorData = await error.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch (e) {
+            // Could not parse error response
+          }
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        toast({
+          title: "Error",
+          description: errorMessage,
           variant: "destructive"
         });
       }
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Trim whitespace and validate
+    const trimmedDocumentNumber = documentNumber.trim();
+    
+    if (!trimmedDocumentNumber) {
+      toast({
+        title: "Error",
+        description: "Por favor ingresa tu número de documento",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    await performLogin(trimmedDocumentNumber);
   };
 
   const handleChangeUser = () => {
@@ -240,7 +273,7 @@ const AuthPage = () => {
                   <Button 
                     onClick={() => {
                       setDocumentNumber(lastDocument);
-                      handleSubmit(new Event('submit') as unknown as React.FormEvent);
+                      performLogin(lastDocument);
                     }}
                     className="w-full py-6 text-base"
                     disabled={isLoading}
@@ -272,6 +305,8 @@ const AuthPage = () => {
                     placeholder="Ingresa tu cédula"
                     className="w-full py-6 text-lg bg-white/80"
                     required
+                    disabled={isLoading}
+                    autoComplete="off"
                   />
                 </div>
                 
