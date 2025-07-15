@@ -18,6 +18,10 @@ const RegistrationPage = () => {
   const [location] = useLocation();
   const { toast } = useToast();
   const { setCurrentUser } = useUser();
+  
+  // Manejar parámetros de redirección para QR codes
+  const urlParams = new URLSearchParams(window.location.search);
+  const redirectUrl = urlParams.get('redirect');
   const [activeVenues, setActiveVenues] = useState<Array<{id: number, name: string, location?: string}>>([]);
   
   // System configuration for consistent styling
@@ -160,7 +164,13 @@ const RegistrationPage = () => {
       const response = await register(documentNumber, name, selectedVenueId);
 
       setCurrentUser(response.user);
-      setLocation("/map");
+      
+      // Verificar si hay una URL de redirección (para QR codes)
+      if (redirectUrl) {
+        setLocation(redirectUrl);
+      } else {
+        setLocation("/map");
+      }
 
       toast({
         title: "Bienvenido",

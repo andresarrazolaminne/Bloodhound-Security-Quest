@@ -46,7 +46,7 @@ const QRUnlockHandler = () => {
         }
 
         // Intentar obtener el último usuario logueado
-        const lastDocument = localStorage.getItem("last_login_document");
+        const lastDocument = localStorage.getItem("lastDocument");
         
         if (!lastDocument) {
           // Si no hay usuario guardado, redirigir al login con los parámetros

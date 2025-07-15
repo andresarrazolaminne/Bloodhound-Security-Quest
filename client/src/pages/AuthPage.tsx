@@ -13,6 +13,10 @@ const AuthPage = () => {
   const { toast } = useToast();
   const { setCurrentUser } = useUser();
   
+  // Manejar parámetros de redirección para QR codes
+  const urlParams = new URLSearchParams(window.location.search);
+  const redirectUrl = urlParams.get('redirect');
+  
   // System configuration for login page customization
   const [systemConfig, setSystemConfig] = useState({
     loginTitle: 'Lanzamiento',
@@ -127,7 +131,13 @@ const AuthPage = () => {
       if (response.user) {
         setCurrentUser(response.user);
         localStorage.setItem('lastDocument', docNumber);
-        setLocation('/map');
+        
+        // Verificar si hay una URL de redirección (para QR codes)
+        if (redirectUrl) {
+          setLocation(redirectUrl);
+        } else {
+          setLocation('/map');
+        }
         
         toast({
           title: "¡Bienvenido!",
@@ -137,13 +147,23 @@ const AuthPage = () => {
       } else {
         // Usuario no existe, redirigir a registro
         localStorage.setItem('tempDocument', docNumber);
-        setLocation('/register');
+        // Mantener la URL de redirección para después del registro
+        if (redirectUrl) {
+          setLocation(`/register?redirect=${encodeURIComponent(redirectUrl)}`);
+        } else {
+          setLocation('/register');
+        }
       }
     } catch (error: any) {
       if (error.status === 404) {
         // Usuario no existe, redirigir a registro
         localStorage.setItem('tempDocument', docNumber);
-        setLocation('/register');
+        // Mantener la URL de redirección para después del registro
+        if (redirectUrl) {
+          setLocation(`/register?redirect=${encodeURIComponent(redirectUrl)}`);
+        } else {
+          setLocation('/register');
+        }
       } else if (error.status === 400) {
         // Error de validación - mostrar mensaje específico
         toast({
