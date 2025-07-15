@@ -859,8 +859,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Venue-specific ranking endpoint
+  // Venue-specific ranking endpoint (admin)
   apiRouter.get("/admin/venues/:id/ranking", async (req, res) => {
+    try {
+      const venueId = parseInt(req.params.id);
+      if (isNaN(venueId)) {
+        return res.status(400).json({ message: "ID de sede inválido" });
+      }
+      
+      const ranking = await storage.getVenueRanking(venueId);
+      return res.status(200).json({ ranking });
+    } catch (error) {
+      console.error("Error getting venue ranking:", error);
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  // Public venue ranking endpoint (no authentication required)
+  apiRouter.get("/venues/:id/ranking", async (req, res) => {
     try {
       const venueId = parseInt(req.params.id);
       if (isNaN(venueId)) {

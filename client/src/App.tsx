@@ -12,6 +12,7 @@ import AdminLoginPage from "@/pages/AdminLoginPage";
 import InformeAnaliticaPage from "@/pages/InformeAnaliticaPage";
 import UnlockPage from "@/pages/UnlockPage";
 import QRUnlockHandler from "@/pages/QRUnlockHandler";
+import RankingPage from "@/pages/RankingPage";
 import { Loader2 } from "lucide-react";
 import AdminProtectedRoute from "@/components/AdminProtectedRoute";
 
@@ -36,6 +37,7 @@ function Router() {
       <Route path="/register" component={RegistrationPage} />
       <Route path="/map" component={MapPage} />
       <Route path="/unlock" component={QRUnlockHandler} />
+      <Route path="/ranking" component={RankingPage} />
       <Route path="/admin-login" component={AdminLoginPage} />
       <Route path="/admin">
         <AdminProtectedRoute component={AdminPage} />
