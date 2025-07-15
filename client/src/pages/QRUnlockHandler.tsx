@@ -7,12 +7,13 @@ import { CheckCircle, XCircle, Loader2, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import TrapMessageModal from '@/components/TrapMessageModal';
 import SegmentContentModal from '@/components/SegmentContentModal';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 // Handler específico para códigos QR que vienen desde URLs externas
 const QRUnlockHandler = () => {
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(true);
   const [result, setResult] = useState<{
     success: boolean;
@@ -31,12 +32,16 @@ const QRUnlockHandler = () => {
   // Cargar configuración del sistema para mensajes personalizados
   const { data: systemConfig } = useQuery({
     queryKey: ['/api/system-config'],
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 0, // Sin cache para obtener mensajes actualizados
+    gcTime: 0 // Sin cache para obtener mensajes actualizados (TanStack Query v5)
   });
 
   useEffect(() => {
     const handleUnlock = async () => {
       try {
+        // Invalidar cache para obtener mensajes actualizados
+        await queryClient.invalidateQueries({ queryKey: ['/api/system-config'] });
+        
         // Obtener parámetros de la URL
         const urlParams = new URLSearchParams(window.location.search);
         const segmentId = urlParams.get('segment');
@@ -85,9 +90,12 @@ const QRUnlockHandler = () => {
         // Verificar si es un QR trampa
         if (unlockResponse.isTrap) {
           // QR Trampa - usar mensajes configurables
+          console.log('QRUnlockHandler - systemConfig:', systemConfig);
           const trapTitle = systemConfig?.config?.trapDetectedTitle || '¡Situación de Riesgo Detectada!';
           const trapMessage = systemConfig?.config?.trapDetectedMessage || 
             '¡Has identificado una situación de riesgo! +{trapPoints} punto(s) de penalización.';
+          
+          console.log('QRUnlockHandler - Trap messages:', { trapTitle, trapMessage });
           
           const formattedMessage = trapMessage
             .replace('{trapPoints}', String(unlockResponse.trapPoints || 1))

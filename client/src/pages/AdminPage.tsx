@@ -135,10 +135,10 @@ const AdminPage = () => {
     completionTitle: "",
     loadingText: "",
     // Mensajes de logros y trampas
-    achievementUnlockedTitle: "",
-    achievementUnlockedMessage: "",
-    trapDetectedTitle: "",
-    trapDetectedMessage: ""
+    achievementUnlockedTitle: "¡Logro Desbloqueado!",
+    achievementUnlockedMessage: "¡Segmento {segmentId} desbloqueado exitosamente!",
+    trapDetectedTitle: "¡Situación de Riesgo Detectada!",
+    trapDetectedMessage: "¡Has identificado una situación de riesgo! +{trapPoints} punto(s) de penalización."
   });
   
   // Gestión de sedes
@@ -257,7 +257,12 @@ const AdminPage = () => {
         registrationImageUrl: config.registrationImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
         headerLogoImageUrl: config.headerLogoImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
         headerLogoSize: config.headerLogoSize || 32,
-        preloadImageUrl: config.preloadImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png"
+        preloadImageUrl: config.preloadImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png",
+        // Mensajes de logros y trampas
+        achievementUnlockedTitle: config.achievementUnlockedTitle || "¡Logro Desbloqueado!",
+        achievementUnlockedMessage: config.achievementUnlockedMessage || "¡Segmento {segmentId} desbloqueado exitosamente!",
+        trapDetectedTitle: config.trapDetectedTitle || "¡Situación de Riesgo Detectada!",
+        trapDetectedMessage: config.trapDetectedMessage || "¡Has identificado una situación de riesgo! +{trapPoints} punto(s) de penalización."
       } as any);
     } catch (error) {
       console.error("Error loading system config:", error);
