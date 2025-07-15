@@ -291,20 +291,31 @@ const RegistrationPage = () => {
                 <label htmlFor="venue-select" className="block text-base font-medium text-gray-700">
                   Selecciona tu sede
                 </label>
-                <select
-                  id="venue-select"
-                  value={selectedVenueId || ''}
-                  onChange={(e) => setSelectedVenueId(e.target.value ? Number(e.target.value) : null)}
-                  className="w-full py-6 text-lg bg-white/80 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                >
-                  <option value="">Selecciona una sede...</option>
-                  {activeVenues.map((venue) => (
-                    <option key={venue.id} value={venue.id}>
-                      {venue.name} {venue.location && `- ${venue.location}`}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    id="venue-select"
+                    value={selectedVenueId || ''}
+                    onChange={(e) => setSelectedVenueId(e.target.value ? Number(e.target.value) : null)}
+                    className="w-full py-3 px-4 text-base bg-white/80 border border-gray-300 rounded-lg 
+                               focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none
+                               appearance-none cursor-pointer transition-all duration-200
+                               hover:bg-white/90 hover:border-gray-400"
+                    required
+                  >
+                    <option value="">Selecciona una sede...</option>
+                    {activeVenues.map((venue) => (
+                      <option key={venue.id} value={venue.id}>
+                        {venue.name} {venue.location && `- ${venue.location}`}
+                      </option>
+                    ))}
+                  </select>
+                  {/* Ícono de flecha personalizado */}
+                  <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
               </div>
             </div>
 
