@@ -7,6 +7,7 @@ import { CheckCircle, XCircle, Loader2, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import TrapMessageModal from '@/components/TrapMessageModal';
 import SegmentContentModal from '@/components/SegmentContentModal';
+import { useQuery } from '@tanstack/react-query';
 
 // Handler específico para códigos QR que vienen desde URLs externas
 const QRUnlockHandler = () => {
@@ -16,6 +17,7 @@ const QRUnlockHandler = () => {
   const [result, setResult] = useState<{
     success: boolean;
     message: string;
+    title?: string;
     segmentId?: number;
     isTrap?: boolean;
     trapMessage?: string;
@@ -25,6 +27,12 @@ const QRUnlockHandler = () => {
   } | null>(null);
   const [showTrapModal, setShowTrapModal] = useState(false);
   const [showSegmentModal, setShowSegmentModal] = useState(false);
+
+  // Cargar configuración del sistema para mensajes personalizados
+  const { data: systemConfig } = useQuery({
+    queryKey: ['/api/system-config'],
+    staleTime: 5 * 60 * 1000, // 5 minutos
+  });
 
   useEffect(() => {
     const handleUnlock = async () => {
@@ -76,10 +84,19 @@ const QRUnlockHandler = () => {
         
         // Verificar si es un QR trampa
         if (unlockResponse.isTrap) {
-          // QR Trampa - mostrar modal con mensaje HTML personalizable
+          // QR Trampa - usar mensajes configurables
+          const trapTitle = systemConfig?.config?.trapDetectedTitle || '¡Situación de Riesgo Detectada!';
+          const trapMessage = systemConfig?.config?.trapDetectedMessage || 
+            '¡Has identificado una situación de riesgo! +{trapPoints} punto(s) de penalización.';
+          
+          const formattedMessage = trapMessage
+            .replace('{trapPoints}', String(unlockResponse.trapPoints || 1))
+            .replace('{segmentId}', segmentId);
+
           setResult({
             success: true,
-            message: unlockResponse.message || `¡Situación de riesgo reportada! Has ganado ${unlockResponse.trapPoints || 1} punto(s) falso(s).`,
+            title: trapTitle,
+            message: formattedMessage,
             segmentId: parseInt(segmentId),
             isTrap: true,
             trapMessage: unlockResponse.trapMessage,
@@ -90,13 +107,19 @@ const QRUnlockHandler = () => {
           setShowTrapModal(true);
 
           toast({
-            title: "QR Trampa",
-            description: `+${unlockResponse.trapPoints || 1} punto(s) falso(s)`,
+            title: trapTitle,
+            description: `+${unlockResponse.trapPoints || 1} punto(s) de penalización`,
           });
         } else {
-          // QR Normal - desbloquea segmento real
+          // QR Normal - usar mensajes configurables
+          const achievementTitle = systemConfig?.config?.achievementUnlockedTitle || '¡Logro Desbloqueado!';
+          const achievementMessage = systemConfig?.config?.achievementUnlockedMessage || 
+            '¡Segmento {segmentId} desbloqueado exitosamente!';
+          
+          const formattedMessage = achievementMessage.replace('{segmentId}', segmentId);
+
+          // Actualizar segmentos desbloqueados
           if (unlockResponse.segment) {
-            // Actualizar segmentos desbloqueados
             const existingSegments = JSON.parse(localStorage.getItem('unlockedSegments') || '[]');
             const uniqueSegments = Array.from(new Set([...existingSegments, unlockResponse.segment.segmentId]));
             localStorage.setItem('unlockedSegments', JSON.stringify(uniqueSegments));
@@ -104,7 +127,8 @@ const QRUnlockHandler = () => {
 
           setResult({
             success: true,
-            message: `¡Segmento ${segmentId} desbloqueado exitosamente!`,
+            title: achievementTitle,
+            message: formattedMessage,
             segmentId: parseInt(segmentId),
             modalContent: unlockResponse.modalContent,
             segmentTitle: unlockResponse.segmentTitle
@@ -122,8 +146,8 @@ const QRUnlockHandler = () => {
           }
 
           toast({
-            title: "¡Éxito!",
-            description: `Segmento ${segmentId} desbloqueado`,
+            title: achievementTitle,
+            description: formattedMessage,
           });
         }
 
@@ -202,7 +226,7 @@ const QRUnlockHandler = () => {
             )}
           </div>
           <CardTitle className="text-2xl">
-            {result.success ? '¡Éxito!' : 'Error'}
+            {result.success ? (result.title || '¡Éxito!') : 'Error'}
           </CardTitle>
         </CardHeader>
         <CardContent className="text-center space-y-4">

@@ -133,7 +133,12 @@ const AdminPage = () => {
     siteMapButtonText: "",
     prizeButtonText: "",
     completionTitle: "",
-    loadingText: ""
+    loadingText: "",
+    // Mensajes de logros y trampas
+    achievementUnlockedTitle: "",
+    achievementUnlockedMessage: "",
+    trapDetectedTitle: "",
+    trapDetectedMessage: ""
   });
   
   // Gestión de sedes
@@ -336,6 +341,11 @@ const AdminPage = () => {
             prizeButtonText: data.config.prizeButtonText || "Ver Código Premio",
             completionTitle: data.config.completionTitle || "¡Felicidades, has completado el reto!",
             loadingText: data.config.loadingText || "Cargando tu mapa...",
+            // Mensajes de logros y trampas
+            achievementUnlockedTitle: data.config.achievementUnlockedTitle || "¡Logro Desbloqueado!",
+            achievementUnlockedMessage: data.config.achievementUnlockedMessage || "¡Segmento {segmentId} desbloqueado exitosamente!",
+            trapDetectedTitle: data.config.trapDetectedTitle || "¡Situación de Riesgo Detectada!",
+            trapDetectedMessage: data.config.trapDetectedMessage || "¡Has identificado una situación de riesgo! +{trapPoints} punto(s) de penalización.",
             loginTitle: data.config.loginTitle || "Lanzamiento",
             loginSubtitle: data.config.loginSubtitle || "2025",
             loginWelcomeText: data.config.loginWelcomeText || "Bienvenido al reto de identificación de riesgos",
@@ -1821,6 +1831,87 @@ const AdminPage = () => {
                         <p className="text-xs text-gray-500">
                           Mensaje que se muestra durante las pantallas de carga
                         </p>
+                      </div>
+                    </div>
+
+                    {/* Mensajes de logros y trampas */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Mensajes de Logros y Trampas</h3>
+                      
+                      {/* Mensajes de logros */}
+                      <div className="space-y-4 bg-green-50 p-4 rounded-lg">
+                        <h4 className="text-md font-medium text-green-800">🏆 Mensajes de Logro</h4>
+                        
+                        <div className="space-y-2">
+                          <label htmlFor="achievement-title" className="block text-sm font-medium text-gray-700">
+                            Título del Logro Desbloqueado
+                          </label>
+                          <Input
+                            id="achievement-title"
+                            value={systemConfig.achievementUnlockedTitle}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              achievementUnlockedTitle: e.target.value
+                            })}
+                            placeholder="¡Logro Desbloqueado!"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <label htmlFor="achievement-message" className="block text-sm font-medium text-gray-700">
+                            Mensaje del Logro Desbloqueado
+                          </label>
+                          <Input
+                            id="achievement-message"
+                            value={systemConfig.achievementUnlockedMessage}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              achievementUnlockedMessage: e.target.value
+                            })}
+                            placeholder="¡Segmento {segmentId} desbloqueado exitosamente!"
+                          />
+                          <p className="text-xs text-gray-500">
+                            Puedes usar <code>{'{segmentId}'}</code> para mostrar el número del segmento
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Mensajes de trampa */}
+                      <div className="space-y-4 bg-red-50 p-4 rounded-lg">
+                        <h4 className="text-md font-medium text-red-800">⚠️ Mensajes de Trampa</h4>
+                        
+                        <div className="space-y-2">
+                          <label htmlFor="trap-title" className="block text-sm font-medium text-gray-700">
+                            Título de Situación de Riesgo
+                          </label>
+                          <Input
+                            id="trap-title"
+                            value={systemConfig.trapDetectedTitle}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              trapDetectedTitle: e.target.value
+                            })}
+                            placeholder="¡Situación de Riesgo Detectada!"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <label htmlFor="trap-message" className="block text-sm font-medium text-gray-700">
+                            Mensaje de Situación de Riesgo
+                          </label>
+                          <Input
+                            id="trap-message"
+                            value={systemConfig.trapDetectedMessage}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              trapDetectedMessage: e.target.value
+                            })}
+                            placeholder="¡Has identificado una situación de riesgo! +{trapPoints} punto(s) de penalización."
+                          />
+                          <p className="text-xs text-gray-500">
+                            Puedes usar <code>{'{trapPoints}'}</code> para mostrar los puntos de penalización y <code>{'{segmentId}'}</code> para el segmento
+                          </p>
+                        </div>
                       </div>
                     </div>
 

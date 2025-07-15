@@ -53,6 +53,11 @@ export const systemConfig = pgTable("system_config", {
   prizeButtonText: text("prize_button_text").notNull().default('Ver Código Premio'),
   completionTitle: text("completion_title").notNull().default('¡Felicidades, has completado el reto!'),
   loadingText: text("loading_text").notNull().default('Cargando tu mapa...'),
+  // Mensajes de logros y trampas
+  achievementUnlockedTitle: text("achievement_unlocked_title").notNull().default('¡Logro Desbloqueado!'),
+  achievementUnlockedMessage: text("achievement_unlocked_message").notNull().default('¡Segmento {segmentId} desbloqueado exitosamente!'),
+  trapDetectedTitle: text("trap_detected_title").notNull().default('¡Situación de Riesgo Detectada!'),
+  trapDetectedMessage: text("trap_detected_message").notNull().default('¡Has identificado una situación de riesgo! +{trapPoints} punto(s) de penalización.'),
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 });
 
@@ -118,6 +123,11 @@ export const systemConfigSchema = z.object({
   prizeButtonText: z.string().default('Ver Código Premio'),
   completionTitle: z.string().default('¡Felicidades, has completado el reto!'),
   loadingText: z.string().default('Cargando tu mapa...'),
+  // Mensajes de logros y trampas
+  achievementUnlockedTitle: z.string().default('¡Logro Desbloqueado!'),
+  achievementUnlockedMessage: z.string().default('¡Segmento {segmentId} desbloqueado exitosamente!'),
+  trapDetectedTitle: z.string().default('¡Situación de Riesgo Detectada!'),
+  trapDetectedMessage: z.string().default('¡Has identificado una situación de riesgo! +{trapPoints} punto(s) de penalización.'),
   updatedAt: z.date()
 });
 
