@@ -51,8 +51,8 @@ export const login = async (documentNumber: string): Promise<LoginResponse> => {
 };
 
 // Register new user
-export const register = async (documentNumber: string, name: string): Promise<RegisterResponse> => {
-  const response = await apiRequest("POST", "/api/register", { documentNumber, name });
+export const register = async (documentNumber: string, name: string, venueId?: number): Promise<RegisterResponse> => {
+  const response = await apiRequest("POST", "/api/register", { documentNumber, name, venueId });
   // If the response is not ok, throw the response object so we can check status codes
   if (!response.ok) {
     throw response;

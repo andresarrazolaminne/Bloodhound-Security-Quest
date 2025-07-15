@@ -11,12 +11,14 @@ import BrainLoader from "@/components/BrainLoader";
 const RegistrationPage = () => {
   const [name, setName] = useState("");
   const [documentNumber, setDocumentNumber] = useState("");
+  const [selectedVenueId, setSelectedVenueId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [, setLocation] = useLocation();
   const [location] = useLocation();
   const { toast } = useToast();
   const { setCurrentUser } = useUser();
+  const [activeVenues, setActiveVenues] = useState<Array<{id: number, name: string, location?: string}>>([]);
   
   // System configuration for consistent styling
   const [systemConfig, setSystemConfig] = useState({
@@ -36,6 +38,22 @@ const RegistrationPage = () => {
     headerBackgroundColor: '#3b82f6',
     headerTextColor: '#ffffff'
   });
+
+  // Load active venues for dropdown
+  useEffect(() => {
+    const loadActiveVenues = async () => {
+      try {
+        const response = await fetch('/api/venues/active');
+        if (response.ok) {
+          const data = await response.json();
+          setActiveVenues(data.venues || []);
+        }
+      } catch (error) {
+        console.error('Error loading active venues:', error);
+      }
+    };
+    loadActiveVenues();
+  }, []);
 
   // Load system configuration for consistent styling
   useEffect(() => {
@@ -127,10 +145,19 @@ const RegistrationPage = () => {
       return;
     }
 
+    if (!selectedVenueId) {
+      toast({
+        title: "Error",
+        description: "Por favor selecciona una sede",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       setIsLoading(true);
-      console.log("Enviando datos:", { documentNumber, name });
-      const response = await register(documentNumber, name);
+      console.log("Enviando datos:", { documentNumber, name, venueId: selectedVenueId });
+      const response = await register(documentNumber, name, selectedVenueId);
 
       setCurrentUser(response.user);
       setLocation("/map");
@@ -258,6 +285,26 @@ const RegistrationPage = () => {
                   className="w-full py-6 text-lg bg-white/80"
                   required
                 />
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="venue-select" className="block text-base font-medium text-gray-700">
+                  Selecciona tu sede
+                </label>
+                <select
+                  id="venue-select"
+                  value={selectedVenueId || ''}
+                  onChange={(e) => setSelectedVenueId(e.target.value ? Number(e.target.value) : null)}
+                  className="w-full py-6 text-lg bg-white/80 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option value="">Selecciona una sede...</option>
+                  {activeVenues.map((venue) => (
+                    <option key={venue.id} value={venue.id}>
+                      {venue.name} {venue.location && `- ${venue.location}`}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 

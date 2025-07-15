@@ -71,6 +71,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get active venues for registration
+  apiRouter.get("/venues/active", async (req, res) => {
+    try {
+      const venues = await storage.getAllVenues();
+      const activeVenues = venues.filter(venue => venue.isActive);
+      return res.status(200).json({ venues: activeVenues });
+    } catch (error) {
+      console.error("Error getting active venues:", error);
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
   // Map segment routes
   apiRouter.get("/user/:documentNumber/segments", async (req, res) => {
     try {
