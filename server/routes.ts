@@ -2,7 +2,7 @@ import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { insertUserSchema, insertMapSegmentAssetsSchema, insertSystemConfigSchema, users } from "@shared/schema";
+import { insertUserSchema, insertMapSegmentAssetsSchema, insertSystemConfigSchema, insertVenueSchema, users } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -760,6 +760,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error getting user stats:", error);
       res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  // Venue management routes (Admin only)
+  apiRouter.get("/admin/venues", async (req, res) => {
+    try {
+      const venues = await storage.getAllVenues();
+      return res.status(200).json({ venues });
+    } catch (error) {
+      console.error("Error getting venues:", error);
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  apiRouter.get("/admin/venues/:id", async (req, res) => {
+    try {
+      const venueId = parseInt(req.params.id);
+      if (isNaN(venueId)) {
+        return res.status(400).json({ message: "ID de sede inválido" });
+      }
+      
+      const venue = await storage.getVenueById(venueId);
+      if (!venue) {
+        return res.status(404).json({ message: "Sede no encontrada" });
+      }
+      
+      return res.status(200).json({ venue });
+    } catch (error) {
+      console.error("Error getting venue:", error);
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  apiRouter.post("/admin/venues", async (req, res) => {
+    try {
+      const venueData = insertVenueSchema.parse(req.body);
+      const newVenue = await storage.createVenue(venueData);
+      return res.status(201).json({ venue: newVenue });
+    } catch (error) {
+      console.error("Error creating venue:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Datos de sede inválidos",
+          errors: error.errors
+        });
+      }
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  apiRouter.put("/admin/venues/:id", async (req, res) => {
+    try {
+      const venueId = parseInt(req.params.id);
+      if (isNaN(venueId)) {
+        return res.status(400).json({ message: "ID de sede inválido" });
+      }
+      
+      const venueData = insertVenueSchema.partial().parse(req.body);
+      const updatedVenue = await storage.updateVenue(venueId, venueData);
+      return res.status(200).json({ venue: updatedVenue });
+    } catch (error) {
+      console.error("Error updating venue:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Datos de sede inválidos",
+          errors: error.errors
+        });
+      }
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  apiRouter.delete("/admin/venues/:id", async (req, res) => {
+    try {
+      const venueId = parseInt(req.params.id);
+      if (isNaN(venueId)) {
+        return res.status(400).json({ message: "ID de sede inválido" });
+      }
+      
+      await storage.deleteVenue(venueId);
+      return res.status(200).json({ message: "Sede eliminada exitosamente" });
+    } catch (error) {
+      console.error("Error deleting venue:", error);
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  // Venue-specific ranking endpoint
+  apiRouter.get("/admin/venues/:id/ranking", async (req, res) => {
+    try {
+      const venueId = parseInt(req.params.id);
+      if (isNaN(venueId)) {
+        return res.status(400).json({ message: "ID de sede inválido" });
+      }
+      
+      const ranking = await storage.getVenueRanking(venueId);
+      return res.status(200).json({ ranking });
+    } catch (error) {
+      console.error("Error getting venue ranking:", error);
+      return res.status(500).json({ message: "Error interno del servidor" });
     }
   });
 

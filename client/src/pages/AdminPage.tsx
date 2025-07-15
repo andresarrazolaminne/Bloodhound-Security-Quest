@@ -41,7 +41,7 @@ import {
   BarChart
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import { MapSegmentAsset } from "@shared/schema";
+import { MapSegmentAsset, Venue, InsertVenue } from "@shared/schema";
 import QRGenerator from '@/tools/QRGenerator';
 import AnalyticsTab from '@/components/AnalyticsTab';
 import {
@@ -135,6 +135,21 @@ const AdminPage = () => {
     completionTitle: "",
     loadingText: ""
   });
+  
+  // Gestión de sedes
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [loadingVenues, setLoadingVenues] = useState(false);
+  const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
+  const [venueDialogOpen, setVenueDialogOpen] = useState(false);
+  const [venueDialogMode, setVenueDialogMode] = useState<"create" | "edit">("create");
+  const [venueFormData, setVenueFormData] = useState<InsertVenue>({
+    name: "",
+    description: "",
+    location: "",
+    isActive: true,
+    maxParticipants: 100
+  });
+  const [venueRankings, setVenueRankings] = useState<{ [venueId: number]: any[] }>({});
   
   // Ranking de usuarios
   const [userRanking, setUserRanking] = useState<Array<{
@@ -369,6 +384,7 @@ const AdminPage = () => {
     fetchMapAssets();
     fetchSystemConfig();
     fetchUserRanking();
+    fetchVenues();
   }, []);
   
   // Filtrar los usuarios cuando cambia el filtro o los datos
@@ -401,6 +417,145 @@ const AdminPage = () => {
     } finally {
       setLoadingAssets(false);
     }
+  };
+
+  const fetchVenues = async () => {
+    try {
+      setLoadingVenues(true);
+      const response = await apiRequest("GET", "/api/admin/venues");
+      const data = await response.json();
+      setVenues(data.venues);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Error al cargar las sedes",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingVenues(false);
+    }
+  };
+
+  const fetchVenueRanking = async (venueId: number) => {
+    try {
+      const response = await apiRequest("GET", `/api/admin/venues/${venueId}/ranking`);
+      const data = await response.json();
+      setVenueRankings(prev => ({ ...prev, [venueId]: data.ranking }));
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Error al cargar el ranking de la sede",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleVenueCreate = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiRequest("POST", "/api/admin/venues", {
+        body: JSON.stringify(venueFormData)
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Éxito",
+          description: "Sede creada exitosamente"
+        });
+        setVenueDialogOpen(false);
+        setVenueFormData({
+          name: "",
+          description: "",
+          location: "",
+          isActive: true,
+          maxParticipants: 100
+        });
+        fetchVenues();
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Error al crear la sede",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVenueUpdate = async () => {
+    if (!selectedVenue) return;
+    
+    try {
+      setIsLoading(true);
+      const response = await apiRequest("PUT", `/api/admin/venues/${selectedVenue.id}`, {
+        body: JSON.stringify(venueFormData)
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Éxito",
+          description: "Sede actualizada exitosamente"
+        });
+        setVenueDialogOpen(false);
+        setSelectedVenue(null);
+        fetchVenues();
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Error al actualizar la sede",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVenueDelete = async (venueId: number) => {
+    try {
+      setIsLoading(true);
+      const response = await apiRequest("DELETE", `/api/admin/venues/${venueId}`);
+      
+      if (response.ok) {
+        toast({
+          title: "Éxito",
+          description: "Sede eliminada exitosamente"
+        });
+        fetchVenues();
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Error al eliminar la sede",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const openVenueDialog = (mode: "create" | "edit", venue?: Venue) => {
+    setVenueDialogMode(mode);
+    if (mode === "edit" && venue) {
+      setSelectedVenue(venue);
+      setVenueFormData({
+        name: venue.name,
+        description: venue.description || "",
+        location: venue.location || "",
+        isActive: venue.isActive,
+        maxParticipants: venue.maxParticipants || 100
+      });
+    } else {
+      setVenueFormData({
+        name: "",
+        description: "",
+        location: "",
+        isActive: true,
+        maxParticipants: 100
+      });
+    }
+    setVenueDialogOpen(true);
   };
 
   // Función para abrir el diálogo de crear asset
@@ -584,9 +739,10 @@ const AdminPage = () => {
       </div>
 
       <Tabs defaultValue="prizes" className="max-w-5xl mx-auto">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-7 mb-6">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-8 mb-6">
           <TabsTrigger value="prizes">Validación de Premios</TabsTrigger>
           <TabsTrigger value="segments">Segmentos del Mapa</TabsTrigger>
+          <TabsTrigger value="venues">Sedes</TabsTrigger>
           <TabsTrigger value="qrgenerator">Generador de QR</TabsTrigger>
           <TabsTrigger value="ranking">Ranking de Usuarios</TabsTrigger>
           <TabsTrigger value="analytics">
@@ -849,6 +1005,131 @@ const AdminPage = () => {
                           variant="destructive" 
                           size="sm"
                           onClick={() => handleDeleteAsset(asset.segmentId)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Eliminar
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="venues">
+          <Card className="w-full">
+            <CardHeader className="bg-primary text-white">
+              <CardTitle className="text-xl">Gestión de Sedes</CardTitle>
+              <CardDescription className="text-white/80">
+                Administra las sedes/ubicaciones donde se desarrolla la actividad
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="pt-6">
+              <div className="flex justify-between mb-6">
+                <div className="flex items-center gap-4">
+                  <div className="text-sm text-gray-600">
+                    Total de Sedes: <span className="font-semibold">{venues.length}</span>
+                  </div>
+                  <div className="text-sm text-green-600">
+                    ✅ Activas: <span className="font-semibold">{venues.filter(v => v.isActive).length}</span>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    ❌ Inactivas: <span className="font-semibold">{venues.filter(v => !v.isActive).length}</span>
+                  </div>
+                </div>
+                <Button onClick={() => openVenueDialog("create")}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Nueva Sede
+                </Button>
+              </div>
+
+              {loadingVenues ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <span className="ml-2">Cargando sedes...</span>
+                </div>
+              ) : venues.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  No hay sedes configuradas. Crea la primera sede para empezar.
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {venues.map((venue) => (
+                    <Card key={venue.id} className="border-gray-200">
+                      <CardHeader className="pb-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <CardTitle className="text-lg">{venue.name}</CardTitle>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant={venue.isActive ? "success" : "destructive"}>
+                                {venue.isActive ? "Activa" : "Inactiva"}
+                              </Badge>
+                              {venue.maxParticipants && (
+                                <Badge variant="outline">
+                                  Máx: {venue.maxParticipants}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      
+                      <CardContent className="pb-3">
+                        {venue.description && (
+                          <p className="text-sm text-gray-600 mb-2">{venue.description}</p>
+                        )}
+                        {venue.location && (
+                          <p className="text-sm text-gray-500 mb-3">📍 {venue.location}</p>
+                        )}
+                        
+                        <div className="space-y-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="w-full"
+                            onClick={() => fetchVenueRanking(venue.id)}
+                          >
+                            <BarChart className="h-4 w-4 mr-2" />
+                            Ver Ranking
+                          </Button>
+                          
+                          {venueRankings[venue.id] && (
+                            <div className="mt-3 p-3 bg-gray-50 rounded-md">
+                              <h4 className="font-medium text-sm mb-2">Ranking de {venue.name}</h4>
+                              <div className="space-y-1 max-h-32 overflow-y-auto">
+                                {venueRankings[venue.id].slice(0, 5).map((participant, index) => (
+                                  <div key={participant.user.id} className="flex justify-between text-xs">
+                                    <span>#{index + 1} {participant.user.name}</span>
+                                    <span className="font-medium">{participant.completionPercentage.toFixed(1)}%</span>
+                                  </div>
+                                ))}
+                                {venueRankings[venue.id].length > 5 && (
+                                  <div className="text-xs text-gray-500 text-center">
+                                    +{venueRankings[venue.id].length - 5} más...
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+
+                      <CardFooter className="flex justify-between p-4 pt-0">
+                        <Button variant="outline" size="sm" onClick={() => openVenueDialog("edit", venue)}>
+                          <Pencil className="h-4 w-4 mr-1" />
+                          Editar
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => {
+                            if (confirm(`¿Estás seguro de eliminar la sede "${venue.name}"?`)) {
+                              handleVenueDelete(venue.id);
+                            }
+                          }}
                         >
                           <Trash2 className="h-4 w-4 mr-1" />
                           Eliminar
@@ -2656,6 +2937,134 @@ const AdminPage = () => {
           </Card>
         </TabsContent>
     </Tabs>
+    
+    {/* Dialog para crear/editar sedes */}
+    <Dialog open={venueDialogOpen} onOpenChange={setVenueDialogOpen}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>
+            {venueDialogMode === "create" ? "Crear Nueva Sede" : "Editar Sede"}
+          </DialogTitle>
+          <DialogDescription>
+            {venueDialogMode === "create" 
+              ? "Ingresa los datos para crear una nueva sede" 
+              : "Modifica los datos de la sede seleccionada"}
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="venue-name" className="text-sm font-medium">
+              Nombre de la Sede*
+            </label>
+            <Input
+              id="venue-name"
+              placeholder="Ej: Sede Principal"
+              value={venueFormData.name}
+              onChange={(e) => setVenueFormData({
+                ...venueFormData,
+                name: e.target.value
+              })}
+              required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="venue-description" className="text-sm font-medium">
+              Descripción
+            </label>
+            <Textarea
+              id="venue-description"
+              placeholder="Descripción opcional de la sede"
+              value={venueFormData.description}
+              onChange={(e) => setVenueFormData({
+                ...venueFormData,
+                description: e.target.value
+              })}
+              rows={3}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="venue-location" className="text-sm font-medium">
+              Ubicación
+            </label>
+            <Input
+              id="venue-location"
+              placeholder="Ej: Bogotá, Colombia"
+              value={venueFormData.location}
+              onChange={(e) => setVenueFormData({
+                ...venueFormData,
+                location: e.target.value
+              })}
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label htmlFor="venue-max-participants" className="text-sm font-medium">
+                Participantes Máx.
+              </label>
+              <Input
+                id="venue-max-participants"
+                type="number"
+                placeholder="100"
+                value={venueFormData.maxParticipants}
+                onChange={(e) => setVenueFormData({
+                  ...venueFormData,
+                  maxParticipants: e.target.value ? parseInt(e.target.value) : undefined
+                })}
+                min="1"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Estado</label>
+              <div className="flex items-center space-x-2 mt-2">
+                <input
+                  type="checkbox"
+                  id="venue-active"
+                  checked={venueFormData.isActive}
+                  onChange={(e) => setVenueFormData({
+                    ...venueFormData,
+                    isActive: e.target.checked
+                  })}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="venue-active" className="text-sm font-medium text-gray-700">
+                  Sede Activa
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setVenueDialogOpen(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            onClick={venueDialogMode === "create" ? handleVenueCreate : handleVenueUpdate}
+            disabled={isLoading || !venueFormData.name.trim()}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {venueDialogMode === "create" ? "Creando..." : "Actualizando..."}
+              </>
+            ) : (
+              venueDialogMode === "create" ? "Crear Sede" : "Actualizar Sede"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    
     </div>
   );
 };

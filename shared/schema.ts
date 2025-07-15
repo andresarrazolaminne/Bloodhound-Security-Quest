@@ -56,6 +56,18 @@ export const systemConfig = pgTable("system_config", {
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 });
 
+// Venues/Sedes table
+export const venues = pgTable("venues", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  location: text("location"),
+  isActive: boolean("is_active").notNull().default(true),
+  maxParticipants: integer("max_participants"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow()
+});
+
 // Schema for system configuration
 export const systemConfigSchema = z.object({
   id: z.number(),
@@ -120,6 +132,7 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   documentNumber: text("document_number").notNull().unique(),
   name: text("name").notNull(),
+  venueId: integer("venue_id").references(() => venues.id),
   completedAt: timestamp("completed_at"),
 });
 
@@ -165,6 +178,7 @@ export const trapPoints = pgTable("trap_points", {
 export const insertUserSchema = createInsertSchema(users).pick({
   documentNumber: true,
   name: true,
+  venueId: true,
   completedAt: true,
 });
 
@@ -199,8 +213,19 @@ export const insertTrapPointsSchema = createInsertSchema(trapPoints).pick({
   pointsAwarded: true,
 });
 
+export const insertVenueSchema = createInsertSchema(venues).pick({
+  name: true,
+  description: true,
+  location: true,
+  isActive: true,
+  maxParticipants: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+export type InsertVenue = z.infer<typeof insertVenueSchema>;
+export type Venue = typeof venues.$inferSelect;
 
 export type InsertMapSegment = z.infer<typeof insertMapSegmentSchema>;
 export type MapSegment = typeof mapSegments.$inferSelect;

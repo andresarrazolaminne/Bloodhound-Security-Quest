@@ -4,7 +4,8 @@ import {
   prizes, 
   mapSegmentAssets, 
   trapPoints,
-  systemConfig, 
+  systemConfig,
+  venues,
   type User, 
   type InsertUser, 
   type MapSegment, 
@@ -16,6 +17,8 @@ import {
   type TrapPoints,
   type InsertTrapPoints,
   type SystemConfig,
+  type Venue,
+  type InsertVenue,
   insertSystemConfigSchema
 } from '@shared/schema';
 import { nanoid } from 'nanoid';
@@ -63,6 +66,22 @@ export interface IStorage {
     unlockedSegments: number;
     completionPercentage: number;
     prize: Prize | null;
+  }>>;
+
+  // Venue operations (CRUD)
+  getAllVenues(): Promise<Venue[]>;
+  getVenueById(id: number): Promise<Venue | undefined>;
+  createVenue(venue: InsertVenue): Promise<Venue>;
+  updateVenue(id: number, venue: Partial<InsertVenue>): Promise<Venue>;
+  deleteVenue(id: number): Promise<void>;
+  
+  // Venue-specific ranking operations
+  getVenueRanking(venueId: number): Promise<Array<{
+    user: User;
+    completionPercentage: number;
+    totalSegments: number;
+    unlockedSegments: number;
+    position: number;
   }>>;
 }
 
@@ -428,6 +447,104 @@ export class DatabaseStorage implements IStorage {
       
       return b.completionPercentage - a.completionPercentage;
     });
+  }
+
+  // Venue operations (CRUD)
+  async getAllVenues(): Promise<Venue[]> {
+    return await db.select().from(venues).orderBy(asc(venues.name));
+  }
+
+  async getVenueById(id: number): Promise<Venue | undefined> {
+    const [venue] = await db.select().from(venues).where(eq(venues.id, id));
+    return venue;
+  }
+
+  async createVenue(venue: InsertVenue): Promise<Venue> {
+    const [newVenue] = await db.insert(venues).values(venue).returning();
+    return newVenue;
+  }
+
+  async updateVenue(id: number, venue: Partial<InsertVenue>): Promise<Venue> {
+    const [updatedVenue] = await db
+      .update(venues)
+      .set({ ...venue, updatedAt: new Date() })
+      .where(eq(venues.id, id))
+      .returning();
+    
+    if (!updatedVenue) {
+      throw new Error(`Venue with id ${id} not found`);
+    }
+    
+    return updatedVenue;
+  }
+
+  async deleteVenue(id: number): Promise<void> {
+    await db.delete(venues).where(eq(venues.id, id));
+  }
+
+  // Venue-specific ranking operations
+  async getVenueRanking(venueId: number): Promise<Array<{
+    user: User;
+    completionPercentage: number;
+    totalSegments: number;
+    unlockedSegments: number;
+    position: number;
+  }>> {
+    const result = [];
+    
+    const config = await this.getSystemConfig();
+    let totalSegments = 9;
+    
+    if (config && config.mapGridSize) {
+      const [columns, rows] = config.mapGridSize.split('x').map(Number);
+      totalSegments = columns * rows;
+    }
+    
+    // Get users from specific venue
+    const venueUsers = await db
+      .select()
+      .from(users)
+      .where(eq(users.venueId, venueId));
+    
+    for (const user of venueUsers) {
+      const segments = await this.getSegmentsByUserId(user.id);
+      const unlockedSegments = segments.filter(s => s.unlocked).length;
+      const completionPercentage = (unlockedSegments / totalSegments) * 100;
+      
+      result.push({
+        user,
+        completionPercentage,
+        totalSegments,
+        unlockedSegments,
+        position: 0 // Will be set after sorting
+      });
+    }
+    
+    // Sort by completion percentage and completion time
+    const sortedResults = result.sort((a, b) => {
+      if (a.completionPercentage === 100 && b.completionPercentage === 100) {
+        if (a.user.completedAt && b.user.completedAt) {
+          return a.user.completedAt.getTime() - b.user.completedAt.getTime();
+        }
+        else if (a.user.completedAt) {
+          return -1;
+        } else if (b.user.completedAt) {
+          return 1;
+        }
+        return 0;
+      }
+      
+      if (a.completionPercentage === 100) return -1;
+      if (b.completionPercentage === 100) return 1;
+      
+      return b.completionPercentage - a.completionPercentage;
+    });
+    
+    // Assign positions
+    return sortedResults.map((item, index) => ({
+      ...item,
+      position: index + 1
+    }));
   }
 }
 
