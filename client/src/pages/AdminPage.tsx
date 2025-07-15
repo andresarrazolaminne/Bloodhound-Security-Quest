@@ -453,9 +453,7 @@ const AdminPage = () => {
   const handleVenueCreate = async () => {
     try {
       setIsLoading(true);
-      const response = await apiRequest("POST", "/api/admin/venues", {
-        body: JSON.stringify(venueFormData)
-      });
+      const response = await apiRequest("POST", "/api/admin/venues", venueFormData);
       
       if (response.ok) {
         toast({
@@ -488,9 +486,7 @@ const AdminPage = () => {
     
     try {
       setIsLoading(true);
-      const response = await apiRequest("PUT", `/api/admin/venues/${selectedVenue.id}`, {
-        body: JSON.stringify(venueFormData)
-      });
+      const response = await apiRequest("PUT", `/api/admin/venues/${selectedVenue.id}`, venueFormData);
       
       if (response.ok) {
         toast({
