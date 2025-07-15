@@ -58,12 +58,21 @@ This is a QR code-based treasure hunt application where users scan QR codes to u
 - User progress monitoring and analytics
 - Map segment asset management (images, URLs, metadata)
 - QR code generation tools for testing
+- Venue/location management with independent ranking systems
+- CRUD operations for venues with status and participant limits
 
 **Map Grid System:**
 - Configurable grid layouts (3x3, 3x2, 2x3, 4x2, 2x4)
 - Adjustable gap sizes between segments
 - Dynamic segment loading from database assets
 - Visual progress indicators and animations
+
+**Venue Management System:**
+- Multi-location support with independent user tracking
+- CRUD operations for venue creation, editing, and deletion
+- Venue-specific user rankings and progress tracking
+- Configurable participant limits and active/inactive status
+- Location-based data segregation for competitive activities
 
 **Prize System:**
 - Automatic redemption code generation upon completion
@@ -173,3 +182,4 @@ Changelog:
 - July 4, 2025. Fixed image loading flash issues - implemented proper image preloading in BrainLoader, AuthPage login logo, MapPage footer logo, and RegistrationPage to eliminate old image flash during loading transitions
 - July 4, 2025. Updated RegistrationPage with dashboard styling - integrated system configuration loading, applied consistent map-page-bg styling, implemented proper image preloading, and made all text labels configurable through admin panel
 - July 4, 2025. Defined comprehensive 5-image administration system - added registrationImageUrl database field, reorganized admin Images tab with color-coded sections for: 1) Login image, 2) Registration image, 3) Header logo (with size control), 4) Footer image, 5) Site map image, and 6) Banner/cobranding image
+- July 15, 2025. Implemented complete venue management system - added venues table to database schema with CRUD operations, created new "Sedes" admin tab with full venue management interface, implemented venue-specific user rankings, and added API endpoints for venue operations with proper validation
