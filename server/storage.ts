@@ -82,6 +82,8 @@ export interface IStorage {
     totalSegments: number;
     unlockedSegments: number;
     position: number;
+    score: number;
+    trapPenalties: number;
   }>>;
 }
 
@@ -489,6 +491,8 @@ export class DatabaseStorage implements IStorage {
     totalSegments: number;
     unlockedSegments: number;
     position: number;
+    score: number;
+    trapPenalties: number;
   }>> {
     const result = [];
     
@@ -511,17 +515,37 @@ export class DatabaseStorage implements IStorage {
       const unlockedSegments = segments.filter(s => s.unlocked).length;
       const completionPercentage = (unlockedSegments / totalSegments) * 100;
       
+      // Calculate trap penalties
+      const trapPointsRecords = await this.getTrapPointsByUserId(user.id);
+      const trapPenalties = trapPointsRecords.reduce((total, record) => total + (record.pointsAwarded || 0), 0);
+      
+      // Calculate score: number of unlocked segments minus 0.5 points per trap penalty
+      const score = unlockedSegments - (trapPenalties * 0.5);
+      
       result.push({
         user,
         completionPercentage,
         totalSegments,
         unlockedSegments,
-        position: 0 // Will be set after sorting
+        position: 0, // Will be set after sorting
+        score: Math.max(0, score), // Ensure score doesn't go negative
+        trapPenalties
       });
     }
     
-    // Sort by completion percentage and completion time
+    // Sort by score (descending), then by completion percentage, then by completion time
     const sortedResults = result.sort((a, b) => {
+      // First sort by score
+      if (a.score !== b.score) {
+        return b.score - a.score;
+      }
+      
+      // If scores are equal, sort by completion percentage
+      if (a.completionPercentage !== b.completionPercentage) {
+        return b.completionPercentage - a.completionPercentage;
+      }
+      
+      // If completion percentages are equal and both completed, sort by completion time
       if (a.completionPercentage === 100 && b.completionPercentage === 100) {
         if (a.user.completedAt && b.user.completedAt) {
           return a.user.completedAt.getTime() - b.user.completedAt.getTime();
@@ -531,13 +555,9 @@ export class DatabaseStorage implements IStorage {
         } else if (b.user.completedAt) {
           return 1;
         }
-        return 0;
       }
       
-      if (a.completionPercentage === 100) return -1;
-      if (b.completionPercentage === 100) return 1;
-      
-      return b.completionPercentage - a.completionPercentage;
+      return 0;
     });
     
     // Assign positions

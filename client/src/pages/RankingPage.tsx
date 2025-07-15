@@ -18,6 +18,8 @@ interface RankingUser {
   totalSegments: number;
   unlockedSegments: number;
   position: number;
+  score: number;
+  trapPenalties: number;
 }
 
 interface Venue {
@@ -298,6 +300,14 @@ const RankingPage = () => {
                           <p className="text-sm text-gray-600">
                             {participant.unlockedSegments} de {participant.totalSegments} segmentos
                           </p>
+                          <div className="flex items-center space-x-2 text-xs text-gray-500">
+                            <span>Puntaje: {participant.score.toFixed(1)}</span>
+                            {participant.trapPenalties > 0 && (
+                              <span className="text-red-500">
+                                (-{(participant.trapPenalties * 0.5).toFixed(1)} por trampas)
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       
@@ -305,7 +315,10 @@ const RankingPage = () => {
                       <div className="flex items-center space-x-4">
                         <div className="text-right">
                           <div className="text-2xl font-bold text-gray-800">
-                            {participant.completionPercentage}%
+                            {participant.score.toFixed(1)}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {participant.completionPercentage}% completado
                           </div>
                           {participant.user.completedAt && (
                             <Badge variant="secondary" className="bg-green-100 text-green-800">
