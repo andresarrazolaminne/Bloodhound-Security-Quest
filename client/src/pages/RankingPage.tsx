@@ -147,13 +147,10 @@ const RankingPage = () => {
   const selectedVenue = venues.find(v => v.id === selectedVenueId);
 
   if (isLoading) {
+    const hasGradient = systemConfig.gradientStartColor && systemConfig.gradientEndColor;
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4"
-           style={{
-             background: systemConfig.gradientMidColor 
-               ? `linear-gradient(${systemConfig.gradientDirection}, ${systemConfig.gradientStartColor}, ${systemConfig.gradientMidColor}, ${systemConfig.gradientEndColor})`
-               : `linear-gradient(${systemConfig.gradientDirection}, ${systemConfig.gradientStartColor}, ${systemConfig.gradientEndColor})`
-           }}>
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 map-page-bg"
+           data-has-gradient={hasGradient ? 'true' : 'false'}>
         <Card className="w-full max-w-md bg-white/90 backdrop-blur-sm shadow-xl">
           <CardContent className="pt-6 flex flex-col items-center justify-center py-12">
             <BrainLoader size="large" text="Cargando ranking..." />
@@ -163,13 +160,10 @@ const RankingPage = () => {
     );
   }
 
+  const hasGradient = systemConfig.gradientStartColor && systemConfig.gradientEndColor;
+  
   return (
-    <div className="min-h-screen"
-         style={{
-           background: systemConfig.gradientMidColor 
-             ? `linear-gradient(${systemConfig.gradientDirection}, ${systemConfig.gradientStartColor}, ${systemConfig.gradientMidColor}, ${systemConfig.gradientEndColor})`
-             : `linear-gradient(${systemConfig.gradientDirection}, ${systemConfig.gradientStartColor}, ${systemConfig.gradientEndColor})`
-         }}>
+    <div className="min-h-screen map-page-bg" data-has-gradient={hasGradient ? 'true' : 'false'}>
       
       {/* Header */}
       <header 
@@ -181,12 +175,19 @@ const RankingPage = () => {
       >
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center space-x-4">
-            <img 
-              src={systemConfig.headerLogoImageUrl} 
-              alt="Logo" 
-              className="object-contain"
-              style={{ height: `${systemConfig.headerLogoSize}px` }}
-            />
+            {systemConfig.headerLogoImageUrl && (
+              <img 
+                src={systemConfig.headerLogoImageUrl} 
+                alt="Logo" 
+                className="object-contain"
+                style={{ height: `${systemConfig.headerLogoSize}px` }}
+              />
+            )}
+            {!systemConfig.headerLogoImageUrl && (
+              <div className="text-lg font-bold" style={{ color: systemConfig.headerTextColor }}>
+                {systemConfig.appTitle}
+              </div>
+            )}
             <div>
               <h1 className="text-2xl font-bold">{systemConfig.appTitle}</h1>
               <p className="text-sm opacity-90">Ranking de Participantes</p>

@@ -395,8 +395,10 @@ const MapPage = () => {
     return null;
   }
 
+  const hasGradient = systemConfig.gradientStartColor && systemConfig.gradientEndColor;
+  
   return (
-    <div className="flex flex-col min-h-screen map-page-bg">
+    <div className="flex flex-col min-h-screen map-page-bg" data-has-gradient={hasGradient ? 'true' : 'false'}>
       {/* Header */}
       <header 
         className="shadow-md"
@@ -406,12 +408,19 @@ const MapPage = () => {
         }}
       >
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <img 
-            src={systemConfig.headerLogoImageUrl} 
-            alt="Logo" 
-            className="object-contain"
-            style={{ height: `${systemConfig.headerLogoSize}px` }}
-          />
+          {systemConfig.headerLogoImageUrl && (
+            <img 
+              src={systemConfig.headerLogoImageUrl} 
+              alt="Logo" 
+              className="object-contain"
+              style={{ height: `${systemConfig.headerLogoSize}px` }}
+            />
+          )}
+          {!systemConfig.headerLogoImageUrl && (
+            <div className="text-lg font-bold" style={{ color: systemConfig.headerTextColor }}>
+              {systemConfig.appTitle}
+            </div>
+          )}
           <div className="flex items-center">
             <div className="mr-3">
               <p className="text-sm font-medium" style={{ color: systemConfig.headerTextColor }}>

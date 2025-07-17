@@ -242,7 +242,7 @@ const AuthPage = () => {
   // Mostrar loader mientras se cargan las configuraciones
   if (isLoadingConfig || !loginImageLoaded) {
     return (
-      <div className="flex items-center justify-center min-h-screen text-white map-page-bg">
+      <div className="flex items-center justify-center min-h-screen text-white map-page-bg" data-has-gradient="false">
         <BrainLoader 
           text={systemConfig.loadingText || 'Cargando tu mapa...'}
           className="flex flex-col items-center"
@@ -253,9 +253,12 @@ const AuthPage = () => {
   }
   
   // Mostrar interfaz normal de login con transición suave
+  const hasGradient = systemConfig.gradientStartColor && systemConfig.gradientEndColor;
+  
   return (
     <div 
-      className={`flex flex-col min-h-screen text-white map-page-bg transition-opacity duration-300 ${isLoadingConfig ? 'opacity-0' : 'opacity-100'}`}>
+      className={`flex flex-col min-h-screen text-white map-page-bg transition-opacity duration-300 ${isLoadingConfig ? 'opacity-0' : 'opacity-100'}`}
+      data-has-gradient={hasGradient ? 'true' : 'false'}>
       
       {/* Header */}
       <header 
@@ -266,12 +269,19 @@ const AuthPage = () => {
         }}
       >
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <img 
-            src={systemConfig.headerLogoImageUrl} 
-            alt="Logo" 
-            className="object-contain"
-            style={{ height: `${systemConfig.headerLogoSize}px` }}
-          />
+          {systemConfig.headerLogoImageUrl && (
+            <img 
+              src={systemConfig.headerLogoImageUrl} 
+              alt="Logo" 
+              className="object-contain"
+              style={{ height: `${systemConfig.headerLogoSize}px` }}
+            />
+          )}
+          {!systemConfig.headerLogoImageUrl && (
+            <div className="text-lg font-bold" style={{ color: systemConfig.headerTextColor }}>
+              {systemConfig.loginTitle}
+            </div>
+          )}
           <div className="flex items-center">
             {/* Espacio vacío para el usuario cuando no está logueado */}
           </div>
@@ -284,14 +294,23 @@ const AuthPage = () => {
           <CardContent className="pt-8 pb-8 px-6">
             <div className="flex flex-col items-center justify-center mb-8">
               {/* Imagen de logo personalizable */}
-              <div className="relative my-3">
-                <img 
-                  src={systemConfig.loginLogoImageUrl} 
-                  alt="Logo" 
-                  className="w-24 h-24 object-contain animate-pulse"
-                />
-                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-3/4 h-1 bg-yellow-300/20 rounded-full blur-md"></div>
-              </div>
+              {systemConfig.loginLogoImageUrl && (
+                <div className="relative my-3">
+                  <img 
+                    src={systemConfig.loginLogoImageUrl} 
+                    alt="Logo" 
+                    className="w-24 h-24 object-contain animate-pulse"
+                  />
+                  <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-3/4 h-1 bg-yellow-300/20 rounded-full blur-md"></div>
+                </div>
+              )}
+              
+              {/* Mostrar título cuando no hay imagen */}
+              {!systemConfig.loginLogoImageUrl && (
+                <div className="my-3 text-center">
+                  <h1 className="text-3xl font-bold text-gray-800 mb-2">{systemConfig.loginTitle}</h1>
+                </div>
+              )}
               
               <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">{systemConfig.loginSubtitle}</h2>
               <p className="text-gray-600 text-center max-w-xs">

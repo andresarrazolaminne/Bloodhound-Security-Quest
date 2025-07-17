@@ -230,7 +230,7 @@ const RegistrationPage = () => {
   // Show loading screen while configuration is loading
   if (isLoadingConfig) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4 map-page-bg">
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 map-page-bg" data-has-gradient="false">
         <Card className="w-full max-w-md bg-white/90 backdrop-blur-sm shadow-xl">
           <CardContent className="pt-6 flex flex-col items-center justify-center py-12">
             <BrainLoader size="large" text="Cargando configuración..." />
@@ -241,7 +241,7 @@ const RegistrationPage = () => {
   }
 
   return (
-    <div className={`flex flex-col min-h-screen text-white map-page-bg transition-opacity duration-300 ${isLoadingConfig ? 'opacity-0' : 'opacity-100'}`}>
+    <div className={`flex flex-col min-h-screen text-white map-page-bg transition-opacity duration-300 ${isLoadingConfig ? 'opacity-0' : 'opacity-100'}`} data-has-gradient={systemConfig.gradientStartColor && systemConfig.gradientEndColor ? 'true' : 'false'}>
       
       {/* Header */}
       <header 
@@ -252,12 +252,19 @@ const RegistrationPage = () => {
         }}
       >
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <img 
-            src={systemConfig.headerLogoImageUrl} 
-            alt="Logo" 
-            className="object-contain"
-            style={{ height: `${systemConfig.headerLogoSize}px` }}
-          />
+          {systemConfig.headerLogoImageUrl && (
+            <img 
+              src={systemConfig.headerLogoImageUrl} 
+              alt="Logo" 
+              className="object-contain"
+              style={{ height: `${systemConfig.headerLogoSize}px` }}
+            />
+          )}
+          {!systemConfig.headerLogoImageUrl && (
+            <div className="text-lg font-bold" style={{ color: systemConfig.headerTextColor }}>
+              {systemConfig.appTitle || 'Registro'}
+            </div>
+          )}
           <div className="flex items-center">
             {/* Espacio vacío para el usuario cuando no está logueado */}
           </div>
@@ -270,14 +277,23 @@ const RegistrationPage = () => {
         <CardContent className="pt-8 pb-8 px-6">
           <div className="flex flex-col items-center justify-center mb-8">
             {/* Logo personalizable */}
-            <div className="relative my-3">
-              <img 
-                src={systemConfig.registrationImageUrl} 
-                alt="Logo" 
-                className="w-24 h-24 object-contain animate-pulse"
-              />
-              <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-3/4 h-1 bg-yellow-300/20 rounded-full blur-md"></div>
-            </div>
+            {systemConfig.registrationImageUrl && (
+              <div className="relative my-3">
+                <img 
+                  src={systemConfig.registrationImageUrl} 
+                  alt="Logo" 
+                  className="w-24 h-24 object-contain animate-pulse"
+                />
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-3/4 h-1 bg-yellow-300/20 rounded-full blur-md"></div>
+              </div>
+            )}
+            
+            {/* Mostrar título cuando no hay imagen */}
+            {!systemConfig.registrationImageUrl && (
+              <div className="my-3 text-center">
+                <h1 className="text-3xl font-bold text-gray-800 mb-2">{systemConfig.appTitle || 'Registro'}</h1>
+              </div>
+            )}
             
             <h2 className="text-xl font-semibold text-gray-700 mb-1 text-center">{systemConfig.loginSubtitle}</h2>
             <p className="text-center text-gray-600 text-sm">{systemConfig.loginWelcomeText}</p>
