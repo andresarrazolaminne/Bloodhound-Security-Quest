@@ -151,8 +151,9 @@ const QRGenerator = () => {
   const handleGenerateAll = async () => {
     setIsLoading(true);
     try {
-      // Generate QR codes for all 9 segments
-      const newCodesPromises = Array.from({ length: 9 }, async (_, i) => {
+      // Generate QR codes for all available segments
+      const maxSegmentId = mapAssets.length > 0 ? Math.max(...mapAssets.map(a => a.segmentId)) : 9;
+      const newCodesPromises = Array.from({ length: maxSegmentId }, async (_, i) => {
         const id = i + 1;
         
         // Obtener el código de seguridad de los assets o generar uno nuevo
@@ -199,15 +200,25 @@ const QRGenerator = () => {
 
   return (
     <div>
+      {mapAssets.length > 0 && (
+        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm text-blue-800">
+            <strong>Segmentos disponibles:</strong> {mapAssets.length} segmentos configurados 
+            (IDs: {mapAssets.map(a => a.segmentId).sort((a, b) => a - b).join(', ')})
+          </p>
+        </div>
+      )}
       <div className="grid gap-4">
         <div className="grid md:grid-cols-2 gap-4 mb-4">
           <div>
-            <Label htmlFor="segment-id" className="mb-2 block">ID del Segmento (1-9)</Label>
+            <Label htmlFor="segment-id" className="mb-2 block">
+              ID del Segmento (1-{mapAssets.length > 0 ? Math.max(...mapAssets.map(a => a.segmentId)) : 9})
+            </Label>
             <Input
               id="segment-id"
               type="number"
               min={1}
-              max={9}
+              max={mapAssets.length > 0 ? Math.max(...mapAssets.map(a => a.segmentId)) : 9}
               value={segmentId}
               onChange={(e) => setSegmentId(parseInt(e.target.value) || 1)}
               className="mb-1"
@@ -284,7 +295,7 @@ const QRGenerator = () => {
             disabled={isLoading}
             className="flex-1"
           >
-            {isLoading ? 'Generando...' : 'Generar Todos'}
+            {isLoading ? 'Generando...' : `Generar Todos (${mapAssets.length > 0 ? Math.max(...mapAssets.map(a => a.segmentId)) : 9})`}
           </Button>
         </div>
       </div>
