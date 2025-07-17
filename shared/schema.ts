@@ -34,6 +34,7 @@ export const systemConfig = pgTable("system_config", {
   // UI component colors
   headerBackgroundColor: text("header_background_color").notNull().default('#3b82f6'),
   headerTextColor: text("header_text_color").notNull().default('#ffffff'),
+  progressTextColor: text("progress_text_color").notNull().default('#ffffff'),
   // Login page customization
   loginTitle: text("login_title").notNull().default('Lanzamiento'),
   loginSubtitle: text("login_subtitle").notNull().default('2025'),

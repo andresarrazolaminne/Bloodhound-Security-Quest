@@ -5,9 +5,10 @@ interface ProgressBarProps {
   progress: number;
   total: number;
   className?: string;
+  progressTextColor?: string;
 }
 
-const ProgressBar = ({ progress, total, className }: ProgressBarProps) => {
+const ProgressBar = ({ progress, total, className, progressTextColor = '#ffffff' }: ProgressBarProps) => {
   const percentage = Math.min(Math.round((progress / total) * 100), 100);
   const [animated, setAnimated] = useState(false);
   
@@ -29,9 +30,9 @@ const ProgressBar = ({ progress, total, className }: ProgressBarProps) => {
   return (
     <div className={cn("mb-6", className)}>
       <div className="flex justify-between items-center mb-2">
-        <h2 className="text-lg font-medium text-white">Tu Progreso</h2>
+        <h2 className="text-lg font-medium" style={{ color: progressTextColor }}>Tu Progreso</h2>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-white">
+          <span className="text-sm font-medium" style={{ color: progressTextColor }}>
             {progress}/{total} completados
           </span>
           <div className="bg-white rounded-full px-2 py-0.5 text-xs font-bold text-gray-800">

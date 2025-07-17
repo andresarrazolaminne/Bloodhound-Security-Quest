@@ -70,6 +70,7 @@ const MapPage = () => {
     headerLogoSize: number;
     headerBackgroundColor: string;
     headerTextColor: string;
+    progressTextColor: string;
     // Achievement and trap messages
     achievementUnlockedTitle: string;
     achievementUnlockedMessage: string;
@@ -102,6 +103,7 @@ const MapPage = () => {
     headerLogoSize: 32,
     headerBackgroundColor: '',
     headerTextColor: '',
+    progressTextColor: '',
     // Achievement and trap messages
     achievementUnlockedTitle: '',
     achievementUnlockedMessage: '',
@@ -169,6 +171,7 @@ const MapPage = () => {
             headerLogoSize: config.headerLogoSize,
             headerBackgroundColor: config.headerBackgroundColor,
             headerTextColor: config.headerTextColor,
+            progressTextColor: config.progressTextColor,
             // Achievement and trap messages
             achievementUnlockedTitle: config.achievementUnlockedTitle,
             achievementUnlockedMessage: config.achievementUnlockedMessage,
@@ -492,7 +495,8 @@ const MapPage = () => {
 
             <ProgressBar 
               progress={unlockedSegments.length} 
-              total={totalValidSegments || 6} 
+              total={totalValidSegments || 6}
+              progressTextColor={systemConfig.progressTextColor}
             />
             
             <div className="flex justify-between items-center mb-4">
