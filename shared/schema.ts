@@ -106,6 +106,7 @@ export const systemConfigSchema = z.object({
   // UI component colors
   headerBackgroundColor: z.string().default('#3b82f6'),
   headerTextColor: z.string().default('#ffffff'),
+  progressTextColor: z.string().default('#ffffff'),
   // Login page customization
   loginTitle: z.string().default('Lanzamiento'),
   loginSubtitle: z.string().default('2025'),
