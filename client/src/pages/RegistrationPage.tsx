@@ -33,14 +33,19 @@ const RegistrationPage = () => {
     loginDocumentLabel: '',
     loginNameLabel: '',
     backgroundImageUrl: '',
+    backgroundSize: 'auto',
+    backgroundRepeat: 'repeat',
+    backgroundPosition: 'center',
     gradientStartColor: '',
     gradientEndColor: '',
+    gradientDirection: '175deg',
     loginLogoImageUrl: '',
     registrationImageUrl: '',
     headerLogoImageUrl: '',
     headerLogoSize: 32,
     headerBackgroundColor: '',
-    headerTextColor: ''
+    headerTextColor: '',
+    appTitle: ''
   });
 
   // Load active venues for dropdown
@@ -68,75 +73,30 @@ const RegistrationPage = () => {
           const data = await response.json();
           const config = data.config || {};
           
-          // Use only database values - no hardcoded defaults
-          const loginLogoUrl = config.loginLogoImageUrl;
-          
-          if (loginLogoUrl) {
-            // Preload the login logo image before showing the page
-            const img = new Image();
-            img.onload = () => {
-              setSystemConfig({
-                loginTitle: config.loginTitle,
-                loginSubtitle: config.loginSubtitle,
-                loginWelcomeText: config.loginWelcomeText,
-                loginButtonText: 'Crear mi cuenta',
-                loginDocumentLabel: config.loginDocumentLabel,
-                loginNameLabel: config.loginNameLabel,
-                backgroundImageUrl: config.backgroundImageUrl,
-                gradientStartColor: config.gradientStartColor,
-                gradientEndColor: config.gradientEndColor,
-                loginLogoImageUrl: loginLogoUrl,
-                registrationImageUrl: config.registrationImageUrl,
-                headerLogoImageUrl: config.headerLogoImageUrl,
-                headerLogoSize: config.headerLogoSize,
-                headerBackgroundColor: config.headerBackgroundColor,
-                headerTextColor: config.headerTextColor
-              });
-              setIsLoadingConfig(false);
-            };
-            img.onerror = () => {
-              // If image fails to load, use config without image
-              setSystemConfig({
-                loginTitle: config.loginTitle,
-                loginSubtitle: config.loginSubtitle,
-                loginWelcomeText: config.loginWelcomeText,
-                loginButtonText: 'Crear mi cuenta',
-                loginDocumentLabel: config.loginDocumentLabel,
-                loginNameLabel: config.loginNameLabel,
-                backgroundImageUrl: config.backgroundImageUrl,
-                gradientStartColor: config.gradientStartColor,
-                gradientEndColor: config.gradientEndColor,
-                loginLogoImageUrl: '',
-                registrationImageUrl: config.registrationImageUrl,
-                headerLogoImageUrl: config.headerLogoImageUrl,
-                headerLogoSize: config.headerLogoSize,
-                headerBackgroundColor: config.headerBackgroundColor,
-                headerTextColor: config.headerTextColor
-              });
-              setIsLoadingConfig(false);
-            };
-            img.src = loginLogoUrl;
-          } else {
-            // No image configured, use config without image
-            setSystemConfig({
-              loginTitle: config.loginTitle,
-              loginSubtitle: config.loginSubtitle,
-              loginWelcomeText: config.loginWelcomeText,
-              loginButtonText: 'Crear mi cuenta',
-              loginDocumentLabel: config.loginDocumentLabel,
-              loginNameLabel: config.loginNameLabel,
-              backgroundImageUrl: config.backgroundImageUrl,
-              gradientStartColor: config.gradientStartColor,
-              gradientEndColor: config.gradientEndColor,
-              loginLogoImageUrl: '',
-              registrationImageUrl: config.registrationImageUrl,
-              headerLogoImageUrl: config.headerLogoImageUrl,
-              headerLogoSize: config.headerLogoSize,
-              headerBackgroundColor: config.headerBackgroundColor,
-              headerTextColor: config.headerTextColor
-            });
-            setIsLoadingConfig(false);
-          }
+          // Set configuration directly without image preloading
+          setSystemConfig({
+            loginTitle: config.loginTitle || '',
+            loginSubtitle: config.loginSubtitle || '',
+            loginWelcomeText: config.loginWelcomeText || '',
+            loginButtonText: 'Crear mi cuenta',
+            loginDocumentLabel: config.loginDocumentLabel || '',
+            loginNameLabel: config.loginNameLabel || '',
+            backgroundImageUrl: config.backgroundImageUrl || '',
+            backgroundSize: config.backgroundSize || 'auto',
+            backgroundRepeat: config.backgroundRepeat || 'repeat',
+            backgroundPosition: config.backgroundPosition || 'center',
+            gradientStartColor: config.gradientStartColor || '',
+            gradientEndColor: config.gradientEndColor || '',
+            gradientDirection: config.gradientDirection || '175deg',
+            loginLogoImageUrl: config.loginLogoImageUrl || '',
+            registrationImageUrl: config.registrationImageUrl || '',
+            headerLogoImageUrl: config.headerLogoImageUrl || '',
+            headerLogoSize: config.headerLogoSize || 32,
+            headerBackgroundColor: config.headerBackgroundColor || '',
+            headerTextColor: config.headerTextColor || '',
+            appTitle: config.appTitle || ''
+          });
+          setIsLoadingConfig(false);
         } else {
           setIsLoadingConfig(false);
         }

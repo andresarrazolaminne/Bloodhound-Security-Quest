@@ -26,8 +26,12 @@ const AuthPage = () => {
     loginDocumentLabel: '',
     loginNameLabel: '',
     backgroundImageUrl: '',
+    backgroundSize: 'auto',
+    backgroundRepeat: 'repeat',
+    backgroundPosition: 'center',
     gradientStartColor: '',
     gradientEndColor: '',
+    gradientDirection: '175deg',
     loginLogoImageUrl: '',
     preloadImageUrl: '',
     headerLogoImageUrl: '',
@@ -40,7 +44,6 @@ const AuthPage = () => {
   const [documentNumber, setDocumentNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
-  const [loginImageLoaded, setLoginImageLoaded] = useState(false);
   const [hasAttemptedLogin, setHasAttemptedLogin] = useState(false);
   
   const lastDocument = localStorage.getItem('lastDocument');
@@ -51,85 +54,36 @@ const AuthPage = () => {
         const response = await fetch('/api/system-config');
         if (!response.ok) throw new Error('Failed to load config');
         const data = await response.json();
-        const config = data.config;
+        const config = data.config || {};
         
-        // Use only database values - no fallbacks
-        const loginLogoUrl = config.loginLogoImageUrl;
+        // Set configuration directly without image preloading
+        setSystemConfig({
+          loginTitle: config.loginTitle || '',
+          loginSubtitle: config.loginSubtitle || '',
+          loginWelcomeText: config.loginWelcomeText || '',
+          loginButtonText: config.loginButtonText || '',
+          loginDocumentLabel: config.loginDocumentLabel || '',
+          loginNameLabel: config.loginNameLabel || '',
+          backgroundImageUrl: config.backgroundImageUrl || '',
+          backgroundSize: config.backgroundSize || 'auto',
+          backgroundRepeat: config.backgroundRepeat || 'repeat',
+          backgroundPosition: config.backgroundPosition || 'center',
+          gradientStartColor: config.gradientStartColor || '',
+          gradientEndColor: config.gradientEndColor || '',
+          gradientDirection: config.gradientDirection || '175deg',
+          loginLogoImageUrl: config.loginLogoImageUrl || '',
+          preloadImageUrl: config.preloadImageUrl || '',
+          headerLogoImageUrl: config.headerLogoImageUrl || '',
+          headerLogoSize: config.headerLogoSize || 32,
+          headerBackgroundColor: config.headerBackgroundColor || '',
+          headerTextColor: config.headerTextColor || '',
+          loadingText: config.loadingText || ''
+        });
         
-        if (loginLogoUrl) {
-          // Preload the login logo image before setting the state
-          const img = new Image();
-          img.onload = () => {
-            setLoginImageLoaded(true);
-            setSystemConfig({
-              loginTitle: config.loginTitle,
-              loginSubtitle: config.loginSubtitle,
-              loginWelcomeText: config.loginWelcomeText,
-              loginButtonText: config.loginButtonText,
-              loginDocumentLabel: config.loginDocumentLabel,
-              loginNameLabel: config.loginNameLabel,
-              backgroundImageUrl: config.backgroundImageUrl,
-              gradientStartColor: config.gradientStartColor,
-              gradientEndColor: config.gradientEndColor,
-              loginLogoImageUrl: loginLogoUrl,
-              preloadImageUrl: config.preloadImageUrl,
-              headerLogoImageUrl: config.headerLogoImageUrl,
-              headerLogoSize: config.headerLogoSize,
-              headerBackgroundColor: config.headerBackgroundColor,
-              headerTextColor: config.headerTextColor,
-              loadingText: config.loadingText
-            });
-          };
-          img.onerror = () => {
-            // If image fails to load, use empty config
-            setLoginImageLoaded(true);
-            setSystemConfig({
-              loginTitle: config.loginTitle,
-              loginSubtitle: config.loginSubtitle,
-              loginWelcomeText: config.loginWelcomeText,
-              loginButtonText: config.loginButtonText,
-              loginDocumentLabel: config.loginDocumentLabel,
-              loginNameLabel: config.loginNameLabel,
-              backgroundImageUrl: config.backgroundImageUrl,
-              gradientStartColor: config.gradientStartColor,
-              gradientEndColor: config.gradientEndColor,
-              loginLogoImageUrl: '', // No image if failed to load
-              preloadImageUrl: config.preloadImageUrl,
-              headerLogoImageUrl: config.headerLogoImageUrl,
-              headerLogoSize: config.headerLogoSize,
-              headerBackgroundColor: config.headerBackgroundColor,
-              headerTextColor: config.headerTextColor,
-              loadingText: config.loadingText
-            });
-          };
-          img.src = loginLogoUrl;
-        } else {
-          // No image configured, use database config without image
-          setLoginImageLoaded(true);
-          setSystemConfig({
-            loginTitle: config.loginTitle,
-            loginSubtitle: config.loginSubtitle,
-            loginWelcomeText: config.loginWelcomeText,
-            loginButtonText: config.loginButtonText,
-            loginDocumentLabel: config.loginDocumentLabel,
-            loginNameLabel: config.loginNameLabel,
-            backgroundImageUrl: config.backgroundImageUrl,
-            gradientStartColor: config.gradientStartColor,
-            gradientEndColor: config.gradientEndColor,
-            loginLogoImageUrl: '',
-            preloadImageUrl: config.preloadImageUrl,
-            headerLogoImageUrl: config.headerLogoImageUrl,
-            headerLogoSize: config.headerLogoSize,
-            headerBackgroundColor: config.headerBackgroundColor,
-            headerTextColor: config.headerTextColor,
-            loadingText: config.loadingText
-          });
-          setIsLoadingConfig(false);
-        }
+        setIsLoadingConfig(false);
       } catch (error) {
         console.error('Error loading system config:', error);
         setIsLoadingConfig(false);
-        setLoginImageLoaded(true);
       }
     };
     
@@ -240,11 +194,11 @@ const AuthPage = () => {
   };
 
   // Mostrar loader mientras se cargan las configuraciones
-  if (isLoadingConfig || !loginImageLoaded) {
+  if (isLoadingConfig) {
     return (
       <div className="flex items-center justify-center min-h-screen text-white" style={{ backgroundColor: '#f3f4f6' }}>
         <BrainLoader 
-          text={systemConfig.loadingText || 'Cargando tu mapa...'}
+          text="Cargando configuración..."
           className="flex flex-col items-center"
           size="large"
         />
