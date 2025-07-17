@@ -2,8 +2,9 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
-// Initialize CSS custom properties with default values
-const initializeStyles = () => {
+// Initialize CSS custom properties with system config or defaults
+const initializeStyles = async () => {
+  // Default fallback values
   const defaultConfig = {
     backgroundImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
     backgroundSize: 'auto',
@@ -16,18 +17,50 @@ const initializeStyles = () => {
     gradientType: 'linear'
   };
 
-  document.documentElement.style.setProperty('--background-image-url', `url('${defaultConfig.backgroundImageUrl}')`);
-  document.documentElement.style.setProperty('--background-size', defaultConfig.backgroundSize);
-  document.documentElement.style.setProperty('--background-repeat', defaultConfig.backgroundRepeat);
-  document.documentElement.style.setProperty('--background-position', defaultConfig.backgroundPosition);
-  document.documentElement.style.setProperty('--gradient-start-color', defaultConfig.gradientStartColor);
-  document.documentElement.style.setProperty('--gradient-mid-color', defaultConfig.gradientMidColor);
-  document.documentElement.style.setProperty('--gradient-end-color', defaultConfig.gradientEndColor);
-  document.documentElement.style.setProperty('--gradient-direction', defaultConfig.gradientDirection);
-  document.documentElement.style.setProperty('--gradient-type', defaultConfig.gradientType);
+  let config = defaultConfig;
+  
+  // Try to fetch system config synchronously
+  try {
+    const response = await fetch('/api/system-config?t=' + Date.now());
+    if (response.ok) {
+      const data = await response.json();
+      const systemConfig = data.config || {};
+      
+      // Merge with defaults
+      config = {
+        backgroundImageUrl: systemConfig.backgroundImageUrl || defaultConfig.backgroundImageUrl,
+        backgroundSize: systemConfig.backgroundSize || defaultConfig.backgroundSize,
+        backgroundRepeat: systemConfig.backgroundRepeat || defaultConfig.backgroundRepeat,
+        backgroundPosition: systemConfig.backgroundPosition || defaultConfig.backgroundPosition,
+        gradientStartColor: systemConfig.gradientStartColor || defaultConfig.gradientStartColor,
+        gradientMidColor: systemConfig.gradientMidColor || defaultConfig.gradientMidColor,
+        gradientEndColor: systemConfig.gradientEndColor || defaultConfig.gradientEndColor,
+        gradientDirection: systemConfig.gradientDirection || defaultConfig.gradientDirection,
+        gradientType: systemConfig.gradientType || defaultConfig.gradientType
+      };
+    }
+  } catch (error) {
+    console.warn('Failed to load system config, using defaults:', error);
+  }
+
+  // Apply styles to document
+  const timestamp = Date.now();
+  document.documentElement.style.setProperty('--background-image-url', config.backgroundImageUrl ? `url('${config.backgroundImageUrl}?t=${timestamp}')` : '');
+  document.documentElement.style.setProperty('--background-size', config.backgroundSize);
+  document.documentElement.style.setProperty('--background-repeat', config.backgroundRepeat);
+  document.documentElement.style.setProperty('--background-position', config.backgroundPosition);
+  document.documentElement.style.setProperty('--gradient-start-color', config.gradientStartColor);
+  document.documentElement.style.setProperty('--gradient-mid-color', config.gradientMidColor);
+  document.documentElement.style.setProperty('--gradient-end-color', config.gradientEndColor);
+  document.documentElement.style.setProperty('--gradient-direction', config.gradientDirection);
+  document.documentElement.style.setProperty('--gradient-type', config.gradientType);
 };
 
 // Initialize styles before rendering
-initializeStyles();
-
-createRoot(document.getElementById("root")!).render(<App />);
+initializeStyles().then(() => {
+  createRoot(document.getElementById("root")!).render(<App />);
+}).catch((error) => {
+  console.error('Error initializing styles:', error);
+  // Fallback: render anyway
+  createRoot(document.getElementById("root")!).render(<App />);
+});

@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  /* Default background configuration */
-  --background-image-url: url('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png');
+  /* Default background configuration - will be overridden by main.tsx */
+  --background-image-url: '';
   --background-size: auto;
   --background-repeat: repeat;
   --background-position: center;
@@ -15,7 +15,7 @@
   --gradient-type: linear;
 }
 
-/* CSS variables for system configuration to prevent FOUC */
+/* Additional CSS variables for system configuration */
 :root {
   --primary-color: #bb2558;
   --secondary-color: #e8cf00;
@@ -27,15 +27,6 @@
   --banner-image-url: '';
   --footer-logo-url: '';
   --site-map-image-url: '';
-  --background-image-url: '';
-  --background-size: 'auto';
-  --background-repeat: 'repeat';
-  --background-position: 'center';
-  --gradient-start-color: #bb2558;
-  --gradient-mid-color: '';
-  --gradient-end-color: #e8cf00;
-  --gradient-direction: '175deg';
-  --gradient-type: 'linear';
   --loading-message: 'Cargando...';
   --login-title: 'Iniciar Sesión';
   --login-subtitle: 'Accede a tu cuenta';
