@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
-import { CheckCircle } from 'lucide-react';
+import { XCircle } from 'lucide-react';
 import HtmlContent from './HtmlContent';
 
 interface TrapMessageModalProps {
@@ -41,8 +41,8 @@ const TrapMessageModal = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center">
-              <CheckCircle className="h-8 w-8 text-orange-600" />
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+              <XCircle className="h-8 w-8 text-red-600" />
             </div>
           </div>
           <DialogTitle className="text-center text-xl">
