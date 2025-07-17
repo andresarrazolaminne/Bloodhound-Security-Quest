@@ -2700,7 +2700,7 @@ const AdminPage = () => {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="space-y-2">
                             <label htmlFor="secondary-text-color" className="block text-sm font-medium text-gray-700">
                               Color de Texto Secundario
@@ -2756,10 +2756,38 @@ const AdminPage = () => {
                               />
                             </div>
                           </div>
+
+                          <div className="space-y-2">
+                            <label htmlFor="progress-text-color" className="block text-sm font-medium text-gray-700">
+                              Color de Texto de Progreso
+                            </label>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                id="progress-text-color"
+                                type="color"
+                                value={systemConfig.progressTextColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  progressTextColor: e.target.value
+                                })}
+                                className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                              />
+                              <Input
+                                type="text"
+                                value={systemConfig.progressTextColor}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  progressTextColor: e.target.value
+                                })}
+                                placeholder="#ffffff"
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
                         </div>
 
                         {/* UI Component Colors */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <label htmlFor="header-background-color" className="block text-sm font-medium text-gray-700">
                               Color de Fondo del Header
@@ -2809,34 +2837,6 @@ const AdminPage = () => {
                                 onChange={(e) => setSystemConfig({
                                   ...systemConfig,
                                   headerTextColor: e.target.value
-                                })}
-                                placeholder="#ffffff"
-                                className="flex-1"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <label htmlFor="progress-text-color" className="block text-sm font-medium text-gray-700">
-                              Color de Texto de Progreso
-                            </label>
-                            <div className="flex items-center space-x-2">
-                              <input
-                                id="progress-text-color"
-                                type="color"
-                                value={systemConfig.progressTextColor}
-                                onChange={(e) => setSystemConfig({
-                                  ...systemConfig,
-                                  progressTextColor: e.target.value
-                                })}
-                                className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
-                              />
-                              <Input
-                                type="text"
-                                value={systemConfig.progressTextColor}
-                                onChange={(e) => setSystemConfig({
-                                  ...systemConfig,
-                                  progressTextColor: e.target.value
                                 })}
                                 placeholder="#ffffff"
                                 className="flex-1"
