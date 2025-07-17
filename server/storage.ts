@@ -4,6 +4,7 @@ import {
   prizes, 
   mapSegmentAssets, 
   trapPoints,
+  userScores,
   systemConfig,
   venues,
   type User, 
@@ -16,6 +17,8 @@ import {
   type InsertMapSegmentAsset,
   type TrapPoints,
   type InsertTrapPoints,
+  type UserScores,
+  type InsertUserScores,
   type SystemConfig,
   type Venue,
   type InsertVenue,
@@ -84,6 +87,19 @@ export interface IStorage {
     position: number;
     score: number;
     trapPenalties: number;
+  }>>;
+
+  // User scores operations
+  addUserScore(userId: number, segmentId: number, points: number, isTrap: boolean): Promise<UserScores>;
+  getUserScores(userId: number): Promise<UserScores[]>;
+  getUserScoreBySegment(userId: number, segmentId: number): Promise<UserScores | undefined>;
+  calculateTotalScore(userId: number): Promise<number>;
+  getVenueScoreRanking(venueId: number): Promise<Array<{
+    user: User;
+    validQRsScanned: number;
+    trapQRsScanned: number;
+    totalScore: number;
+    position: number;
   }>>;
 }
 
@@ -559,6 +575,87 @@ export class DatabaseStorage implements IStorage {
       
       return 0;
     });
+    
+    // Assign positions
+    return sortedResults.map((item, index) => ({
+      ...item,
+      position: index + 1
+    }));
+  }
+
+  // User scores operations
+  async addUserScore(userId: number, segmentId: number, points: number, isTrap: boolean): Promise<UserScores> {
+    const [score] = await db
+      .insert(userScores)
+      .values({
+        userId,
+        segmentId,
+        points,
+        isTrap
+      })
+      .returning();
+    
+    return score;
+  }
+
+  async getUserScores(userId: number): Promise<UserScores[]> {
+    return await db
+      .select()
+      .from(userScores)
+      .where(eq(userScores.userId, userId))
+      .orderBy(asc(userScores.scannedAt));
+  }
+
+  async getUserScoreBySegment(userId: number, segmentId: number): Promise<UserScores | undefined> {
+    const [score] = await db
+      .select()
+      .from(userScores)
+      .where(and(
+        eq(userScores.userId, userId),
+        eq(userScores.segmentId, segmentId)
+      ));
+    
+    return score;
+  }
+
+  async calculateTotalScore(userId: number): Promise<number> {
+    const scores = await this.getUserScores(userId);
+    return scores.reduce((total, score) => total + score.points, 0);
+  }
+
+  async getVenueScoreRanking(venueId: number): Promise<Array<{
+    user: User;
+    validQRsScanned: number;
+    trapQRsScanned: number;
+    totalScore: number;
+    position: number;
+  }>> {
+    const result = [];
+    
+    // Get users from specific venue
+    const venueUsers = await db
+      .select()
+      .from(users)
+      .where(eq(users.venueId, venueId));
+    
+    for (const user of venueUsers) {
+      const scores = await this.getUserScores(user.id);
+      
+      const validQRsScanned = scores.filter(s => !s.isTrap).length;
+      const trapQRsScanned = scores.filter(s => s.isTrap).length;
+      const totalScore = scores.reduce((total, score) => total + score.points, 0);
+      
+      result.push({
+        user,
+        validQRsScanned,
+        trapQRsScanned,
+        totalScore,
+        position: 0 // Will be set after sorting
+      });
+    }
+    
+    // Sort by total score (descending)
+    const sortedResults = result.sort((a, b) => b.totalScore - a.totalScore);
     
     // Assign positions
     return sortedResults.map((item, index) => ({

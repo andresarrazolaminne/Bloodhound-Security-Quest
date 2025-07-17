@@ -139,19 +139,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verificar si es un QR trampa
       if (segmentAsset.isTrap) {
-        // Otorgar puntos falsos en lugar de desbloquear segmento real
-        const trapPoints = await storage.addTrapPoints(user.id, segmentId, 1);
-        const totalTrapPoints = await storage.getTotalTrapPointsByUserId(user.id);
+        // Check if user has already scanned this trap QR
+        const existingScore = await storage.getUserScoreBySegment(user.id, segmentId);
+        
+        if (existingScore) {
+          // User has already scanned this QR, don't add/subtract points
+          return res.status(200).json({ 
+            isTrap: true,
+            alreadyScanned: true,
+            trapPoints: 0,
+            message: "Este QR ya fue escaneado anteriormente",
+            trapMessage: segmentAsset.trapMessage || null,
+            segmentId,
+            timestamp: existingScore.scannedAt
+          });
+        }
+        
+        // Add -5 points for trap QR
+        const trapScore = await storage.addUserScore(user.id, segmentId, -5, true);
+        // Also add to legacy trap points system
+        await storage.addTrapPoints(user.id, segmentId, 1);
+        
+        const totalScore = await storage.calculateTotalScore(user.id);
         
         return res.status(200).json({ 
           isTrap: true,
-          trapPoints: totalTrapPoints,
-          message: "¡Situación de riesgo reportada! +1 punto",
+          trapPoints: 5, // Show as positive number for penalty display
+          totalScore,
+          message: "¡Situación de riesgo reportada! -5 puntos",
           trapMessage: segmentAsset.trapMessage || null,
           segmentId,
-          timestamp: trapPoints.scannedAt
+          timestamp: trapScore.scannedAt
         });
       }
+      
+      // Check if user has already scanned this valid QR
+      const existingScore = await storage.getUserScoreBySegment(user.id, segmentId);
+      
+      if (existingScore) {
+        // User has already scanned this QR, don't add points but still show segment info
+        const allSegments = await storage.getSegmentsByUserId(user.id);
+        const allAssets = await storage.getAllMapSegmentAssets();
+        const validAssets = allAssets.filter(asset => !asset.isTrap);
+        const totalSegments = validAssets.length;
+        const validSegmentIds = validAssets.map(asset => asset.segmentId);
+        const unlockedSegments = allSegments.filter(s => 
+          s.unlocked && validSegmentIds.includes(s.segmentId)
+        ).length;
+        
+        return res.status(200).json({ 
+          alreadyScanned: true,
+          segment: allSegments.find(s => s.segmentId === segmentId),
+          unlockedSegments,
+          totalSegments,
+          completed: unlockedSegments === totalSegments,
+          message: "Este QR ya fue escaneado anteriormente",
+          modalContent: segmentAsset.modalContent || null,
+          segmentTitle: segmentAsset.title || null,
+          timestamp: existingScore.scannedAt
+        });
+      }
+      
+      // Add +10 points for valid QR
+      await storage.addUserScore(user.id, segmentId, 10, false);
       
       const segment = await storage.unlockSegment(user.id, segmentId);
       
@@ -887,6 +937,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(200).json({ ranking });
     } catch (error) {
       console.error("Error getting venue ranking:", error);
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  // New venue score ranking endpoint
+  apiRouter.get("/venues/:id/score-ranking", async (req, res) => {
+    try {
+      const venueId = parseInt(req.params.id);
+      if (isNaN(venueId)) {
+        return res.status(400).json({ message: "ID de sede inválido" });
+      }
+      
+      const ranking = await storage.getVenueScoreRanking(venueId);
+      return res.status(200).json({ ranking });
+    } catch (error) {
+      console.error("Error getting venue score ranking:", error);
       return res.status(500).json({ message: "Error interno del servidor" });
     }
   });

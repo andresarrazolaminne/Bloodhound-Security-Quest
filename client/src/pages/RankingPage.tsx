@@ -14,12 +14,10 @@ interface RankingUser {
     venueId: number;
     completedAt: string | null;
   };
-  completionPercentage: number;
-  totalSegments: number;
-  unlockedSegments: number;
+  validQRsScanned: number;
+  trapQRsScanned: number;
+  totalScore: number;
   position: number;
-  score: number;
-  trapPenalties: number;
 }
 
 interface Venue {
@@ -108,7 +106,7 @@ const RankingPage = () => {
   const fetchRanking = async (venueId: number) => {
     try {
       setIsLoadingRanking(true);
-      const response = await apiRequest("GET", `/api/venues/${venueId}/ranking`);
+      const response = await apiRequest("GET", `/api/venues/${venueId}/score-ranking`);
       if (response.ok) {
         const data = await response.json();
         setRanking(data.ranking);
@@ -298,40 +296,54 @@ const RankingPage = () => {
                         <div>
                           <h3 className="font-semibold text-gray-800">{participant.user.name}</h3>
                           <p className="text-sm text-gray-600">
-                            {participant.unlockedSegments} de {participant.totalSegments} segmentos
+                            QR Válidos: {participant.validQRsScanned} | QR Trampas: {participant.trapQRsScanned}
                           </p>
                           <div className="flex items-center space-x-2 text-xs text-gray-500">
-                            <span>Puntaje: {participant.score.toFixed(1)}</span>
-                            {participant.trapPenalties > 0 && (
+                            <span>Puntaje Total: {participant.totalScore} puntos</span>
+                            <span className="text-green-600">
+                              (+{participant.validQRsScanned * 10} válidos)
+                            </span>
+                            {participant.trapQRsScanned > 0 && (
                               <span className="text-red-500">
-                                (-{(participant.trapPenalties * 0.5).toFixed(1)} por trampas)
+                                (-{participant.trapQRsScanned * 5} trampas)
                               </span>
                             )}
                           </div>
                         </div>
                       </div>
                       
-                      {/* Progreso */}
+                      {/* Puntaje */}
                       <div className="flex items-center space-x-4">
                         <div className="text-right">
                           <div className="text-2xl font-bold text-gray-800">
-                            {participant.score.toFixed(1)}
+                            {participant.totalScore}
                           </div>
                           <div className="text-sm text-gray-500">
-                            {participant.completionPercentage}% completado
+                            puntos
                           </div>
-                          {participant.user.completedAt && (
-                            <Badge variant="secondary" className="bg-green-100 text-green-800">
-                              Completado
+                          {participant.totalScore > 0 && (
+                            <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                              Activo
                             </Badge>
                           )}
                         </div>
                         
-                        <div className="w-32">
-                          <Progress 
-                            value={participant.completionPercentage} 
-                            className="h-3"
-                          />
+                        <div className="text-center">
+                          <div className="text-lg font-semibold text-green-600">
+                            +{participant.validQRsScanned * 10}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Válidos
+                          </div>
+                        </div>
+                        
+                        <div className="text-center">
+                          <div className="text-lg font-semibold text-red-600">
+                            -{participant.trapQRsScanned * 5}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Trampas
+                          </div>
                         </div>
                       </div>
                     </div>

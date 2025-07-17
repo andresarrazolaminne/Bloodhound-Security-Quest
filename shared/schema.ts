@@ -185,6 +185,16 @@ export const trapPoints = pgTable("trap_points", {
   scannedAt: timestamp("scanned_at").notNull().defaultNow(),
 });
 
+// New table for user scores tracking
+export const userScores = pgTable("user_scores", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  segmentId: integer("segment_id").notNull(),
+  points: integer("points").notNull(), // +10 for valid QR, -5 for trap QR
+  isTrap: boolean("is_trap").notNull().default(false),
+  scannedAt: timestamp("scanned_at").notNull().defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   documentNumber: true,
   name: true,
@@ -223,6 +233,13 @@ export const insertTrapPointsSchema = createInsertSchema(trapPoints).pick({
   pointsAwarded: true,
 });
 
+export const insertUserScoresSchema = createInsertSchema(userScores).pick({
+  userId: true,
+  segmentId: true,
+  points: true,
+  isTrap: true,
+});
+
 export const insertVenueSchema = createInsertSchema(venues).pick({
   name: true,
   description: true,
@@ -248,3 +265,6 @@ export type MapSegmentAsset = typeof mapSegmentAssets.$inferSelect;
 
 export type InsertTrapPoints = z.infer<typeof insertTrapPointsSchema>;
 export type TrapPoints = typeof trapPoints.$inferSelect;
+
+export type InsertUserScores = z.infer<typeof insertUserScoresSchema>;
+export type UserScores = typeof userScores.$inferSelect;
