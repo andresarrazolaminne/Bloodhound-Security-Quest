@@ -182,7 +182,7 @@ const RankingPage = () => {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <img 
-              src={systemConfig.headerLogoImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png"} 
+              src={systemConfig.headerLogoImageUrl} 
               alt="Logo" 
               className="object-contain"
               style={{ height: `${systemConfig.headerLogoSize}px` }}
