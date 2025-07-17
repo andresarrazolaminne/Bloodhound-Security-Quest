@@ -2,58 +2,36 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
-// Initialize CSS custom properties with system config or defaults
+// Initialize CSS custom properties with system config ONLY
 const initializeStyles = async () => {
-  // Default fallback values
-  const defaultConfig = {
-    backgroundImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
-    backgroundSize: 'auto',
-    backgroundRepeat: 'repeat',
-    backgroundPosition: 'center',
-    gradientStartColor: '#bb2558',
-    gradientMidColor: '',
-    gradientEndColor: '#e8cf00',
-    gradientDirection: '175deg',
-    gradientType: 'linear'
-  };
-
-  let config = defaultConfig;
+  let config = {};
   
-  // Try to fetch system config synchronously
+  // Fetch system config and use ONLY database values
   try {
     const response = await fetch('/api/system-config?t=' + Date.now());
     if (response.ok) {
       const data = await response.json();
-      const systemConfig = data.config || {};
-      
-      // Merge with defaults
-      config = {
-        backgroundImageUrl: systemConfig.backgroundImageUrl || defaultConfig.backgroundImageUrl,
-        backgroundSize: systemConfig.backgroundSize || defaultConfig.backgroundSize,
-        backgroundRepeat: systemConfig.backgroundRepeat || defaultConfig.backgroundRepeat,
-        backgroundPosition: systemConfig.backgroundPosition || defaultConfig.backgroundPosition,
-        gradientStartColor: systemConfig.gradientStartColor || defaultConfig.gradientStartColor,
-        gradientMidColor: systemConfig.gradientMidColor || defaultConfig.gradientMidColor,
-        gradientEndColor: systemConfig.gradientEndColor || defaultConfig.gradientEndColor,
-        gradientDirection: systemConfig.gradientDirection || defaultConfig.gradientDirection,
-        gradientType: systemConfig.gradientType || defaultConfig.gradientType
-      };
+      config = data.config || {};
+    } else {
+      console.error('Failed to load system config - response not ok');
+      return;
     }
   } catch (error) {
-    console.warn('Failed to load system config, using defaults:', error);
+    console.error('Failed to load system config:', error);
+    return;
   }
 
-  // Apply styles to document
+  // Apply styles to document using ONLY database values
   const timestamp = Date.now();
   document.documentElement.style.setProperty('--background-image-url', config.backgroundImageUrl ? `url('${config.backgroundImageUrl}?t=${timestamp}')` : '');
-  document.documentElement.style.setProperty('--background-size', config.backgroundSize);
-  document.documentElement.style.setProperty('--background-repeat', config.backgroundRepeat);
-  document.documentElement.style.setProperty('--background-position', config.backgroundPosition);
-  document.documentElement.style.setProperty('--gradient-start-color', config.gradientStartColor);
-  document.documentElement.style.setProperty('--gradient-mid-color', config.gradientMidColor);
-  document.documentElement.style.setProperty('--gradient-end-color', config.gradientEndColor);
-  document.documentElement.style.setProperty('--gradient-direction', config.gradientDirection);
-  document.documentElement.style.setProperty('--gradient-type', config.gradientType);
+  document.documentElement.style.setProperty('--background-size', config.backgroundSize || 'auto');
+  document.documentElement.style.setProperty('--background-repeat', config.backgroundRepeat || 'repeat');
+  document.documentElement.style.setProperty('--background-position', config.backgroundPosition || 'center');
+  document.documentElement.style.setProperty('--gradient-start-color', config.gradientStartColor || '#e8e8e8');
+  document.documentElement.style.setProperty('--gradient-mid-color', config.gradientMidColor || '');
+  document.documentElement.style.setProperty('--gradient-end-color', config.gradientEndColor || '#ffffff');
+  document.documentElement.style.setProperty('--gradient-direction', config.gradientDirection || '175deg');
+  document.documentElement.style.setProperty('--gradient-type', config.gradientType || 'linear');
 };
 
 // Initialize styles before rendering

@@ -3,14 +3,14 @@
 @tailwind utilities;
 
 :root {
-  /* Default background configuration - will be overridden by main.tsx */
+  /* All background configuration is loaded from database via main.tsx */
   --background-image-url: '';
   --background-size: auto;
   --background-repeat: repeat;
   --background-position: center;
-  --gradient-start-color: #bb2558;
+  --gradient-start-color: #e8e8e8;
   --gradient-mid-color: '';
-  --gradient-end-color: #e8cf00;
+  --gradient-end-color: #ffffff;
   --gradient-direction: 175deg;
   --gradient-type: linear;
 }
