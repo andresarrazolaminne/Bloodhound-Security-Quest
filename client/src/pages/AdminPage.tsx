@@ -38,12 +38,13 @@ import {
   Clock,
   AlertCircle,
   RefreshCw,
-  BarChart
+  Users
+
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { MapSegmentAsset, Venue, InsertVenue } from "@shared/schema";
 import QRGenerator from '@/tools/QRGenerator';
-import AnalyticsTab from '@/components/AnalyticsTab';
+
 import {
   Dialog,
   DialogContent,
@@ -772,12 +773,7 @@ const AdminPage = () => {
           <TabsTrigger value="venues">Sedes</TabsTrigger>
           <TabsTrigger value="qrgenerator">Generador de QR</TabsTrigger>
           <TabsTrigger value="ranking">Ranking de Usuarios</TabsTrigger>
-          <TabsTrigger value="analytics">
-            <div className="flex items-center gap-1">
-              <BarChart className="h-4 w-4" />
-              <span>Analíticas</span>
-            </div>
-          </TabsTrigger>
+
           <TabsTrigger value="frontend">Personalización</TabsTrigger>
           <TabsTrigger value="config">Configuración</TabsTrigger>
         </TabsList>
@@ -1119,7 +1115,7 @@ const AdminPage = () => {
                             className="w-full"
                             onClick={() => fetchVenueRanking(venue.id)}
                           >
-                            <BarChart className="h-4 w-4 mr-2" />
+                            <Users className="h-4 w-4 mr-2" />
                             Ver Ranking
                           </Button>
                           
@@ -1695,19 +1691,7 @@ const AdminPage = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="analytics">
-          <Card className="w-full">
-            <CardHeader className="bg-primary text-white">
-              <CardTitle className="text-xl">Analíticas de Uso</CardTitle>
-              <CardDescription className="text-white/80">
-                Métricas y estadísticas de uso de la aplicación
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <AnalyticsTab />
-            </CardContent>
-          </Card>
-        </TabsContent>
+
 
         <TabsContent value="frontend">
           <Card className="w-full">

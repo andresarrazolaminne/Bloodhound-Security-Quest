@@ -9,7 +9,7 @@ import MapPage from "@/pages/MapPage";
 import RegistrationPage from "@/pages/RegistrationPage";
 import AdminPage from "@/pages/AdminPage";
 import AdminLoginPage from "@/pages/AdminLoginPage";
-import InformeAnaliticaPage from "@/pages/InformeAnaliticaPage";
+
 import UnlockPage from "@/pages/UnlockPage";
 import QRUnlockHandler from "@/pages/QRUnlockHandler";
 import RankingPage from "@/pages/RankingPage";
@@ -88,9 +88,7 @@ function Router() {
         <Route path="/admin">
           <AdminProtectedRoute component={AdminPage} />
         </Route>
-        <Route path="/admin/informe-analitica">
-          <AdminProtectedRoute component={InformeAnaliticaPage} />
-        </Route>
+
         <Route component={NotFound} />
       </Switch>
     </>
