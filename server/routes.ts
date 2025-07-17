@@ -733,8 +733,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
       
-      // Ordenar por puntaje total (mayor a menor)
-      enhancedUsers.sort((a, b) => b.totalScore - a.totalScore);
+      // Ordenar por múltiples criterios:
+      // 1. Puntaje total (mayor a menor)
+      // 2. Fecha de finalización (más temprano primero)
+      // 3. Menor cantidad de códigos trampa
+      enhancedUsers.sort((a, b) => {
+        // Criterio 1: Puntaje total
+        if (b.totalScore !== a.totalScore) {
+          return b.totalScore - a.totalScore;
+        }
+        
+        // Criterio 2: Fecha de finalización para usuarios completados
+        if (a.completionPercentage === 100 && b.completionPercentage === 100) {
+          if (a.user.completedAt && b.user.completedAt) {
+            return new Date(a.user.completedAt).getTime() - new Date(b.user.completedAt).getTime();
+          }
+          // Si uno no tiene fecha de finalización, el que tiene fecha va primero
+          if (a.user.completedAt && !b.user.completedAt) return -1;
+          if (!a.user.completedAt && b.user.completedAt) return 1;
+        }
+        
+        // Criterio 3: Menor cantidad de códigos trampa
+        return a.trapCodes - b.trapCodes;
+      });
       
       res.json({ users: enhancedUsers });
     } catch (error) {
