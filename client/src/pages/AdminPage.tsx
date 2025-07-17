@@ -629,7 +629,10 @@ const AdminPage = () => {
         });
       } else {
         // Actualizar asset existente
-        await apiRequest("PUT", `/api/admin/map-assets/${formData.segmentId}`, payload);
+        console.log('Updating asset with payload:', payload);
+        console.log('PUT URL:', `/api/admin/map-assets/${formData.segmentId}`);
+        const response = await apiRequest("PUT", `/api/admin/map-assets/${formData.segmentId}`, payload);
+        console.log('Update response:', response);
         toast({
           title: "Éxito",
           description: "Segmento actualizado correctamente"
@@ -640,9 +643,10 @@ const AdminPage = () => {
       fetchMapAssets();
       setDialogOpen(false);
     } catch (error) {
+      console.error('Error saving asset:', error);
       toast({
         title: "Error",
-        description: "Error al guardar el segmento",
+        description: `Error al guardar el segmento: ${error.message || 'Error desconocido'}`,
         variant: "destructive"
       });
     } finally {
