@@ -263,20 +263,27 @@ const MapPage = () => {
 
     try {
       setShowQRScanner(false);
-      
-      // Check if already unlocked
-      if (unlockedSegments.includes(segmentId)) {
-        setSuccessMessage(`¡Ya has desbloqueado este segmento (${segmentId})!`);
-        setShowSuccessModal(true);
-        return;
-      }
-      
       setIsLoading(true);
       
       // Pasar el código de seguridad (si existe) a la API para verificación
       const response = await apiUnlockSegment(currentUser.documentNumber, segmentId, securityCode);
       
-      // Update unlocked segments
+      // Handle alreadyScanned case
+      if (response.alreadyScanned) {
+        // Make sure the segment is in local state (sync issue fix)
+        if (!unlockedSegments.includes(segmentId)) {
+          addUnlockedSegment(segmentId);
+        }
+        
+        // Recargar los datos para asegurar que todo esté sincronizado
+        await loadUserData();
+        
+        setSuccessMessage(`¡Ya has desbloqueado este segmento (${segmentId})!`);
+        setShowSuccessModal(true);
+        return;
+      }
+      
+      // Update unlocked segments for new unlocks
       addUnlockedSegment(segmentId);
       
       // Recargar los datos para asegurar que todo esté sincronizado

@@ -27,6 +27,8 @@ export interface UnlockSegmentResponse {
   // Campos para modal de contenido opcional
   modalContent?: string;
   segmentTitle?: string;
+  // Campo para indicar si el segmento ya fue escaneado
+  alreadyScanned?: boolean;
 }
 
 export interface PrizeResponse {

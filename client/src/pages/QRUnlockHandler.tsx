@@ -92,6 +92,11 @@ const QRUnlockHandler = () => {
         // Guardar el usuario en localStorage para persistencia
         localStorage.setItem('currentUser', JSON.stringify(loginResponse.user));
         
+        // Actualizar segmentos desbloqueados en localStorage
+        const existingSegments = JSON.parse(localStorage.getItem('unlockedSegments') || '[]');
+        const uniqueSegments = Array.from(new Set([...existingSegments, parseInt(segmentId)]));
+        localStorage.setItem('unlockedSegments', JSON.stringify(uniqueSegments));
+        
         // Verificar si es un QR trampa
         if (unlockResponse.isTrap) {
           // QR Trampa - usar mensajes configurables
@@ -135,12 +140,7 @@ const QRUnlockHandler = () => {
           
           const formattedMessage = achievementMessage.replace('{segmentId}', segmentId);
 
-          // Actualizar segmentos desbloqueados
-          if (unlockResponse.segment) {
-            const existingSegments = JSON.parse(localStorage.getItem('unlockedSegments') || '[]');
-            const uniqueSegments = Array.from(new Set([...existingSegments, unlockResponse.segment.segmentId]));
-            localStorage.setItem('unlockedSegments', JSON.stringify(uniqueSegments));
-          }
+
 
           setResult({
             success: true,
