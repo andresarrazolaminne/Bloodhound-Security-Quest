@@ -53,9 +53,9 @@
   background-position: var(--background-position, center);
 }
 
-/* Apply gradient only when colors are available */
+/* Apply gradient when colors are available */
 .map-page-bg[data-has-gradient="true"] {
-  background-image: var(--background-image-url, none), linear-gradient(var(--gradient-direction, 175deg), var(--gradient-start-color) 0%, var(--gradient-end-color) 100%);
+  background: var(--background-image-url, none), linear-gradient(var(--gradient-direction, 175deg), var(--gradient-start-color) 0%, var(--gradient-end-color) 100%);
   background-size: var(--background-size, auto), cover;
   background-repeat: var(--background-repeat, repeat), no-repeat;
   background-position: var(--background-position, center), center;

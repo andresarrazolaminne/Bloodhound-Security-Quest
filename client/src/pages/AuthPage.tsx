@@ -242,7 +242,7 @@ const AuthPage = () => {
   // Mostrar loader mientras se cargan las configuraciones
   if (isLoadingConfig || !loginImageLoaded) {
     return (
-      <div className="flex items-center justify-center min-h-screen text-white map-page-bg" data-has-gradient="false">
+      <div className="flex items-center justify-center min-h-screen text-white" style={{ backgroundColor: '#f3f4f6' }}>
         <BrainLoader 
           text={systemConfig.loadingText || 'Cargando tu mapa...'}
           className="flex flex-col items-center"
@@ -253,12 +253,18 @@ const AuthPage = () => {
   }
   
   // Mostrar interfaz normal de login con transición suave
-  const hasGradient = systemConfig.gradientStartColor && systemConfig.gradientEndColor;
+  const hasGradient = Boolean(systemConfig.gradientStartColor && systemConfig.gradientEndColor);
+  const backgroundStyle = hasGradient ? {
+    background: `${systemConfig.backgroundImageUrl ? `url('${systemConfig.backgroundImageUrl}'), ` : ''}linear-gradient(${systemConfig.gradientDirection}, ${systemConfig.gradientStartColor} 0%, ${systemConfig.gradientEndColor} 100%)`,
+    backgroundSize: systemConfig.backgroundImageUrl ? `${systemConfig.backgroundSize}, cover` : 'cover',
+    backgroundRepeat: systemConfig.backgroundImageUrl ? `${systemConfig.backgroundRepeat}, no-repeat` : 'no-repeat',
+    backgroundPosition: systemConfig.backgroundImageUrl ? `${systemConfig.backgroundPosition}, center` : 'center'
+  } : {};
   
   return (
     <div 
-      className={`flex flex-col min-h-screen text-white map-page-bg transition-opacity duration-300 ${isLoadingConfig ? 'opacity-0' : 'opacity-100'}`}
-      data-has-gradient={hasGradient ? 'true' : 'false'}>
+      className={`flex flex-col min-h-screen text-white transition-opacity duration-300 ${isLoadingConfig ? 'opacity-0' : 'opacity-100'}`}
+      style={Object.keys(backgroundStyle).length > 0 ? backgroundStyle : { backgroundColor: '#f3f4f6' }}>
       
       {/* Header */}
       <header 

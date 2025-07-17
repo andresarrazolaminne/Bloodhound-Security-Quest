@@ -147,10 +147,8 @@ const RankingPage = () => {
   const selectedVenue = venues.find(v => v.id === selectedVenueId);
 
   if (isLoading) {
-    const hasGradient = systemConfig.gradientStartColor && systemConfig.gradientEndColor;
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4 map-page-bg"
-           data-has-gradient={hasGradient ? 'true' : 'false'}>
+      <div className="flex flex-col items-center justify-center min-h-screen p-4" style={{ backgroundColor: '#f3f4f6' }}>
         <Card className="w-full max-w-md bg-white/90 backdrop-blur-sm shadow-xl">
           <CardContent className="pt-6 flex flex-col items-center justify-center py-12">
             <BrainLoader size="large" text="Cargando ranking..." />
@@ -160,10 +158,16 @@ const RankingPage = () => {
     );
   }
 
-  const hasGradient = systemConfig.gradientStartColor && systemConfig.gradientEndColor;
+  const hasGradient = Boolean(systemConfig.gradientStartColor && systemConfig.gradientEndColor);
+  const backgroundStyle = hasGradient ? {
+    background: `${systemConfig.backgroundImageUrl ? `url('${systemConfig.backgroundImageUrl}'), ` : ''}linear-gradient(${systemConfig.gradientDirection}, ${systemConfig.gradientStartColor} 0%, ${systemConfig.gradientEndColor} 100%)`,
+    backgroundSize: systemConfig.backgroundImageUrl ? `${systemConfig.backgroundSize}, cover` : 'cover',
+    backgroundRepeat: systemConfig.backgroundImageUrl ? `${systemConfig.backgroundRepeat}, no-repeat` : 'no-repeat',
+    backgroundPosition: systemConfig.backgroundImageUrl ? `${systemConfig.backgroundPosition}, center` : 'center'
+  } : {};
   
   return (
-    <div className="min-h-screen map-page-bg" data-has-gradient={hasGradient ? 'true' : 'false'}>
+    <div className="min-h-screen" style={Object.keys(backgroundStyle).length > 0 ? backgroundStyle : { backgroundColor: '#f3f4f6' }}>
       
       {/* Header */}
       <header 
