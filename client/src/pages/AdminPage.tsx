@@ -3173,6 +3173,218 @@ const AdminPage = () => {
       </DialogContent>
     </Dialog>
     
+    {/* Dialog para crear/editar segmentos */}
+    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {dialogMode === "create" ? "Crear Nuevo Segmento" : "Editar Segmento"}
+          </DialogTitle>
+          <DialogDescription>
+            {dialogMode === "create" 
+              ? "Ingresa los datos para crear un nuevo segmento del mapa" 
+              : "Modifica los datos del segmento seleccionado"}
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="segment-id" className="text-sm font-medium">
+              ID del Segmento*
+            </label>
+            <Input
+              id="segment-id"
+              type="number"
+              placeholder="1"
+              value={formData.segmentId}
+              onChange={(e) => setFormData({
+                ...formData,
+                segmentId: parseInt(e.target.value) || 1
+              })}
+              disabled={dialogMode === "edit"}
+              min="1"
+              required
+            />
+            {dialogMode === "edit" && (
+              <p className="text-xs text-gray-500">El ID del segmento no se puede modificar</p>
+            )}
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="segment-title" className="text-sm font-medium">
+              Título del Segmento*
+            </label>
+            <Input
+              id="segment-title"
+              placeholder="Título del segmento"
+              value={formData.title}
+              onChange={(e) => setFormData({
+                ...formData,
+                title: e.target.value
+              })}
+              required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="segment-description" className="text-sm font-medium">
+              Descripción
+            </label>
+            <Textarea
+              id="segment-description"
+              placeholder="Descripción del segmento"
+              value={formData.description}
+              onChange={(e) => setFormData({
+                ...formData,
+                description: e.target.value
+              })}
+              rows={3}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="segment-image" className="text-sm font-medium">
+              URL de la Imagen*
+            </label>
+            <Input
+              id="segment-image"
+              placeholder="https://example.com/image.jpg"
+              value={formData.imageUrl}
+              onChange={(e) => setFormData({
+                ...formData,
+                imageUrl: e.target.value
+              })}
+              required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="segment-redirect" className="text-sm font-medium">
+              URL de Redirección
+            </label>
+            <Input
+              id="segment-redirect"
+              placeholder="https://example.com/redirect"
+              value={formData.redirectUrl}
+              onChange={(e) => setFormData({
+                ...formData,
+                redirectUrl: e.target.value
+              })}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="segment-security-code" className="text-sm font-medium">
+              Código de Seguridad
+            </label>
+            <div className="flex gap-2">
+              <Input
+                id="segment-security-code"
+                placeholder="CODIGO"
+                value={formData.securityCode}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  securityCode: e.target.value.toUpperCase()
+                })}
+                maxLength={10}
+              />
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="generate-new-code"
+                  checked={formData.generateNewCode}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    generateNewCode: e.target.checked
+                  })}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="generate-new-code" className="text-sm font-medium text-gray-700">
+                  Generar Nuevo
+                </label>
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="segment-is-trap"
+                checked={formData.isTrap}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  isTrap: e.target.checked
+                })}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <label htmlFor="segment-is-trap" className="text-sm font-medium text-gray-700">
+                🎯 Este es un QR de Trampa
+              </label>
+            </div>
+          </div>
+          
+          {formData.isTrap && (
+            <div className="space-y-2">
+              <label htmlFor="segment-trap-message" className="text-sm font-medium">
+                Mensaje de Trampa
+              </label>
+              <Textarea
+                id="segment-trap-message"
+                placeholder="Mensaje personalizado para cuando se escanee esta trampa"
+                value={formData.trapMessage}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  trapMessage: e.target.value
+                })}
+                rows={3}
+              />
+            </div>
+          )}
+          
+          <div className="space-y-2">
+            <label htmlFor="segment-modal-content" className="text-sm font-medium">
+              Contenido del Modal (HTML)
+            </label>
+            <Textarea
+              id="segment-modal-content"
+              placeholder="<p>Contenido HTML para mostrar en el modal</p>"
+              value={formData.modalContent}
+              onChange={(e) => setFormData({
+                ...formData,
+                modalContent: e.target.value
+              })}
+              rows={4}
+            />
+          </div>
+        </div>
+        
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setDialogOpen(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSaveAsset}
+            disabled={loadingAssets || !formData.title.trim() || !formData.imageUrl.trim()}
+          >
+            {loadingAssets ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {dialogMode === "create" ? "Creando..." : "Actualizando..."}
+              </>
+            ) : (
+              dialogMode === "create" ? "Crear Segmento" : "Actualizar Segmento"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    
     </div>
   );
 };
