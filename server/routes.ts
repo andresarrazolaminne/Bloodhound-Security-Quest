@@ -397,22 +397,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Obtener la configuración para verificar el tamaño máximo del mapa
-      const config = await storage.getSystemConfig();
-      let maxSegments = 9; // Valor predeterminado (3x3)
-      
-      if (config && config.mapGridSize) {
-        // Calcular el total de segmentos basados en el tamaño de la cuadrícula
-        const [columns, rows] = config.mapGridSize.split('x').map(Number);
-        maxSegments = columns * rows;
-      }
-      
-      if (segmentId > maxSegments) {
-        return res.status(400).json({ 
-          message: `ID de segmento inválido, debe estar entre 1 y ${maxSegments} según la configuración actual`
-        });
-      }
-      
+      // Verificar si el segmento existe en la base de datos
+      // En lugar de limitar por tamaño de cuadrícula, permitimos cualquier segmento existente
       const asset = await storage.getMapSegmentAsset(segmentId);
       
       if (!asset) {
