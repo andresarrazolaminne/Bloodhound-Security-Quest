@@ -701,7 +701,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Obtener todos los usuarios con su progreso
       const users = await storage.getAllUsersWithProgress();
       
-      res.json({ users });
+      // Enriquecer con datos de scoring, traps y sedes
+      const enhancedUsers = await Promise.all(
+        users.map(async (userProgress) => {
+          // Obtener puntos trampa
+          const trapPoints = await storage.getTrapPointsByUserId(userProgress.user.id);
+          const totalTrapPoints = trapPoints.length;
+          
+          // Obtener segmentos desbloqueados (códigos correctos)
+          const unlockedSegments = userProgress.segments.filter(s => s.unlocked);
+          const correctCodes = unlockedSegments.length;
+          
+          // Calcular puntaje total (10 puntos por código correcto - 5 puntos por trampa)
+          const totalScore = (correctCodes * 10) - (totalTrapPoints * 5);
+          
+          // Obtener información de la sede
+          const venue = userProgress.user.venueId ? 
+            await storage.getVenueById(userProgress.user.venueId) : null;
+          
+          return {
+            ...userProgress,
+            totalScore,
+            correctCodes,
+            trapCodes: totalTrapPoints,
+            trapPoints,
+            venue: venue ? {
+              id: venue.id,
+              name: venue.name
+            } : null
+          };
+        })
+      );
+      
+      // Ordenar por puntaje total (mayor a menor)
+      enhancedUsers.sort((a, b) => b.totalScore - a.totalScore);
+      
+      res.json({ users: enhancedUsers });
     } catch (error) {
       console.error("Error getting user stats:", error);
       res.status(500).json({ message: "Error interno del servidor" });

@@ -159,15 +159,21 @@ const AdminPage = () => {
   
   // Ranking de usuarios
   const [userRanking, setUserRanking] = useState<Array<{
-    user: { id: number; documentNumber: string; name: string; completedAt: string | null };
+    user: { id: number; documentNumber: string; name: string; completedAt: string | null; venueId: number | null };
     segments: Array<{ id: number; userId: number; segmentId: number; unlocked: boolean }>;
     totalSegments: number;
     unlockedSegments: number;
     completionPercentage: number;
     prize: { id: number; userId: number; redeemed: boolean; redemptionCode: string | null; redeemedAt: string | null } | null;
+    totalScore: number;
+    correctCodes: number;
+    trapCodes: number;
+    trapPoints: Array<{ id: number; userId: number; segmentId: number; pointsAwarded: number; scannedAt: string }>;
+    venue: { id: number; name: string } | null;
   }>>([]);
   const [loadingRanking, setLoadingRanking] = useState(false);
   const [documentFilter, setDocumentFilter] = useState("");
+  const [venueFilter, setVenueFilter] = useState("");
   const [filteredRanking, setFilteredRanking] = useState<typeof userRanking>([]);
   const [resettingData, setResettingData] = useState(false);
   const [formData, setFormData] = useState<MapAssetFormData>({
@@ -405,17 +411,25 @@ const AdminPage = () => {
   
   // Filtrar los usuarios cuando cambia el filtro o los datos
   useEffect(() => {
-    if (documentFilter.trim() === '') {
-      setFilteredRanking(userRanking);
-    } else {
-      setFilteredRanking(
-        userRanking.filter(item => 
-          item.user.documentNumber.toLowerCase().includes(documentFilter.toLowerCase()) ||
-          item.user.name.toLowerCase().includes(documentFilter.toLowerCase())
-        )
+    let filtered = userRanking;
+    
+    // Filtrar por documento/nombre
+    if (documentFilter.trim() !== '') {
+      filtered = filtered.filter(item => 
+        item.user.documentNumber.toLowerCase().includes(documentFilter.toLowerCase()) ||
+        item.user.name.toLowerCase().includes(documentFilter.toLowerCase())
       );
     }
-  }, [userRanking, documentFilter]);
+    
+    // Filtrar por sede
+    if (venueFilter !== '') {
+      filtered = filtered.filter(item => 
+        item.venue && item.venue.id.toString() === venueFilter
+      );
+    }
+    
+    setFilteredRanking(filtered);
+  }, [userRanking, documentFilter, venueFilter]);
 
   // Función para cargar los assets de segmentos del mapa
   const fetchMapAssets = async () => {
@@ -1570,13 +1584,25 @@ const AdminPage = () => {
             </CardHeader>
 
             <CardContent className="pt-6">
-              <div className="mb-4">
+              <div className="mb-4 flex gap-4">
                 <Input
                   placeholder="Filtrar por Cédula o Nombre"
                   value={documentFilter}
                   onChange={(e) => setDocumentFilter(e.target.value)}
                   className="max-w-sm"
                 />
+                <select
+                  value={venueFilter}
+                  onChange={(e) => setVenueFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="">Todas las sedes</option>
+                  {venues.map(venue => (
+                    <option key={venue.id} value={venue.id.toString()}>
+                      {venue.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               
               <div className="rounded-md border">
@@ -1586,23 +1612,24 @@ const AdminPage = () => {
                       <TableHead className="w-10">#</TableHead>
                       <TableHead className="w-40">Documento</TableHead>
                       <TableHead>Nombre</TableHead>
+                      <TableHead className="w-32 text-center">Sede</TableHead>
+                      <TableHead className="w-32 text-center">Puntaje</TableHead>
+                      <TableHead className="w-32 text-center">Códigos Correctos</TableHead>
+                      <TableHead className="w-32 text-center">Códigos Trampa</TableHead>
                       <TableHead className="w-32 text-center">Progreso</TableHead>
-                      <TableHead className="w-40 text-center">Fecha Logro</TableHead>
-                      <TableHead className="w-32 text-center">Premio</TableHead>
-                      <TableHead className="w-32 text-center">Segmentos</TableHead>
                       <TableHead className="w-32 text-center">Estado</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {loadingRanking ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-10">
+                        <TableCell colSpan={9} className="text-center py-10">
                           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
                         </TableCell>
                       </TableRow>
                     ) : filteredRanking.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-6 text-gray-500">
+                        <TableCell colSpan={9} className="text-center py-6 text-gray-500">
                           No hay usuarios registrados o que coincidan con el filtro
                         </TableCell>
                       </TableRow>
@@ -1613,6 +1640,37 @@ const AdminPage = () => {
                           <TableCell>{item.user.documentNumber}</TableCell>
                           <TableCell>{item.user.name}</TableCell>
                           <TableCell className="text-center">
+                            {item.venue ? (
+                              <Badge variant="outline" className="text-xs">
+                                {item.venue.name}
+                              </Badge>
+                            ) : (
+                              <span className="text-gray-400 text-xs">Sin sede</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center">
+                              <Badge 
+                                variant={item.totalScore >= 50 ? "success" : item.totalScore >= 25 ? "secondary" : "outline"}
+                                className="font-bold"
+                              >
+                                {item.totalScore} pts
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="success" className="gap-1">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              {item.correctCodes}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="destructive" className="gap-1">
+                              <AlertCircle className="h-3.5 w-3.5" />
+                              {item.trapCodes}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
                             <div className="flex items-center justify-center">
                               <Progress 
                                 value={item.completionPercentage} 
@@ -1622,44 +1680,6 @@ const AdminPage = () => {
                                 {Math.round(item.completionPercentage)}%
                               </span>
                             </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {item.user.completedAt ? (
-                              <span className="text-sm">
-                                {new Date(item.user.completedAt).toLocaleString('es-ES', {
-                                  year: 'numeric',
-                                  month: '2-digit',
-                                  day: '2-digit',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </span>
-                            ) : (
-                              <span className="text-sm text-gray-400">No completado</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {item.completionPercentage === 100 ? (
-                              item.prize && item.prize.redeemed ? (
-                                <Badge variant="success" className="gap-1">
-                                  <CheckCircle2 className="h-3.5 w-3.5" />
-                                  Reclamado
-                                </Badge>
-                              ) : (
-                                <Badge variant="secondary" className="gap-1">
-                                  <Clock className="h-3.5 w-3.5" />
-                                  Pendiente
-                                </Badge>
-                              )
-                            ) : (
-                              <Badge variant="outline" className="gap-1">
-                                <AlertCircle className="h-3.5 w-3.5" />
-                                No disponible
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {item.unlockedSegments}/{item.totalSegments}
                           </TableCell>
                           <TableCell>
                             <div className="flex justify-center">
