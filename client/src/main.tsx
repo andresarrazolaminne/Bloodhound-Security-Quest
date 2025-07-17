@@ -21,15 +21,15 @@ const initializeStyles = async () => {
     return;
   }
 
-  // Apply styles to document using ONLY database values
+  // Apply styles to document using ONLY database values - no fallbacks
   const timestamp = Date.now();
   document.documentElement.style.setProperty('--background-image-url', config.backgroundImageUrl ? `url('${config.backgroundImageUrl}?t=${timestamp}')` : '');
   document.documentElement.style.setProperty('--background-size', config.backgroundSize || 'auto');
   document.documentElement.style.setProperty('--background-repeat', config.backgroundRepeat || 'repeat');
   document.documentElement.style.setProperty('--background-position', config.backgroundPosition || 'center');
-  document.documentElement.style.setProperty('--gradient-start-color', config.gradientStartColor || '#e8e8e8');
+  document.documentElement.style.setProperty('--gradient-start-color', config.gradientStartColor || '');
   document.documentElement.style.setProperty('--gradient-mid-color', config.gradientMidColor || '');
-  document.documentElement.style.setProperty('--gradient-end-color', config.gradientEndColor || '#ffffff');
+  document.documentElement.style.setProperty('--gradient-end-color', config.gradientEndColor || '');
   document.documentElement.style.setProperty('--gradient-direction', config.gradientDirection || '175deg');
   document.documentElement.style.setProperty('--gradient-type', config.gradientType || 'linear');
 };

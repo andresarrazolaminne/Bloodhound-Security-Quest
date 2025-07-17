@@ -24,23 +24,23 @@ const RegistrationPage = () => {
   const redirectUrl = urlParams.get('redirect');
   const [activeVenues, setActiveVenues] = useState<Array<{id: number, name: string, location?: string}>>([]);
   
-  // System configuration for consistent styling
+  // System configuration for consistent styling - no hardcoded defaults
   const [systemConfig, setSystemConfig] = useState({
-    loginTitle: 'Registro',
-    loginSubtitle: 'Usuario Nuevo',
-    loginWelcomeText: 'Completa tu registro para acceder al reto',
-    loginButtonText: 'Crear mi cuenta',
-    loginDocumentLabel: 'Número de documento',
-    loginNameLabel: 'Nombre completo',
-    backgroundImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
-    gradientStartColor: '#bb2558',
-    gradientEndColor: '#e8cf00',
-    loginLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
-    registrationImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
-    headerLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
+    loginTitle: '',
+    loginSubtitle: '',
+    loginWelcomeText: '',
+    loginButtonText: '',
+    loginDocumentLabel: '',
+    loginNameLabel: '',
+    backgroundImageUrl: '',
+    gradientStartColor: '',
+    gradientEndColor: '',
+    loginLogoImageUrl: '',
+    registrationImageUrl: '',
+    headerLogoImageUrl: '',
     headerLogoSize: 32,
-    headerBackgroundColor: '#3b82f6',
-    headerTextColor: '#ffffff'
+    headerBackgroundColor: '',
+    headerTextColor: ''
   });
 
   // Load active venues for dropdown
@@ -68,54 +68,75 @@ const RegistrationPage = () => {
           const data = await response.json();
           const config = data.config || {};
           
-          // Update CSS custom properties for consistent styling
-          const timestamp = Date.now();
-          document.documentElement.style.setProperty('--background-image-url', config.backgroundImageUrl ? `url('${config.backgroundImageUrl}?t=${timestamp}')` : '');
-          document.documentElement.style.setProperty('--gradient-start-color', config.gradientStartColor || '#bb2558');
-          document.documentElement.style.setProperty('--gradient-end-color', config.gradientEndColor || '#e8cf00');
+          // Use only database values - no hardcoded defaults
+          const loginLogoUrl = config.loginLogoImageUrl;
           
-          const loginLogoUrl = config.loginLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png';
-          
-          // Preload the login logo image before showing the page
-          const img = new Image();
-          img.onload = () => {
+          if (loginLogoUrl) {
+            // Preload the login logo image before showing the page
+            const img = new Image();
+            img.onload = () => {
+              setSystemConfig({
+                loginTitle: config.loginTitle,
+                loginSubtitle: config.loginSubtitle,
+                loginWelcomeText: config.loginWelcomeText,
+                loginButtonText: 'Crear mi cuenta',
+                loginDocumentLabel: config.loginDocumentLabel,
+                loginNameLabel: config.loginNameLabel,
+                backgroundImageUrl: config.backgroundImageUrl,
+                gradientStartColor: config.gradientStartColor,
+                gradientEndColor: config.gradientEndColor,
+                loginLogoImageUrl: loginLogoUrl,
+                registrationImageUrl: config.registrationImageUrl,
+                headerLogoImageUrl: config.headerLogoImageUrl,
+                headerLogoSize: config.headerLogoSize,
+                headerBackgroundColor: config.headerBackgroundColor,
+                headerTextColor: config.headerTextColor
+              });
+              setIsLoadingConfig(false);
+            };
+            img.onerror = () => {
+              // If image fails to load, use config without image
+              setSystemConfig({
+                loginTitle: config.loginTitle,
+                loginSubtitle: config.loginSubtitle,
+                loginWelcomeText: config.loginWelcomeText,
+                loginButtonText: 'Crear mi cuenta',
+                loginDocumentLabel: config.loginDocumentLabel,
+                loginNameLabel: config.loginNameLabel,
+                backgroundImageUrl: config.backgroundImageUrl,
+                gradientStartColor: config.gradientStartColor,
+                gradientEndColor: config.gradientEndColor,
+                loginLogoImageUrl: '',
+                registrationImageUrl: config.registrationImageUrl,
+                headerLogoImageUrl: config.headerLogoImageUrl,
+                headerLogoSize: config.headerLogoSize,
+                headerBackgroundColor: config.headerBackgroundColor,
+                headerTextColor: config.headerTextColor
+              });
+              setIsLoadingConfig(false);
+            };
+            img.src = loginLogoUrl;
+          } else {
+            // No image configured, use config without image
             setSystemConfig({
-              loginTitle: config.loginTitle || 'Registro',
-              loginSubtitle: config.loginSubtitle || 'Usuario Nuevo',
-              loginWelcomeText: config.loginWelcomeText || 'Completa tu registro para acceder al reto',
+              loginTitle: config.loginTitle,
+              loginSubtitle: config.loginSubtitle,
+              loginWelcomeText: config.loginWelcomeText,
               loginButtonText: 'Crear mi cuenta',
-              loginDocumentLabel: config.loginDocumentLabel || 'Número de documento',
-              loginNameLabel: config.loginNameLabel || 'Nombre completo',
-              backgroundImageUrl: config.backgroundImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
-              gradientStartColor: config.gradientStartColor || '#bb2558',
-              gradientEndColor: config.gradientEndColor || '#e8cf00',
-              loginLogoImageUrl: loginLogoUrl,
-              registrationImageUrl: config.registrationImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
-              headerLogoImageUrl: config.headerLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
-              headerLogoSize: config.headerLogoSize || 32,
-              headerBackgroundColor: config.headerBackgroundColor || '#3b82f6',
-              headerTextColor: config.headerTextColor || '#ffffff'
+              loginDocumentLabel: config.loginDocumentLabel,
+              loginNameLabel: config.loginNameLabel,
+              backgroundImageUrl: config.backgroundImageUrl,
+              gradientStartColor: config.gradientStartColor,
+              gradientEndColor: config.gradientEndColor,
+              loginLogoImageUrl: '',
+              registrationImageUrl: config.registrationImageUrl,
+              headerLogoImageUrl: config.headerLogoImageUrl,
+              headerLogoSize: config.headerLogoSize,
+              headerBackgroundColor: config.headerBackgroundColor,
+              headerTextColor: config.headerTextColor
             });
             setIsLoadingConfig(false);
-          };
-          img.onerror = () => {
-            // Fallback if image fails to load
-            setSystemConfig({
-              loginTitle: config.loginTitle || 'Registro',
-              loginSubtitle: config.loginSubtitle || 'Usuario Nuevo', 
-              loginWelcomeText: config.loginWelcomeText || 'Completa tu registro para acceder al reto',
-              loginButtonText: 'Crear mi cuenta',
-              loginDocumentLabel: config.loginDocumentLabel || 'Número de documento',
-              loginNameLabel: config.loginNameLabel || 'Nombre completo',
-              backgroundImageUrl: config.backgroundImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
-              gradientStartColor: config.gradientStartColor || '#bb2558',
-              gradientEndColor: config.gradientEndColor || '#e8cf00',
-              loginLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
-              registrationImageUrl: config.registrationImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png'
-            } as any);
-            setIsLoadingConfig(false);
-          };
-          img.src = loginLogoUrl;
+          }
         } else {
           setIsLoadingConfig(false);
         }

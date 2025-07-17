@@ -27,32 +27,39 @@ const BrainLoader = ({ className, size = "medium", text }: BrainLoaderProps) => 
         if (response.ok) {
           const data = await response.json();
           const config = data.config || {};
-          const imageUrl = config.preloadImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png";
+          const imageUrl = config.preloadImageUrl;
           
-          // Preload the image before setting it
-          const img = new Image();
-          img.onload = () => {
-            setPreloadImageUrl(imageUrl);
+          if (imageUrl) {
+            // Preload the image before setting it
+            const img = new Image();
+            img.onload = () => {
+              setPreloadImageUrl(imageUrl);
+              setImageLoaded(true);
+              setIsVisible(true);
+            };
+            img.onerror = () => {
+              // If image fails to load, don't show any image
+              setPreloadImageUrl(null);
+              setImageLoaded(true);
+              setIsVisible(true);
+            };
+            img.src = imageUrl;
+          } else {
+            // No image configured, don't show any image
+            setPreloadImageUrl(null);
             setImageLoaded(true);
             setIsVisible(true);
-          };
-          img.onerror = () => {
-            // Fallback to default image if the configured one fails
-            setPreloadImageUrl("https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png");
-            setImageLoaded(true);
-            setIsVisible(true);
-          };
-          img.src = imageUrl;
+          }
         } else {
-          // Fallback if API fails
-          setPreloadImageUrl("https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png");
+          // API failed, don't show any image
+          setPreloadImageUrl(null);
           setImageLoaded(true);
           setIsVisible(true);
         }
       } catch (error) {
         console.error('Error loading preload image configuration:', error);
-        // Fallback if everything fails
-        setPreloadImageUrl("https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png");
+        // Don't show any image if everything fails
+        setPreloadImageUrl(null);
         setImageLoaded(true);
         setIsVisible(true);
       }
@@ -74,8 +81,8 @@ const BrainLoader = ({ className, size = "medium", text }: BrainLoaderProps) => 
     };
   }, []);
   
-  // Don't render anything until the image is loaded and URL is ready
-  if (!imageLoaded || !preloadImageUrl) {
+  // Don't render anything until the image is loaded
+  if (!imageLoaded) {
     return (
       <div className={cn(
         "flex flex-col items-center justify-center",
@@ -87,6 +94,11 @@ const BrainLoader = ({ className, size = "medium", text }: BrainLoaderProps) => 
         </div>
       </div>
     );
+  }
+
+  // If no image is configured, don't show anything
+  if (!preloadImageUrl) {
+    return null;
   }
 
   return (

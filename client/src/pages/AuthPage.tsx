@@ -17,24 +17,24 @@ const AuthPage = () => {
   const urlParams = new URLSearchParams(window.location.search);
   const redirectUrl = urlParams.get('redirect');
   
-  // System configuration for login page customization
+  // System configuration for login page customization - no defaults
   const [systemConfig, setSystemConfig] = useState({
-    loginTitle: 'Lanzamiento',
-    loginSubtitle: '2025',
-    loginWelcomeText: 'Bienvenido al reto de identificación de riesgos',
-    loginButtonText: 'Ingresar',
-    loginDocumentLabel: 'Número de documento',
-    loginNameLabel: 'Nombre completo',
-    backgroundImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
-    gradientStartColor: '#bb2558',
-    gradientEndColor: '#e8cf00',
-    loginLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
-    preloadImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
-    headerLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
+    loginTitle: '',
+    loginSubtitle: '',
+    loginWelcomeText: '',
+    loginButtonText: '',
+    loginDocumentLabel: '',
+    loginNameLabel: '',
+    backgroundImageUrl: '',
+    gradientStartColor: '',
+    gradientEndColor: '',
+    loginLogoImageUrl: '',
+    preloadImageUrl: '',
+    headerLogoImageUrl: '',
     headerLogoSize: 32,
-    headerBackgroundColor: '#3b82f6',
-    headerTextColor: '#ffffff',
-    loadingText: 'Cargando tu mapa...'
+    headerBackgroundColor: '',
+    headerTextColor: '',
+    loadingText: ''
   });
   
   const [documentNumber, setDocumentNumber] = useState('');
@@ -53,8 +53,8 @@ const AuthPage = () => {
         const data = await response.json();
         const config = data.config;
         
-        // Determine which image to use for login
-        const loginLogoUrl = config.loginLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png';
+        // Use only database values - no fallbacks
+        const loginLogoUrl = config.loginLogoImageUrl;
         
         if (loginLogoUrl) {
           // Preload the login logo image before setting the state
@@ -62,50 +62,70 @@ const AuthPage = () => {
           img.onload = () => {
             setLoginImageLoaded(true);
             setSystemConfig({
-              loginTitle: config.loginTitle || 'Lanzamiento',
-              loginSubtitle: config.loginSubtitle || '2025',
-              loginWelcomeText: config.loginWelcomeText || 'Bienvenido al reto de identificación de riesgos',
-              loginButtonText: config.loginButtonText || 'Ingresar',
-              loginDocumentLabel: config.loginDocumentLabel || 'Número de documento',
-              loginNameLabel: config.loginNameLabel || 'Nombre completo',
-              backgroundImageUrl: config.backgroundImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
-              gradientStartColor: config.gradientStartColor || '#bb2558',
-              gradientEndColor: config.gradientEndColor || '#e8cf00',
+              loginTitle: config.loginTitle,
+              loginSubtitle: config.loginSubtitle,
+              loginWelcomeText: config.loginWelcomeText,
+              loginButtonText: config.loginButtonText,
+              loginDocumentLabel: config.loginDocumentLabel,
+              loginNameLabel: config.loginNameLabel,
+              backgroundImageUrl: config.backgroundImageUrl,
+              gradientStartColor: config.gradientStartColor,
+              gradientEndColor: config.gradientEndColor,
               loginLogoImageUrl: loginLogoUrl,
-              preloadImageUrl: config.preloadImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
-              headerLogoImageUrl: config.headerLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
-              headerLogoSize: config.headerLogoSize || 32,
-              headerBackgroundColor: config.headerBackgroundColor || '#3b82f6',
-              headerTextColor: config.headerTextColor || '#ffffff',
-              loadingText: config.loadingText || 'Cargando tu mapa...'
+              preloadImageUrl: config.preloadImageUrl,
+              headerLogoImageUrl: config.headerLogoImageUrl,
+              headerLogoSize: config.headerLogoSize,
+              headerBackgroundColor: config.headerBackgroundColor,
+              headerTextColor: config.headerTextColor,
+              loadingText: config.loadingText
             });
           };
           img.onerror = () => {
-            // Fallback to default image if loading fails
+            // If image fails to load, use empty config
             setLoginImageLoaded(true);
             setSystemConfig({
-              loginTitle: config.loginTitle || 'Lanzamiento',
-              loginSubtitle: config.loginSubtitle || '2025',
-              loginWelcomeText: config.loginWelcomeText || 'Bienvenido al reto de identificación de riesgos',
-              loginButtonText: config.loginButtonText || 'Ingresar',
-              loginDocumentLabel: config.loginDocumentLabel || 'Número de documento',
-              loginNameLabel: config.loginNameLabel || 'Nombre completo',
-              backgroundImageUrl: config.backgroundImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
-              gradientStartColor: config.gradientStartColor || '#bb2558',
-              gradientEndColor: config.gradientEndColor || '#e8cf00',
-              loginLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
-              preloadImageUrl: config.preloadImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
-              headerLogoImageUrl: config.headerLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
-              headerLogoSize: config.headerLogoSize || 32,
-              headerBackgroundColor: config.headerBackgroundColor || '#3b82f6',
-              headerTextColor: config.headerTextColor || '#ffffff',
-              loadingText: config.loadingText || 'Cargando tu mapa...'
+              loginTitle: config.loginTitle,
+              loginSubtitle: config.loginSubtitle,
+              loginWelcomeText: config.loginWelcomeText,
+              loginButtonText: config.loginButtonText,
+              loginDocumentLabel: config.loginDocumentLabel,
+              loginNameLabel: config.loginNameLabel,
+              backgroundImageUrl: config.backgroundImageUrl,
+              gradientStartColor: config.gradientStartColor,
+              gradientEndColor: config.gradientEndColor,
+              loginLogoImageUrl: '', // No image if failed to load
+              preloadImageUrl: config.preloadImageUrl,
+              headerLogoImageUrl: config.headerLogoImageUrl,
+              headerLogoSize: config.headerLogoSize,
+              headerBackgroundColor: config.headerBackgroundColor,
+              headerTextColor: config.headerTextColor,
+              loadingText: config.loadingText
             });
           };
           img.src = loginLogoUrl;
+        } else {
+          // No image configured, use database config without image
+          setLoginImageLoaded(true);
+          setSystemConfig({
+            loginTitle: config.loginTitle,
+            loginSubtitle: config.loginSubtitle,
+            loginWelcomeText: config.loginWelcomeText,
+            loginButtonText: config.loginButtonText,
+            loginDocumentLabel: config.loginDocumentLabel,
+            loginNameLabel: config.loginNameLabel,
+            backgroundImageUrl: config.backgroundImageUrl,
+            gradientStartColor: config.gradientStartColor,
+            gradientEndColor: config.gradientEndColor,
+            loginLogoImageUrl: '',
+            preloadImageUrl: config.preloadImageUrl,
+            headerLogoImageUrl: config.headerLogoImageUrl,
+            headerLogoSize: config.headerLogoSize,
+            headerBackgroundColor: config.headerBackgroundColor,
+            headerTextColor: config.headerTextColor,
+            loadingText: config.loadingText
+          });
+          setIsLoadingConfig(false);
         }
-        
-        setIsLoadingConfig(false);
       } catch (error) {
         console.error('Error loading system config:', error);
         setIsLoadingConfig(false);

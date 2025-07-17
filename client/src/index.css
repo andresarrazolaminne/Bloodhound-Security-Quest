@@ -3,36 +3,36 @@
 @tailwind utilities;
 
 :root {
-  /* All background configuration is loaded from database via main.tsx */
+  /* All background configuration is loaded from database via main.tsx - no defaults */
   --background-image-url: '';
   --background-size: auto;
   --background-repeat: repeat;
   --background-position: center;
-  --gradient-start-color: #e8e8e8;
+  --gradient-start-color: '';
   --gradient-mid-color: '';
-  --gradient-end-color: #ffffff;
+  --gradient-end-color: '';
   --gradient-direction: 175deg;
   --gradient-type: linear;
 }
 
-/* Additional CSS variables for system configuration */
+/* Additional CSS variables for system configuration - no hardcoded values */
 :root {
-  --primary-color: #bb2558;
-  --secondary-color: #e8cf00;
-  --app-title: 'QR Code Quest';
-  --welcome-title: 'Bienvenido';
-  --scan-button-text: 'Escanear QR';
-  --progress-text: 'Tu Progreso';
-  --completion-message: '¡Felicitaciones! Has completado el mapa';
+  --primary-color: '';
+  --secondary-color: '';
+  --app-title: '';
+  --welcome-title: '';
+  --scan-button-text: '';
+  --progress-text: '';
+  --completion-message: '';
   --banner-image-url: '';
   --footer-logo-url: '';
   --site-map-image-url: '';
-  --loading-message: 'Cargando...';
-  --login-title: 'Iniciar Sesión';
-  --login-subtitle: 'Accede a tu cuenta';
-  --login-welcome-text: 'Bienvenido de vuelta';
-  --login-field-label: 'Número de Documento';
-  --login-button-text: 'Ingresar';
+  --loading-message: '';
+  --login-title: '';
+  --login-subtitle: '';
+  --login-welcome-text: '';
+  --login-field-label: '';
+  --login-button-text: '';
   --login-logo-image-url: '';
   --preload-image-url: '';
 }
@@ -44,9 +44,9 @@
   background-position: var(--background-position), center;
 }
 
-/* Map page background with advanced CSS variables */
+/* Map page background with advanced CSS variables - no hardcoded fallbacks */
 .map-page-bg {
-  background-image: var(--background-image-url, none), linear-gradient(var(--gradient-direction, 175deg), var(--gradient-start-color, #bb2558) 0%, var(--gradient-end-color, #e8cf00) 100%);
+  background-image: var(--background-image-url, none), linear-gradient(var(--gradient-direction, 175deg), var(--gradient-start-color, transparent) 0%, var(--gradient-end-color, transparent) 100%);
   background-size: var(--background-size, auto), cover;
   background-repeat: var(--background-repeat, repeat), no-repeat;
   background-position: var(--background-position, center), center;
