@@ -572,8 +572,16 @@ const AdminPage = () => {
   // Función para abrir el diálogo de crear asset
   const handleCreateAsset = () => {
     setDialogMode("create");
+    
+    // Find the next available segment ID
+    const existingSegmentIds = mapAssets.map(asset => asset.segmentId);
+    let nextSegmentId = 1;
+    while (existingSegmentIds.includes(nextSegmentId)) {
+      nextSegmentId++;
+    }
+    
     setFormData({
-      segmentId: 1,
+      segmentId: nextSegmentId,
       imageUrl: "",
       redirectUrl: "",
       title: "",
@@ -622,17 +630,22 @@ const AdminPage = () => {
 
       if (dialogMode === "create") {
         // Crear nuevo asset
-        await apiRequest("POST", "/api/admin/map-assets", payload);
+        const createResponse = await apiRequest("POST", "/api/admin/map-assets", payload);
+        if (!createResponse.ok) {
+          const errorData = await createResponse.json();
+          throw new Error(errorData.message || 'Error al crear el segmento');
+        }
         toast({
           title: "Éxito",
           description: "Segmento creado correctamente"
         });
       } else {
         // Actualizar asset existente
-        console.log('Updating asset with payload:', payload);
-        console.log('PUT URL:', `/api/admin/map-assets/${formData.segmentId}`);
-        const response = await apiRequest("PUT", `/api/admin/map-assets/${formData.segmentId}`, payload);
-        console.log('Update response:', response);
+        const updateResponse = await apiRequest("PUT", `/api/admin/map-assets/${formData.segmentId}`, payload);
+        if (!updateResponse.ok) {
+          const errorData = await updateResponse.json();
+          throw new Error(errorData.message || 'Error al actualizar el segmento');
+        }
         toast({
           title: "Éxito",
           description: "Segmento actualizado correctamente"
@@ -643,7 +656,6 @@ const AdminPage = () => {
       fetchMapAssets();
       setDialogOpen(false);
     } catch (error) {
-      console.error('Error saving asset:', error);
       toast({
         title: "Error",
         description: `Error al guardar el segmento: ${error.message || 'Error desconocido'}`,
