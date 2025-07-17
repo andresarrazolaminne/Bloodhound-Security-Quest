@@ -30,7 +30,7 @@ const QRUnlockHandler = () => {
   const [showSegmentModal, setShowSegmentModal] = useState(false);
 
   // Cargar configuración del sistema para mensajes personalizados
-  const { data: systemConfig } = useQuery({
+  const { data: systemConfig, isLoading: isConfigLoading } = useQuery({
     queryKey: ['/api/system-config'],
     staleTime: 0, // Sin cache para obtener mensajes actualizados
     gcTime: 0 // Sin cache para obtener mensajes actualizados (TanStack Query v5)
@@ -39,6 +39,11 @@ const QRUnlockHandler = () => {
   useEffect(() => {
     const handleUnlock = async () => {
       try {
+        // Esperar a que se cargue la configuración del sistema
+        if (isConfigLoading || !systemConfig) {
+          return;
+        }
+        
         // Invalidar cache para obtener mensajes actualizados
         await queryClient.invalidateQueries({ queryKey: ['/api/system-config'] });
         
@@ -96,10 +101,14 @@ const QRUnlockHandler = () => {
             '¡Has identificado una situación de riesgo! +{trapPoints} punto(s) de penalización.';
           
           console.log('QRUnlockHandler - Trap messages:', { trapTitle, trapMessage });
+          console.log('QRUnlockHandler - Server trapMessage:', unlockResponse.trapMessage);
           
           const formattedMessage = trapMessage
             .replace('{trapPoints}', String(unlockResponse.trapPoints || 1))
             .replace('{segmentId}', segmentId);
+
+          // Usar el mensaje personalizado del servidor si está disponible, sino usar el configurado
+          const finalTrapMessage = unlockResponse.trapMessage || formattedMessage;
 
           setResult({
             success: true,
@@ -107,7 +116,7 @@ const QRUnlockHandler = () => {
             message: formattedMessage,
             segmentId: parseInt(segmentId),
             isTrap: true,
-            trapMessage: unlockResponse.trapMessage,
+            trapMessage: finalTrapMessage,
             trapPoints: unlockResponse.trapPoints || 1
           });
 
@@ -188,7 +197,7 @@ const QRUnlockHandler = () => {
     };
 
     handleUnlock();
-  }, [setLocation, toast]);
+  }, [setLocation, toast, isConfigLoading, systemConfig]);
 
   if (isProcessing) {
     return (

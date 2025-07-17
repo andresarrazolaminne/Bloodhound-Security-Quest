@@ -70,6 +70,11 @@ const MapPage = () => {
     headerLogoSize: number;
     headerBackgroundColor: string;
     headerTextColor: string;
+    // Achievement and trap messages
+    achievementUnlockedTitle: string;
+    achievementUnlockedMessage: string;
+    trapDetectedTitle: string;
+    trapDetectedMessage: string;
   }>({
     instructionsText: '',
     siteMapImageUrl: 'https://i.pinimg.com/736x/df/93/10/df93101fdd1057543ae9a6bf2ff16b1c.jpg',
@@ -96,7 +101,12 @@ const MapPage = () => {
     headerLogoImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
     headerLogoSize: 32,
     headerBackgroundColor: '#3b82f6',
-    headerTextColor: '#ffffff'
+    headerTextColor: '#ffffff',
+    // Achievement and trap messages
+    achievementUnlockedTitle: '¡Logro Desbloqueado!',
+    achievementUnlockedMessage: '¡Segmento {segmentId} desbloqueado exitosamente!',
+    trapDetectedTitle: '¡Situación de Riesgo Detectada!',
+    trapDetectedMessage: '¡Has identificado una situación de riesgo! +{trapPoints} punto(s) de penalización.',
   });
   
   const [totalValidSegments, setTotalValidSegments] = useState(0);
@@ -158,7 +168,12 @@ const MapPage = () => {
             headerLogoImageUrl: config.headerLogoImageUrl || 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Luz.png',
             headerLogoSize: config.headerLogoSize || 32,
             headerBackgroundColor: config.headerBackgroundColor || '#3b82f6',
-            headerTextColor: config.headerTextColor || '#ffffff'
+            headerTextColor: config.headerTextColor || '#ffffff',
+            // Achievement and trap messages
+            achievementUnlockedTitle: config.achievementUnlockedTitle || '¡Logro Desbloqueado!',
+            achievementUnlockedMessage: config.achievementUnlockedMessage || '¡Segmento {segmentId} desbloqueado exitosamente!',
+            trapDetectedTitle: config.trapDetectedTitle || '¡Situación de Riesgo Detectada!',
+            trapDetectedMessage: config.trapDetectedMessage || '¡Has identificado una situación de riesgo! +{trapPoints} punto(s) de penalización.',
           };
           
           // Preload footer image before setting state to prevent flash
@@ -267,17 +282,46 @@ const MapPage = () => {
       // Recargar los datos para asegurar que todo esté sincronizado
       await loadUserData();
       
-      // Check if segment has custom modal content
-      if (response.modalContent) {
-        setSegmentModalData({
-          segmentId,
-          modalContent: response.modalContent,
-          title: response.segmentTitle
-        });
-        setShowSegmentModal(true);
-      } else {
-        setSuccessMessage(`¡Has desbloqueado el segmento ${segmentId}!`);
+      // Check if it's a trap QR
+      if (response.isTrap) {
+        // For trap QRs, use custom trap messages
+        const trapTitle = systemConfig.trapDetectedTitle || '¡Situación de Riesgo Detectada!';
+        const trapMessage = systemConfig.trapDetectedMessage || '¡Has identificado una situación de riesgo! +{trapPoints} punto(s) de penalización.';
+        const formattedMessage = trapMessage
+          .replace('{trapPoints}', String(response.trapPoints || 1))
+          .replace('{segmentId}', String(segmentId));
+        
+        setSuccessMessage(formattedMessage);
         setShowSuccessModal(true);
+        
+        toast({
+          title: trapTitle,
+          description: `+${response.trapPoints || 1} punto(s) de penalización`,
+          variant: "destructive",
+        });
+      } else {
+        // Check if segment has custom modal content
+        if (response.modalContent) {
+          setSegmentModalData({
+            segmentId,
+            modalContent: response.modalContent,
+            title: response.segmentTitle
+          });
+          setShowSegmentModal(true);
+        } else {
+          // For regular segments, use custom achievement messages
+          const achievementTitle = systemConfig.achievementUnlockedTitle || '¡Logro Desbloqueado!';
+          const achievementMessage = systemConfig.achievementUnlockedMessage || '¡Segmento {segmentId} desbloqueado exitosamente!';
+          const formattedMessage = achievementMessage.replace('{segmentId}', String(segmentId));
+          
+          setSuccessMessage(formattedMessage);
+          setShowSuccessModal(true);
+          
+          toast({
+            title: achievementTitle,
+            description: formattedMessage,
+          });
+        }
       }
       
       // Check if map is now completed
