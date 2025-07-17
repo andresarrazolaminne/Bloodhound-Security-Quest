@@ -177,7 +177,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingScore = await storage.getUserScoreBySegment(user.id, segmentId);
       
       if (existingScore) {
-        // User has already scanned this QR, don't add points but still show segment info
+        // User has already scanned this QR, don't add points but ensure segment is unlocked
+        const segment = await storage.unlockSegment(user.id, segmentId);
+        
         const allSegments = await storage.getSegmentsByUserId(user.id);
         const allAssets = await storage.getAllMapSegmentAssets();
         const validAssets = allAssets.filter(asset => !asset.isTrap);
@@ -189,7 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         return res.status(200).json({ 
           alreadyScanned: true,
-          segment: allSegments.find(s => s.segmentId === segmentId),
+          segment,
           unlockedSegments,
           totalSegments,
           completed: unlockedSegments === totalSegments,
