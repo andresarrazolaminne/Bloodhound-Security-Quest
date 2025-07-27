@@ -783,15 +783,42 @@ const AdminPage = () => {
       </div>
 
       <Tabs defaultValue="prizes" className="max-w-5xl mx-auto">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-8 mb-6">
-          <TabsTrigger value="prizes">Validación de Premios</TabsTrigger>
-          <TabsTrigger value="segments">Segmentos del Mapa</TabsTrigger>
-          <TabsTrigger value="venues">Sedes</TabsTrigger>
-          <TabsTrigger value="qrgenerator">Generador de QR</TabsTrigger>
-          <TabsTrigger value="ranking">Ranking de Usuarios</TabsTrigger>
-
-          <TabsTrigger value="frontend">Personalización</TabsTrigger>
-          <TabsTrigger value="config">Configuración</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-7 mb-6">
+          <TabsTrigger value="prizes" className="text-xs md:text-sm px-2 py-2">
+            <div className="flex flex-col items-center gap-1">
+              <span>Premios</span>
+            </div>
+          </TabsTrigger>
+          <TabsTrigger value="segments" className="text-xs md:text-sm px-2 py-2">
+            <div className="flex flex-col items-center gap-1">
+              <span>Segmentos</span>
+            </div>
+          </TabsTrigger>
+          <TabsTrigger value="venues" className="text-xs md:text-sm px-2 py-2">
+            <div className="flex flex-col items-center gap-1">
+              <span>Sedes</span>
+            </div>
+          </TabsTrigger>
+          <TabsTrigger value="qrgenerator" className="text-xs md:text-sm px-2 py-2">
+            <div className="flex flex-col items-center gap-1">
+              <span>Gen QR</span>
+            </div>
+          </TabsTrigger>
+          <TabsTrigger value="ranking" className="text-xs md:text-sm px-2 py-2">
+            <div className="flex flex-col items-center gap-1">
+              <span>Ranking</span>
+            </div>
+          </TabsTrigger>
+          <TabsTrigger value="frontend" className="text-xs md:text-sm px-2 py-2">
+            <div className="flex flex-col items-center gap-1">
+              <span>Diseño</span>
+            </div>
+          </TabsTrigger>
+          <TabsTrigger value="config" className="text-xs md:text-sm px-2 py-2">
+            <div className="flex flex-col items-center gap-1">
+              <span>Config</span>
+            </div>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="prizes">
@@ -1726,10 +1753,26 @@ const AdminPage = () => {
             <CardContent className="pt-6">
               <Tabs defaultValue="customization" className="w-full">
                 <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="customization">Personalización</TabsTrigger>
-                  <TabsTrigger value="images">Imágenes</TabsTrigger>
-                  <TabsTrigger value="colors">Colores</TabsTrigger>
-                  <TabsTrigger value="login">Página Login</TabsTrigger>
+                  <TabsTrigger value="customization" className="text-xs md:text-sm px-2 py-2">
+                    <div className="flex flex-col items-center gap-1">
+                      <span>Textos</span>
+                    </div>
+                  </TabsTrigger>
+                  <TabsTrigger value="images" className="text-xs md:text-sm px-2 py-2">
+                    <div className="flex flex-col items-center gap-1">
+                      <span>Imágenes</span>
+                    </div>
+                  </TabsTrigger>
+                  <TabsTrigger value="colors" className="text-xs md:text-sm px-2 py-2">
+                    <div className="flex flex-col items-center gap-1">
+                      <span>Colores</span>
+                    </div>
+                  </TabsTrigger>
+                  <TabsTrigger value="login" className="text-xs md:text-sm px-2 py-2">
+                    <div className="flex flex-col items-center gap-1">
+                      <span>Login</span>
+                    </div>
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="customization" className="space-y-6">
