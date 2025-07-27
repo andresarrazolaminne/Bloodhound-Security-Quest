@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import TrapMessageModal from '@/components/TrapMessageModal';
 import SegmentContentModal from '@/components/SegmentContentModal';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { playQRSuccessSound, playQRErrorSound } from '@/lib/sounds';
 
 // Handler específico para códigos QR que vienen desde URLs externas
 const QRUnlockHandler = () => {
@@ -118,9 +119,11 @@ const QRUnlockHandler = () => {
               modalContent: unlockResponse.modalContent.substring(0, 100) + '...',
               modalLength: unlockResponse.modalContent.length
             });
+            playQRSuccessSound(); // Reproducir sonido de éxito
             setShowSegmentModal(true);
             // No redirigir automáticamente si hay modal - solo después de cerrarlo
           } else {
+            playQRSuccessSound(); // Reproducir sonido de éxito
             // Solo redirigir automáticamente si NO hay modal
             setTimeout(() => {
               setLocation('/map');
@@ -164,6 +167,7 @@ const QRUnlockHandler = () => {
           });
 
           // Mostrar modal con mensaje HTML personalizable
+          playQRErrorSound(); // Reproducir sonido de error para trampas
           setShowTrapModal(true);
 
           toast({
@@ -196,9 +200,11 @@ const QRUnlockHandler = () => {
               modalContent: unlockResponse.modalContent.substring(0, 100) + '...',
               modalLength: unlockResponse.modalContent.length
             });
+            playQRSuccessSound(); // Reproducir sonido de éxito
             setShowSegmentModal(true);
             // No redirigir automáticamente si hay modal - solo después de cerrarlo
           } else {
+            playQRSuccessSound(); // Reproducir sonido de éxito
             // Solo redirigir automáticamente si NO hay modal
             setTimeout(() => {
               setLocation('/map');
@@ -229,6 +235,7 @@ const QRUnlockHandler = () => {
           message: errorMessage
         });
 
+        playQRErrorSound(); // Reproducir sonido de error
         toast({
           title: "Error",
           description: errorMessage,

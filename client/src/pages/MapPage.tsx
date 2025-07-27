@@ -10,6 +10,7 @@ import MapGrid from "@/components/MapGrid";
 import ProgressBar from "@/components/ProgressBar";
 import QRScanner from "@/components/QRScanner";
 import HtmlContent from "@/components/HtmlContent";
+import { playQRSuccessSound, playQRErrorSound, playCompletionSound } from '@/lib/sounds';
 import BrainLoader from "@/components/BrainLoader";
 import SegmentContentModal from '@/components/SegmentContentModal';
 
@@ -288,6 +289,7 @@ const MapPage = () => {
             modalContent: response.modalContent.substring(0, 100) + '...',
             modalLength: response.modalContent.length
           });
+          playQRSuccessSound(); // Reproducir sonido de éxito
           setSegmentModalData({
             segmentId,
             modalContent: response.modalContent,
@@ -295,6 +297,7 @@ const MapPage = () => {
           });
           setShowSegmentModal(true);
         } else {
+          playQRSuccessSound(); // Reproducir sonido de éxito
           setSuccessMessage(`¡Ya has desbloqueado este segmento (${segmentId})!`);
           setShowSuccessModal(true);
         }
@@ -316,6 +319,7 @@ const MapPage = () => {
           .replace('{trapPoints}', String(response.trapPoints || 1))
           .replace('{segmentId}', String(segmentId));
         
+        playQRErrorSound(); // Reproducir sonido de error para trampas
         setSuccessMessage(formattedMessage);
         setShowSuccessModal(true);
         
@@ -327,6 +331,7 @@ const MapPage = () => {
       } else {
         // Check if segment has custom modal content
         if (response.modalContent) {
+          playQRSuccessSound(); // Reproducir sonido de éxito
           setSegmentModalData({
             segmentId,
             modalContent: response.modalContent,
@@ -339,6 +344,7 @@ const MapPage = () => {
           const achievementMessage = systemConfig.achievementUnlockedMessage || '¡Segmento {segmentId} desbloqueado exitosamente!';
           const formattedMessage = achievementMessage.replace('{segmentId}', String(segmentId));
           
+          playQRSuccessSound(); // Reproducir sonido de éxito
           setSuccessMessage(formattedMessage);
           setShowSuccessModal(true);
           
@@ -351,6 +357,7 @@ const MapPage = () => {
       
       // Check if map is now completed
       if (response.completed) {
+        playCompletionSound(); // Reproducir sonido de finalización
         setIsMapCompleted(true);
         setRedemptionCode(response.redemptionCode);
         // Show completion modal after success modal is closed
