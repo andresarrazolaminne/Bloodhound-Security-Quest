@@ -266,17 +266,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user has unlocked all segments
       const segments = await storage.getSegmentsByUserId(user.id);
       
-      // Obtener la configuración del sistema para determinar el número total de segmentos
-      const config = await storage.getSystemConfig();
-      let totalSegments = 9; // Valor predeterminado (3x3)
+      // Get all valid (non-trap) segment assets to calculate actual progress
+      const allAssets = await storage.getAllMapSegmentAssets();
+      const validAssets = allAssets.filter(asset => !asset.isTrap);
+      const totalSegments = validAssets.length;
       
-      if (config && config.mapGridSize) {
-        // Calcular el total de segmentos basados en el tamaño de la cuadrícula (columnas x filas)
-        const [columns, rows] = config.mapGridSize.split('x').map(Number);
-        totalSegments = columns * rows;
-      }
+      // Only count unlocked segments that correspond to valid (non-trap) assets
+      const validSegmentIds = validAssets.map(asset => asset.segmentId);
+      const unlockedSegments = segments.filter(s => 
+        s.unlocked && validSegmentIds.includes(s.segmentId)
+      ).length;
       
-      const unlockedSegments = segments.filter(s => s.unlocked).length;
       const completed = unlockedSegments === totalSegments;
       
       // Generate redemption code if completed and not already generated

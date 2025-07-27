@@ -176,19 +176,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createRedemptionCode(userId: number): Promise<string> {
-    const [prize] = await db
+    // Buscar premio existente
+    let [prize] = await db
       .select()
       .from(prizes)
       .where(eq(prizes.userId, userId));
     
+    // Si no existe premio, crear uno nuevo
     if (!prize) {
-      throw new Error("No prize found for user");
+      [prize] = await db
+        .insert(prizes)
+        .values({
+          userId,
+          redeemed: false
+        })
+        .returning();
     }
     
+    // Si ya tiene código de redención, devolverlo
     if (prize.redemptionCode) {
       return prize.redemptionCode;
     }
     
+    // Generar nuevo código de redención
     const code = nanoid(6).toUpperCase();
     
     await db
