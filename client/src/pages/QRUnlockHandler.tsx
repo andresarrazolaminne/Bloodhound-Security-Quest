@@ -97,12 +97,45 @@ const QRUnlockHandler = () => {
         const uniqueSegments = Array.from(new Set([...existingSegments, parseInt(segmentId)]));
         localStorage.setItem('unlockedSegments', JSON.stringify(uniqueSegments));
         
+        // Manejar caso de segmento ya escaneado
+        if (unlockResponse.alreadyScanned) {
+          const achievementTitle = (systemConfig as any)?.config?.achievementUnlockedTitle || '¡Logro Desbloqueado!';
+          const message = unlockResponse.message || 'Este segmento ya fue desbloqueado anteriormente';
+          
+          setResult({
+            success: true,
+            title: achievementTitle,
+            message: message,
+            segmentId: parseInt(segmentId),
+            modalContent: unlockResponse.modalContent,
+            segmentTitle: unlockResponse.segmentTitle
+          });
+
+          // Mostrar modal de contenido opcional si hay contenido disponible
+          if (unlockResponse.modalContent) {
+            setShowSegmentModal(true);
+            // No redirigir automáticamente si hay modal - solo después de cerrarlo
+          } else {
+            // Solo redirigir automáticamente si NO hay modal
+            setTimeout(() => {
+              setLocation('/map');
+            }, 3000);
+          }
+
+          toast({
+            title: achievementTitle,
+            description: message,
+          });
+          
+          return; // Salir temprano para evitar procesar como segmento nuevo
+        }
+        
         // Verificar si es un QR trampa
         if (unlockResponse.isTrap) {
           // QR Trampa - usar mensajes configurables
           console.log('QRUnlockHandler - systemConfig:', systemConfig);
-          const trapTitle = systemConfig?.config?.trapDetectedTitle || '¡Situación de Riesgo Detectada!';
-          const trapMessage = systemConfig?.config?.trapDetectedMessage || 
+          const trapTitle = (systemConfig as any)?.config?.trapDetectedTitle || '¡Situación de Riesgo Detectada!';
+          const trapMessage = (systemConfig as any)?.config?.trapDetectedMessage || 
             '¡Has identificado una situación de riesgo! +{trapPoints} punto(s) de penalización.';
           
           console.log('QRUnlockHandler - Trap messages:', { trapTitle, trapMessage });
@@ -134,8 +167,8 @@ const QRUnlockHandler = () => {
           });
         } else {
           // QR Normal - usar mensajes configurables
-          const achievementTitle = systemConfig?.config?.achievementUnlockedTitle || '¡Logro Desbloqueado!';
-          const achievementMessage = systemConfig?.config?.achievementUnlockedMessage || 
+          const achievementTitle = (systemConfig as any)?.config?.achievementUnlockedTitle || '¡Logro Desbloqueado!';
+          const achievementMessage = (systemConfig as any)?.config?.achievementUnlockedMessage || 
             '¡Segmento {segmentId} desbloqueado exitosamente!';
           
           const formattedMessage = achievementMessage.replace('{segmentId}', segmentId);
