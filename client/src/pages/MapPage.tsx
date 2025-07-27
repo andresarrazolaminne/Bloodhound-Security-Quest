@@ -281,8 +281,23 @@ const MapPage = () => {
         // Recargar los datos para asegurar que todo esté sincronizado
         await loadUserData();
         
-        setSuccessMessage(`¡Ya has desbloqueado este segmento (${segmentId})!`);
-        setShowSuccessModal(true);
+        // Check if already scanned segment has modal content
+        if (response.modalContent) {
+          console.log('MapPage - Mostrando modal para segmento ya escaneado:', {
+            segmentId,
+            modalContent: response.modalContent.substring(0, 100) + '...',
+            modalLength: response.modalContent.length
+          });
+          setSegmentModalData({
+            segmentId,
+            modalContent: response.modalContent,
+            title: response.segmentTitle
+          });
+          setShowSegmentModal(true);
+        } else {
+          setSuccessMessage(`¡Ya has desbloqueado este segmento (${segmentId})!`);
+          setShowSuccessModal(true);
+        }
         return;
       }
       
