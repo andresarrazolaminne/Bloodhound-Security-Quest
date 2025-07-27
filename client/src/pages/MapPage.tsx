@@ -112,7 +112,7 @@ const MapPage = () => {
     trapDetectedMessage: '',
   });
   
-  const [totalValidSegments, setTotalValidSegments] = useState(12);
+  const [totalValidSegments, setTotalValidSegments] = useState(0);
   const [footerImageLoaded, setFooterImageLoaded] = useState(false);
 
   // Redirect if not logged in
@@ -519,7 +519,7 @@ const MapPage = () => {
 
             <ProgressBar 
               progress={unlockedSegments.length} 
-              total={totalValidSegments || 12}
+              total={totalValidSegments || 1}
               progressTextColor={systemConfig.progressTextColor}
             />
             
