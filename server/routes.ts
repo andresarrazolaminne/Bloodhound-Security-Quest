@@ -514,6 +514,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para eliminar un usuario individual
+  apiRouter.delete("/admin/users/:userId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "ID de usuario inválido" });
+      }
+
+      // Verificar si el usuario existe
+      const user = await storage.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+
+      // Eliminar todos los datos relacionados con el usuario
+      await storage.deleteUserAndAllData(userId);
+      
+      return res.status(200).json({ 
+        message: `Usuario ${user.documentNumber} eliminado exitosamente` 
+      });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
   // Health check endpoint
   // System configuration routes
   apiRouter.get("/system-config", async (_req, res) => {

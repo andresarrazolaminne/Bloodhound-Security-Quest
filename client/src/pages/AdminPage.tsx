@@ -297,6 +297,40 @@ const AdminPage = () => {
     }
   };
 
+  // Función para eliminar un usuario individual
+  const handleDeleteUser = async (userId: number, documentNumber: string) => {
+    if (!confirm(`¿Estás seguro de eliminar al usuario ${documentNumber}?\nEsta acción eliminará todos sus datos, progreso y premios.\nEsta acción no se puede deshacer.`)) {
+      return;
+    }
+
+    try {
+      setLoadingRanking(true);
+      const response = await apiRequest("DELETE", `/api/admin/users/${userId}`);
+      
+      if (response.ok) {
+        toast({
+          title: "Usuario eliminado",
+          description: `El usuario ${documentNumber} ha sido eliminado correctamente`
+        });
+        
+        // Recargar el ranking para reflejar los cambios
+        await fetchUserRanking();
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al eliminar usuario");
+      }
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Error al eliminar el usuario",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingRanking(false);
+    }
+  };
+
   // Función para actualizar la configuración del sistema
   const handleUpdateSystemConfig = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1647,18 +1681,19 @@ const AdminPage = () => {
                       <TableHead className="w-32 text-center">Códigos Trampa</TableHead>
                       <TableHead className="w-32 text-center">Progreso</TableHead>
                       <TableHead className="w-32 text-center">Estado</TableHead>
+                      <TableHead className="w-24 text-center">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {loadingRanking ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-10">
+                        <TableCell colSpan={10} className="text-center py-10">
                           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
                         </TableCell>
                       </TableRow>
                     ) : filteredRanking.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-6 text-gray-500">
+                        <TableCell colSpan={10} className="text-center py-6 text-gray-500">
                           No hay usuarios registrados o que coincidan con el filtro
                         </TableCell>
                       </TableRow>
@@ -1729,6 +1764,17 @@ const AdminPage = () => {
                                 </Badge>
                               )}
                             </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteUser(item.user.id, item.user.documentNumber)}
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              title={`Eliminar usuario ${item.user.documentNumber}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))

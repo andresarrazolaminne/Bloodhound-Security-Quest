@@ -30,7 +30,9 @@ import { z } from 'zod';
 export interface IStorage {
   // User operations
   getUserByDocumentNumber(documentNumber: string): Promise<User | undefined>;
+  getUserById(userId: number): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  deleteUserAndAllData(userId: number): Promise<void>;
 
   // Map segment operations
   getSegmentsByUserId(userId: number): Promise<MapSegment[]>;
@@ -113,12 +115,36 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
 
+  async getUserById(userId: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    return user || undefined;
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
       .values(insertUser)
       .returning();
     return user;
+  }
+
+  async deleteUserAndAllData(userId: number): Promise<void> {
+    // Eliminar en orden correcto para evitar conflictos de foreign key
+    
+    // 1. Eliminar puntos de trampa del usuario
+    await db.delete(trapPoints).where(eq(trapPoints.userId, userId));
+    
+    // 2. Eliminar scores del usuario
+    await db.delete(userScores).where(eq(userScores.userId, userId));
+    
+    // 3. Eliminar segmentos del mapa del usuario
+    await db.delete(mapSegments).where(eq(mapSegments.userId, userId));
+    
+    // 4. Eliminar premios del usuario
+    await db.delete(prizes).where(eq(prizes.userId, userId));
+    
+    // 5. Finalmente eliminar el usuario
+    await db.delete(users).where(eq(users.id, userId));
   }
 
   async getSegmentsByUserId(userId: number): Promise<MapSegment[]> {
