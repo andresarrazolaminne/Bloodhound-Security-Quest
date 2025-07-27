@@ -18,9 +18,21 @@ const SegmentContentModal = ({
   modalContent,
   title 
 }: SegmentContentModalProps) => {
+  
+  // Debug logging
+  React.useEffect(() => {
+    console.log('SegmentContentModal - Estado cambió:', {
+      isOpen,
+      segmentId,
+      hasModalContent: !!modalContent,
+      modalContentLength: modalContent?.length || 0,
+      title
+    });
+  }, [isOpen, segmentId, modalContent, title]);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto w-[95vw] max-w-[95vw] md:max-w-4xl">
         <DialogHeader>
           <DialogTitle>
             {title || `Segmento ${segmentId} Desbloqueado`}
@@ -29,7 +41,9 @@ const SegmentContentModal = ({
         
         <div className="prose prose-sm max-w-none overflow-y-auto max-h-[70vh] pr-2">
           {modalContent ? (
-            <HtmlContent html={modalContent} className="iframe-responsive" />
+            <div className="w-full">
+              <HtmlContent html={modalContent} className="w-full iframe-responsive" />
+            </div>
           ) : (
             <div className="text-center py-8">
               <div className="text-green-600 text-4xl mb-4">✅</div>

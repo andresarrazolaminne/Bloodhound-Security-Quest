@@ -113,6 +113,11 @@ const QRUnlockHandler = () => {
 
           // Mostrar modal de contenido opcional si hay contenido disponible
           if (unlockResponse.modalContent) {
+            console.log('QRUnlockHandler - Abriendo modal para segmento ya escaneado:', {
+              segmentId: parseInt(segmentId),
+              modalContent: unlockResponse.modalContent.substring(0, 100) + '...',
+              modalLength: unlockResponse.modalContent.length
+            });
             setShowSegmentModal(true);
             // No redirigir automáticamente si hay modal - solo después de cerrarlo
           } else {
@@ -186,6 +191,11 @@ const QRUnlockHandler = () => {
 
           // Mostrar modal de contenido opcional si hay contenido disponible
           if (unlockResponse.modalContent) {
+            console.log('QRUnlockHandler - Abriendo modal para segmento nuevo:', {
+              segmentId: parseInt(segmentId),
+              modalContent: unlockResponse.modalContent.substring(0, 100) + '...',
+              modalLength: unlockResponse.modalContent.length
+            });
             setShowSegmentModal(true);
             // No redirigir automáticamente si hay modal - solo después de cerrarlo
           } else {

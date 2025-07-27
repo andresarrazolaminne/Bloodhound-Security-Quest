@@ -73,6 +73,35 @@
   }
 }
 
+/* Responsive iframe styles for modals */
+.iframe-responsive iframe {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 315px !important;
+  border: none !important;
+}
+
+@media (max-width: 640px) {
+  .iframe-responsive iframe {
+    width: 100% !important;
+    height: 250px !important;
+  }
+}
+
+/* Modal mobile optimizations */
+@media (max-width: 640px) {
+  [data-radix-dialog-content] {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    margin: 0 !important;
+    max-height: 90vh !important;
+    position: fixed !important;
+    top: 5vh !important;
+    left: 2.5vw !important;
+    transform: none !important;
+  }
+}
+
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
