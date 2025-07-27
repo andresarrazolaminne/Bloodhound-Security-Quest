@@ -431,20 +431,21 @@ export class DatabaseStorage implements IStorage {
   }>> {
     const result = [];
     
-    const config = await this.getSystemConfig();
-    let totalSegments = 9;
-    
-    if (config && config.mapGridSize) {
-      const [columns, rows] = config.mapGridSize.split('x').map(Number);
-      totalSegments = columns * rows;
-    }
+    // Get all valid (non-trap) segment assets to calculate actual total segments
+    const allAssets = await this.getAllMapSegmentAssets();
+    const validAssets = allAssets.filter(asset => !asset.isTrap);
+    const totalSegments = validAssets.length;
+    const validSegmentIds = validAssets.map(asset => asset.segmentId);
     
     const allUsers = await db.select().from(users);
     
     for (const user of allUsers) {
       const segments = await this.getSegmentsByUserId(user.id);
-      const unlockedSegments = segments.filter(s => s.unlocked).length;
-      const completionPercentage = (unlockedSegments / totalSegments) * 100;
+      // Only count unlocked segments that correspond to valid (non-trap) assets
+      const unlockedSegments = segments.filter(s => 
+        s.unlocked && validSegmentIds.includes(s.segmentId)
+      ).length;
+      const completionPercentage = totalSegments > 0 ? (unlockedSegments / totalSegments) * 100 : 0;
       const prize = await this.getPrizeByUserId(user.id);
       
       result.push({

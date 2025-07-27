@@ -236,12 +236,14 @@ const MapPage = () => {
         .filter(segment => segment.unlocked)
         .map(segment => segment.segmentId);
       
-      setUnlockedSegments(unlockedSegmentIds);
-      
       // Load map assets to calculate total valid segments (excluding traps)
       const assetsResponse = await getAllMapAssets();
       const validSegments = assetsResponse.assets.filter(asset => !asset.isTrap);
-      setTotalValidSegments(validSegments.length);
+      const totalValidCount = validSegments.length;
+      setTotalValidSegments(totalValidCount);
+      
+      // Set unlocked segments with total valid segments count
+      setUnlockedSegments(unlockedSegmentIds, totalValidCount);
       
       // Load prize status
       const prizeResponse = await getUserPrize(currentUser.documentNumber);
@@ -276,7 +278,7 @@ const MapPage = () => {
       if (response.alreadyScanned) {
         // Make sure the segment is in local state (sync issue fix)
         if (!unlockedSegments.includes(segmentId)) {
-          addUnlockedSegment(segmentId);
+          addUnlockedSegment(segmentId, totalValidSegments);
         }
         
         // Recargar los datos para asegurar que todo esté sincronizado
@@ -305,7 +307,7 @@ const MapPage = () => {
       }
       
       // Update unlocked segments for new unlocks
-      addUnlockedSegment(segmentId);
+      addUnlockedSegment(segmentId, totalValidSegments);
       
       // Recargar los datos para asegurar que todo esté sincronizado
       await loadUserData();

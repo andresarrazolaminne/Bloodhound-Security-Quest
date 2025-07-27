@@ -5,8 +5,8 @@ interface UserContextType {
   currentUser: User | null;
   unlockedSegments: number[];
   setCurrentUser: (user: User | null) => void;
-  setUnlockedSegments: (segmentIds: number[]) => void;
-  addUnlockedSegment: (segmentId: number) => void;
+  setUnlockedSegments: (segmentIds: number[], totalValidSegments?: number) => void;
+  addUnlockedSegment: (segmentId: number, totalValidSegments?: number) => void;
   isMapCompleted: boolean;
   setIsMapCompleted: (completed: boolean) => void;
   redemptionCode: string | null;
@@ -76,7 +76,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const setUnlockedSegments = (segmentIds: number[]) => {
+  const setUnlockedSegments = (segmentIds: number[], totalValidSegments?: number) => {
     setUnlockedSegmentsState(segmentIds);
     
     // Persistir en localStorage
@@ -86,13 +86,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       console.error('Error saving segments to localStorage:', error);
     }
     
-    // Check if all segments are unlocked (total of 9 segments)
-    if (segmentIds.length === 9) {
+    // Check if all segments are unlocked based on totalValidSegments
+    if (totalValidSegments && segmentIds.length === totalValidSegments) {
       setIsMapCompleted(true);
     }
   };
 
-  const addUnlockedSegment = (segmentId: number) => {
+  const addUnlockedSegment = (segmentId: number, totalValidSegments?: number) => {
     if (!unlockedSegments.includes(segmentId)) {
       const newUnlockedSegments = [...unlockedSegments, segmentId];
       setUnlockedSegmentsState(newUnlockedSegments);
@@ -104,8 +104,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         console.error('Error saving segments to localStorage:', error);
       }
       
-      // Check if all segments are unlocked (total of 9 segments)
-      if (newUnlockedSegments.length === 9) {
+      // Check if all segments are unlocked based on totalValidSegments
+      if (totalValidSegments && newUnlockedSegments.length === totalValidSegments) {
         setIsMapCompleted(true);
       }
     }
