@@ -112,7 +112,7 @@ const MapPage = () => {
     trapDetectedMessage: '',
   });
   
-  const [totalValidSegments, setTotalValidSegments] = useState(0);
+  const [totalValidSegments, setTotalValidSegments] = useState(12);
   const [footerImageLoaded, setFooterImageLoaded] = useState(false);
 
   // Redirect if not logged in
@@ -519,13 +519,13 @@ const MapPage = () => {
 
             <ProgressBar 
               progress={unlockedSegments.length} 
-              total={totalValidSegments || 6}
+              total={totalValidSegments || 12}
               progressTextColor={systemConfig.progressTextColor}
             />
             
             <div className="flex justify-between items-center mb-4">
               <div>
-                {isMapCompleted && (
+                {isMapCompleted && unlockedSegments.length === totalValidSegments && totalValidSegments > 0 && (
                   <BoxButton 
                     className="flex items-center gap-2 font-medium"
                     onClick={() => setShowCompletionModal(true)}
