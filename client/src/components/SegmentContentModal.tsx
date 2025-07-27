@@ -5,79 +5,32 @@ import HtmlContent from './HtmlContent';
 
 // Componente para renderizar contenido HTML personalizado
 const CustomModalContent = ({ content, onClose }: { content: string, onClose: () => void }) => {
+  const [processedContent, setProcessedContent] = React.useState('');
+  const [processedStyles, setProcessedStyles] = React.useState('');
+
   React.useEffect(() => {
     // Procesar el contenido HTML para adaptarlo al modal existente
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = content;
     
-    // Buscar y ejecutar scripts si existen
-    const scripts = tempDiv.querySelectorAll('script');
-    scripts.forEach(script => {
-      try {
-        // Reemplazar funciones que cierran el modal original
-        let scriptContent = script.textContent || '';
-        
-        // Reemplazar referencias al modal original con nuestra función de cierre
-        scriptContent = scriptContent.replace(
-          /document\.getElementById\(['"]modalDesorden['"]\)\.style\.display\s*=\s*['"]none['"];?/g,
-          'window.closeSegmentModal && window.closeSegmentModal();'
-        );
-        
-        // Ejecutar el script modificado
-        if (scriptContent.trim()) {
-          const newScript = document.createElement('script');
-          newScript.textContent = scriptContent;
-          document.head.appendChild(newScript);
-          
-          // Limpiar después de un tiempo
-          setTimeout(() => {
-            if (newScript.parentNode) {
-              newScript.parentNode.removeChild(newScript);
-            }
-          }, 1000);
-        }
-      } catch (error) {
-        console.log('Error ejecutando script del modal:', error);
-      }
-    });
-    
-    // Exponer función de cierre global para que el contenido HTML pueda usarla
-    (window as any).closeSegmentModal = onClose;
-    
-    return () => {
-      // Limpiar función global al desmontar
-      delete (window as any).closeSegmentModal;
-    };
-  }, [content, onClose]);
-  
-  // Extraer solo el contenido del modal (sin la estructura exterior)
-  const extractModalContent = (htmlContent: string) => {
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = htmlContent;
-    
-    // Buscar el contenido dentro de .modal-content
+    // Extraer y procesar el contenido del modal
     const modalContent = tempDiv.querySelector('.modal-content');
     if (modalContent) {
-      // Remover el botón de cerrar original ya que usamos el nuestro
-      const closeButton = modalContent.querySelector('.close-modal');
-      if (closeButton) {
-        closeButton.remove();
-      }
-      return modalContent.innerHTML;
+      // Remover el botón de cerrar original
+      const closeButtons = modalContent.querySelectorAll('.close-modal');
+      closeButtons.forEach(btn => btn.remove());
+      
+      setProcessedContent(modalContent.innerHTML);
+    } else {
+      // Si no encuentra .modal-content, usar todo el contenido pero sin scripts
+      const scripts = tempDiv.querySelectorAll('script');
+      scripts.forEach(script => script.remove());
+      setProcessedContent(tempDiv.innerHTML);
     }
     
-    // Si no encuentra .modal-content, devolver todo el contenido
-    return htmlContent;
-  };
-  
-  // Extraer estilos CSS del contenido
-  const extractStyles = (htmlContent: string) => {
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = htmlContent;
+    // Extraer y adaptar estilos CSS
     const styleTag = tempDiv.querySelector('style');
-    
     if (styleTag) {
-      // Adaptar los estilos para nuestro contexto
       let styles = styleTag.textContent || '';
       
       // Remover estilos del modal principal ya que usamos nuestro DialogContent
@@ -87,21 +40,35 @@ const CustomModalContent = ({ content, onClose }: { content: string, onClose: ()
       // Adaptar otros estilos para que funcionen en nuestro contexto
       styles = styles.replace(/\.close-modal/g, '.custom-close-modal');
       
-      return styles;
+      setProcessedStyles(styles);
     }
     
-    return '';
+    // NO ejecutar scripts automáticamente para evitar errores
+    // En su lugar, manejar la interactividad de otra manera si es necesario
+    
+  }, [content]);
+
+  // Función para manejar clics en botones dentro del contenido
+  const handleContentClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    
+    // Si se hace clic en un botón de cerrar personalizado
+    if (target.classList.contains('close-modal') || 
+        target.classList.contains('custom-close-modal') ||
+        target.textContent?.toLowerCase().includes('cerrar')) {
+      e.preventDefault();
+      onClose();
+    }
   };
   
-  const extractedContent = extractModalContent(content);
-  const extractedStyles = extractStyles(content);
+
   
   return (
-    <div className="custom-modal-wrapper">
-      {extractedStyles && (
-        <style dangerouslySetInnerHTML={{ __html: extractedStyles }} />
+    <div className="custom-modal-wrapper" onClick={handleContentClick}>
+      {processedStyles && (
+        <style dangerouslySetInnerHTML={{ __html: processedStyles }} />
       )}
-      <div dangerouslySetInnerHTML={{ __html: extractedContent }} />
+      <div dangerouslySetInnerHTML={{ __html: processedContent }} />
     </div>
   );
 };
