@@ -1,0 +1,87 @@
+<!-- Modal HTML -->
+<div id="modalDesorden" class="modal">
+    <div class="modal-content">
+        <h2>Desorden en el Área de Trabajo</h2>
+        <p><strong>Desorden en el área de trabajo: un riesgo para la seguridad</strong></p>
+        <p>El desorden en el área de trabajo no solo disminuye la eficiencia, sino que también aumenta el riesgo de accidentes. Herramientas fuera de lugar, cables desordenados y materiales mal almacenados son algunos de los factores que pueden causar caídas, golpes y otras lesiones. Es fundamental que todos los elementos estén correctamente organizados y almacenados de manera segura.</p>
+        <p><strong>Acciones recomendadas:</strong></p>
+        <ul>
+            <li><strong>Mantén el área limpia y libre de obstáculos.</strong></li>
+            <li><strong>Utiliza etiquetado adecuado para las herramientas y materiales.</strong></li>
+            <li><strong>Revisa regularmente que todo esté en su lugar.</strong></li>
+            <li><strong>Capacita al personal sobre la importancia de un espacio ordenado para la seguridad.</strong></li>
+        </ul>
+        <p>La seguridad en el trabajo comienza con el orden. ¡Haz tu parte para mantener un entorno de trabajo seguro!</p>
+        <button class="close-modal">Cerrar</button>
+    </div>
+</div>
+
+<!-- CSS para Modal -->
+<style>
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.4);
+    }
+
+    .modal-content {
+        background-color: white;
+        margin: 15% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 600px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    h2 {
+        font-size: 24px;
+        color: #333;
+    }
+
+    p {
+        font-size: 16px;
+        color: #555;
+    }
+
+    ul {
+        list-style-type: disc;
+        margin-left: 20px;
+    }
+
+    .close-modal {
+        background-color: #f44336;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        margin-top: 20px;
+    }
+
+    .close-modal:hover {
+        background-color: #d32f2f;
+    }
+</style>
+
+<!-- JavaScript para Modal -->
+<script>
+    // Función para mostrar el modal
+    function showModal() {
+        document.getElementById('modalDesorden').style.display = 'block';
+    }
+
+    // Función para cerrar el modal
+    document.querySelector('.close-modal').addEventListener('click', function() {
+        document.getElementById('modalDesorden').style.display = 'none';
+    });
+
+    // Simulación para abrir el modal (esto debe estar vinculado al escaneo del QR)
+    showModal();
+</script>
