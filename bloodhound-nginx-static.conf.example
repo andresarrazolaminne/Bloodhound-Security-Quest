@@ -22,7 +22,8 @@ server {
   location ^~ /bloodhound/api/ {
     rewrite ^/bloodhound(/.*)$ $1 break; # /bloodhound/api/x -> /api/x
 
-    proxy_pass http://127.0.0.1:5000;
+    # Backend Node/Express (ajusta si usas otro PORT con pm2)
+    proxy_pass http://127.0.0.1:5005;
     proxy_http_version 1.1;
 
     proxy_set_header Upgrade $http_upgrade;
@@ -58,7 +59,8 @@ server {
   location ^~ /bloodhound/api/ {
     rewrite ^/bloodhound(/.*)$ $1 break;
 
-    proxy_pass http://127.0.0.1:5000;
+    # Backend Node/Express (ajusta si usas otro PORT con pm2)
+    proxy_pass http://127.0.0.1:5005;
     proxy_http_version 1.1;
 
     proxy_set_header Upgrade $http_upgrade;
