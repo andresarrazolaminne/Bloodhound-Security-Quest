@@ -7,6 +7,7 @@ import {
   userScores,
   systemConfig,
   venues,
+  uploadedAssets,
   type User, 
   type InsertUser, 
   type MapSegment, 
@@ -22,10 +23,17 @@ import {
   type SystemConfig,
   type Venue,
   type InsertVenue,
+  type UploadedAsset,
+  type InsertUploadedAsset,
   insertSystemConfigSchema
 } from '@shared/schema';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
+import * as fs from "node:fs";
+import * as path from "node:path";
+
+const UPLOADS_DIR =
+  process.env.UPLOADS_DIR ?? "/usr/share/nginx/html/bloodhound/uploads";
 
 export interface IStorage {
   // User operations
@@ -62,6 +70,11 @@ export interface IStorage {
   // System configuration operations
   getSystemConfig(): Promise<any>;
   updateSystemConfig(configData: any): Promise<any>;
+
+  // Uploaded assets (admin dashboard)
+  listUploadedAssets(): Promise<UploadedAsset[]>;
+  createUploadedAsset(asset: InsertUploadedAsset): Promise<UploadedAsset>;
+  deleteUploadedAsset(id: number): Promise<void>;
   
   // Admin statistics
   getAllUsersWithProgress(): Promise<Array<{
@@ -444,6 +457,42 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error al actualizar la configuración:", error);
       throw error;
+    }
+  }
+
+  async listUploadedAssets(): Promise<UploadedAsset[]> {
+    return await db
+      .select()
+      .from(uploadedAssets)
+      .orderBy(desc(uploadedAssets.createdAt));
+  }
+
+  async createUploadedAsset(asset: InsertUploadedAsset): Promise<UploadedAsset> {
+    const [created] = await db
+      .insert(uploadedAssets)
+      .values(asset)
+      .returning();
+
+    return created;
+  }
+
+  async deleteUploadedAsset(id: number): Promise<void> {
+    const [asset] = await db
+      .select()
+      .from(uploadedAssets)
+      .where(eq(uploadedAssets.id, id))
+      .limit(1);
+
+    if (!asset) return;
+
+    await db.delete(uploadedAssets).where(eq(uploadedAssets.id, id));
+
+    // Try to delete the physical file too (best-effort; DB delete shouldn't fail).
+    try {
+      const filePath = path.join(UPLOADS_DIR, asset.filename);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } catch (err) {
+      console.error("Error deleting uploaded asset file:", err);
     }
   }
   

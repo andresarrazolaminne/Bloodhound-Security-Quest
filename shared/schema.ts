@@ -62,6 +62,28 @@ export const systemConfig = pgTable("system_config", {
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 });
 
+// Uploaded assets (logos, background, etc.)
+export const uploadedAssets = pgTable("uploaded_assets", {
+  id: serial("id").primaryKey(),
+  filename: text("filename").notNull(),
+  originalName: text("original_name").notNull(),
+  mime: text("mime").notNull(),
+  size: integer("size").notNull(),
+  publicUrl: text("public_url").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertUploadedAssetsSchema = createInsertSchema(uploadedAssets).pick({
+  filename: true,
+  originalName: true,
+  mime: true,
+  size: true,
+  publicUrl: true,
+});
+
+export type InsertUploadedAsset = z.infer<typeof insertUploadedAssetsSchema>;
+export type UploadedAsset = typeof uploadedAssets.$inferSelect;
+
 // Venues/Sedes table
 export const venues = pgTable("venues", {
   id: serial("id").primaryKey(),

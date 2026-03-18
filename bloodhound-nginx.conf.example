@@ -19,6 +19,13 @@ server {
   location = / { return 301 /bloodhound/; }
   location = /bloodhound { return 301 /bloodhound/; }
 
+  # Uploaded assets (served directly by Nginx)
+  location ^~ /bloodhound/uploads/ {
+    root /usr/share/nginx/html;
+    expires 30d;
+    access_log off;
+  }
+
   location /bloodhound/ {
     rewrite ^/bloodhound/(.*)$ /$1 break;
 
@@ -49,6 +56,13 @@ server {
 
   location = / { return 301 /bloodhound/; }
   location = /bloodhound { return 301 /bloodhound/; }
+
+  # Uploaded assets (served directly by Nginx)
+  location ^~ /bloodhound/uploads/ {
+    root /usr/share/nginx/html;
+    expires 30d;
+    access_log off;
+  }
 
   location /bloodhound/ {
     rewrite ^/bloodhound/(.*)$ /$1 break;

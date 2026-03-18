@@ -5,6 +5,8 @@
 # - Copias `dist/public/*` a: `/usr/share/nginx/html/bloodhound/`
 # - El frontend consume la API desde: `/bloodhound/api/...`
 # - El backend escucha en: `http://127.0.0.1:5000/api/...`
+# - Durante el deploy NO borres `/usr/share/nginx/html/bloodhound/uploads/`
+#   (ahí se guardan los archivos subidos por el admin)
 
 map $http_upgrade $connection_upgrade {
   default upgrade;
@@ -36,6 +38,13 @@ server {
     proxy_connect_timeout 60s;
     proxy_send_timeout 60s;
     proxy_read_timeout 300s;
+  }
+
+  # Uploaded assets (served directly by Nginx)
+  location ^~ /bloodhound/uploads/ {
+    root /usr/share/nginx/html;
+    expires 30d;
+    access_log off;
   }
 
   # Frontend (SPA fallback)
@@ -73,6 +82,13 @@ server {
     proxy_connect_timeout 60s;
     proxy_send_timeout 60s;
     proxy_read_timeout 300s;
+  }
+
+  # Uploaded assets (served directly by Nginx)
+  location ^~ /bloodhound/uploads/ {
+    root /usr/share/nginx/html;
+    expires 30d;
+    access_log off;
   }
 
   location ^~ /bloodhound/ {
