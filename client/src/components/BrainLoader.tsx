@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { withApiBase } from "@/lib/paths";
 
 interface BrainLoaderProps {
   className?: string;
@@ -23,7 +24,7 @@ const BrainLoader = ({ className, size = "medium", text }: BrainLoaderProps) => 
     // Load system configuration for preload image FIRST, before showing anything
     const loadPreloadImage = async () => {
       try {
-        const response = await fetch('/api/system-config?t=' + Date.now());
+        const response = await fetch(withApiBase('/api/system-config?t=' + Date.now()));
         if (response.ok) {
           const data = await response.json();
           const config = data.config || {};

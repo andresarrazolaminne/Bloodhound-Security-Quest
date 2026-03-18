@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/context/UserContext";
 import { login } from "@/lib/api";
 import BrainLoader from "@/components/BrainLoader";
+import { withApiBase, withUiBase } from "@/lib/paths";
 
 const AuthPage = () => {
   const [, setLocation] = useLocation();
@@ -51,7 +52,7 @@ const AuthPage = () => {
   useEffect(() => {
     const loadSystemConfig = async () => {
       try {
-        const response = await fetch('/api/system-config');
+        const response = await fetch(withApiBase('/api/system-config'));
         if (!response.ok) throw new Error('Failed to load config');
         const data = await response.json();
         const config = data.config || {};
@@ -110,7 +111,7 @@ const AuthPage = () => {
         if (redirectUrl) {
           setLocation(redirectUrl);
         } else {
-          setLocation('/map');
+          setLocation(withUiBase('/map'));
         }
         
         toast({
@@ -123,9 +124,11 @@ const AuthPage = () => {
         localStorage.setItem('tempDocument', docNumber);
         // Mantener la URL de redirección para después del registro
         if (redirectUrl) {
-          setLocation(`/register?redirect=${encodeURIComponent(redirectUrl)}`);
+          setLocation(
+            `${withUiBase('/register')}?redirect=${encodeURIComponent(redirectUrl)}`,
+          );
         } else {
-          setLocation('/register');
+          setLocation(withUiBase('/register'));
         }
       }
     } catch (error: any) {
@@ -134,9 +137,11 @@ const AuthPage = () => {
         localStorage.setItem('tempDocument', docNumber);
         // Mantener la URL de redirección para después del registro
         if (redirectUrl) {
-          setLocation(`/register?redirect=${encodeURIComponent(redirectUrl)}`);
+          setLocation(
+            `${withUiBase('/register')}?redirect=${encodeURIComponent(redirectUrl)}`,
+          );
         } else {
-          setLocation('/register');
+          setLocation(withUiBase('/register'));
         }
       } else if (error.status === 400) {
         // Error de validación - mostrar mensaje específico
@@ -190,7 +195,7 @@ const AuthPage = () => {
 
   const handleChangeUser = () => {
     localStorage.removeItem('lastDocument');
-    setLocation('/auth');
+    setLocation(withUiBase('/auth'));
   };
 
   // Mostrar loader mientras se cargan las configuraciones

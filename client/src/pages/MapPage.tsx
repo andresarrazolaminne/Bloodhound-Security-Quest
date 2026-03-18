@@ -13,6 +13,7 @@ import HtmlContent from "@/components/HtmlContent";
 import { playQRSuccessSound, playQRErrorSound, playCompletionSound } from '@/lib/sounds';
 import BrainLoader from "@/components/BrainLoader";
 import SegmentContentModal from '@/components/SegmentContentModal';
+import { withApiBase, withUiBase } from "@/lib/paths";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 
@@ -118,7 +119,7 @@ const MapPage = () => {
   // Redirect if not logged in
   useEffect(() => {
     if (!currentUser) {
-      setLocation("/");
+      setLocation(withUiBase("/"));
       return;
     }
 
@@ -139,7 +140,7 @@ const MapPage = () => {
     // Cargar configuración del sistema
     const loadSystemConfig = async () => {
       try {
-        const response = await fetch('/api/system-config?t=' + Date.now());
+        const response = await fetch(withApiBase('/api/system-config?t=' + Date.now()));
         if (response.ok) {
           const data = await response.json();
           const config = data.config || {};
@@ -415,7 +416,7 @@ const MapPage = () => {
 
   const handleLogout = () => {
     logout();
-    setLocation("/");
+    setLocation(withUiBase("/"));
   };
 
   if (!currentUser) {

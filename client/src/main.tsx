@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import { withApiBase } from "./lib/paths";
 
 // Initialize CSS custom properties with system config ONLY
 const initializeStyles = async () => {
@@ -8,7 +9,7 @@ const initializeStyles = async () => {
   
   // Fetch system config and use ONLY database values
   try {
-    const response = await fetch('/api/system-config?t=' + Date.now());
+    const response = await fetch(withApiBase('/api/system-config?t=' + Date.now()));
     if (response.ok) {
       const data = await response.json();
       config = data.config || {};

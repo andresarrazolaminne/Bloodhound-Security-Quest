@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { withApiBase } from "./paths";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -30,7 +31,8 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey[0] as string, {
+    const url = typeof queryKey[0] === "string" ? withApiBase(queryKey[0]) : String(queryKey[0]);
+    const res = await fetch(url, {
       credentials: "include",
     });
 

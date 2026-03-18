@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { register } from "@/lib/api";
 import { useUser } from "@/context/UserContext";
 import BrainLoader from "@/components/BrainLoader";
+import { withApiBase, withUiBase } from "@/lib/paths";
 
 const RegistrationPage = () => {
   const [name, setName] = useState("");
@@ -52,7 +53,7 @@ const RegistrationPage = () => {
   useEffect(() => {
     const loadActiveVenues = async () => {
       try {
-        const response = await fetch('/api/venues/active');
+        const response = await fetch(withApiBase('/api/venues/active'));
         if (response.ok) {
           const data = await response.json();
           setActiveVenues(data.venues || []);
@@ -68,7 +69,7 @@ const RegistrationPage = () => {
   useEffect(() => {
     const loadSystemConfig = async () => {
       try {
-        const response = await fetch('/api/system-config?t=' + Date.now());
+        const response = await fetch(withApiBase('/api/system-config?t=' + Date.now()));
         if (response.ok) {
           const data = await response.json();
           const config = data.config || {};
@@ -150,7 +151,7 @@ const RegistrationPage = () => {
       if (redirectUrl) {
         setLocation(redirectUrl);
       } else {
-        setLocation("/map");
+        setLocation(withUiBase("/map"));
       }
 
       toast({
@@ -364,7 +365,7 @@ const RegistrationPage = () => {
                 type="button"
                 variant="outline"
                 className="w-full py-6 text-base"
-                onClick={() => setLocation("/")}
+                onClick={() => setLocation(withUiBase("/"))}
               >
                 Volver al inicio
               </Button>

@@ -9,6 +9,7 @@ import TrapMessageModal from '@/components/TrapMessageModal';
 import SegmentContentModal from '@/components/SegmentContentModal';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { playQRSuccessSound, playQRErrorSound } from '@/lib/sounds';
+import { withUiBase } from '@/lib/paths';
 
 // Handler específico para códigos QR que vienen desde URLs externas
 const QRUnlockHandler = () => {
@@ -70,7 +71,11 @@ const QRUnlockHandler = () => {
         if (!lastDocument) {
           // Si no hay usuario guardado, redirigir al login con los parámetros
           console.log('QRUnlockHandler - Sin usuario guardado, redirigiendo al login');
-          setLocation(`/auth?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+          setLocation(
+            `${withUiBase('/auth')}?redirect=${encodeURIComponent(
+              window.location.pathname + window.location.search,
+            )}`,
+          );
           return;
         }
 
@@ -126,7 +131,7 @@ const QRUnlockHandler = () => {
             playQRSuccessSound(); // Reproducir sonido de éxito
             // Solo redirigir automáticamente si NO hay modal
             setTimeout(() => {
-              setLocation('/map');
+              setLocation(withUiBase('/map'));
             }, 3000);
           }
 
@@ -207,7 +212,7 @@ const QRUnlockHandler = () => {
             playQRSuccessSound(); // Reproducir sonido de éxito
             // Solo redirigir automáticamente si NO hay modal
             setTimeout(() => {
-              setLocation('/map');
+              setLocation(withUiBase('/map'));
             }, 3000);
           }
 
@@ -323,7 +328,7 @@ const QRUnlockHandler = () => {
           
           <div className="flex flex-col space-y-2">
             <Button 
-              onClick={() => setLocation('/map')} 
+              onClick={() => setLocation(withUiBase('/map'))} 
               className="w-full"
               variant={result.success ? "default" : "outline"}
             >
@@ -332,7 +337,7 @@ const QRUnlockHandler = () => {
             
             {!result.success && (
               <Button 
-                onClick={() => setLocation('/auth')} 
+                onClick={() => setLocation(withUiBase('/auth'))} 
                 variant="outline"
                 className="w-full"
               >
@@ -351,7 +356,7 @@ const QRUnlockHandler = () => {
             setShowTrapModal(false);
             // Redirigir al mapa después de cerrar el modal
             setTimeout(() => {
-              setLocation('/map');
+              setLocation(withUiBase('/map'));
             }, 1000);
           }}
           trapMessage={result.trapMessage}
@@ -368,7 +373,7 @@ const QRUnlockHandler = () => {
             setShowSegmentModal(false);
             // Redirigir al mapa después de cerrar el modal
             setTimeout(() => {
-              setLocation('/map');
+              setLocation(withUiBase('/map'));
             }, 1000);
           }}
           segmentId={result.segmentId || 0}

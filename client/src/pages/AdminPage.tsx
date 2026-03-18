@@ -19,6 +19,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import RichTextEditor from "@/components/RichTextEditor";
 import HtmlContent from "@/components/HtmlContent";
+import { withUiBase } from "@/lib/paths";
 import { 
   Tabs, 
   TabsContent, 
@@ -206,7 +207,7 @@ const AdminPage = () => {
     });
 
     // Redirigir a la página de login
-    setLocation("/admin-login");
+    setLocation(withUiBase("/admin-login"));
   };
 
   // Función para cargar la configuración del sistema

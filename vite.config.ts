@@ -4,6 +4,14 @@ import themePlugin from "@replit/vite-plugin-shadcn-theme-json";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
+const rawBasePath = process.env.VITE_BASE_PATH;
+const viteBase =
+  rawBasePath && rawBasePath.trim() !== ""
+    ? rawBasePath.endsWith("/")
+      ? rawBasePath
+      : `${rawBasePath}/`
+    : "/";
+
 export default defineConfig({
   plugins: [
     react(),
@@ -26,6 +34,7 @@ export default defineConfig({
     },
   },
   root: path.resolve(import.meta.dirname, "client"),
+  base: viteBase,
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,

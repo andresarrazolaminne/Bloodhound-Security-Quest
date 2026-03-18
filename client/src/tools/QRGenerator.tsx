@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { apiRequest } from '@/lib/queryClient';
+import { getUiBaseUrl } from '@/lib/paths';
 import QRCode from 'qrcode';
 import { Download } from 'lucide-react';
 
@@ -90,8 +91,8 @@ const QRGenerator = () => {
       let qrData: string;
       let format: string;
       
-      // Obtener la URL base de la aplicación
-      const baseUrl = window.location.origin;
+      // Obtener la URL base de la aplicación (incluye prefijo VITE_BASE_PATH)
+      const baseUrl = getUiBaseUrl();
       
       // Generar el contenido QR según el formato seleccionado
       switch (qrFormat) {
@@ -160,8 +161,8 @@ const QRGenerator = () => {
         const asset = mapAssets.find(a => a.segmentId === id);
         const code = asset?.securityCode || generateSecurityCode();
         
-        // Obtener la URL base de la aplicación
-        const baseUrl = window.location.origin;
+        // Obtener la URL base de la aplicación (incluye prefijo VITE_BASE_PATH)
+        const baseUrl = getUiBaseUrl();
         
         // Generar el contenido QR según el formato seleccionado
         let qrData: string;
