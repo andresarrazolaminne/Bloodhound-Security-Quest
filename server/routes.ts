@@ -562,6 +562,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           backgroundImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
           gradientStartColor: '#bb2558',
           gradientEndColor: '#e8cf00',
+          scanButtonEnabled: true,
           scanButtonText: '¡Escanea aquí!',
           helpButtonText: 'Ayuda',
           siteMapButtonText: 'Mapa del Sitio',
@@ -592,6 +593,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   
 
+
+  // Admin uploads (logos, support images, etc.)
+  const upload = multer({
+    storage: multer.diskStorage({
+      destination: (_req, _file, cb) => {
+        try {
+          fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+          cb(null, UPLOADS_DIR);
+        } catch (err) {
+          cb(err as Error, UPLOADS_DIR);
+        }
+      },
+      filename: (_req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        const allowedExt = [".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"];
+        const safeExt = allowedExt.includes(ext) ? ext : "";
+        const filename = `${nanoid(16)}${safeExt}`;
+        cb(null, filename);
+      },
+    }),
+    limits: {
+      fileSize: Number(process.env.UPLOAD_MAX_BYTES ?? 10 * 1024 * 1024), // 10MB
+    },
+    fileFilter: (_req, file, cb) => {
+      const allowedMimes = new Set([
+        "image/png",
+        "image/jpeg",
+        "image/webp",
+        "image/gif",
+        "image/svg+xml",
+      ]);
+
+      if (!allowedMimes.has(file.mimetype)) {
+        return cb(new Error("Tipo de archivo no permitido"));
+      }
+      cb(null, true);
+    },
+  });
+
+  apiRouter.get("/admin/uploads", async (_req, res) => {
+    try {
+      const assets = await storage.listUploadedAssets();
+      return res.status(200).json({ assets });
+    } catch (error) {
+      console.error("Error listing uploads:", error);
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  apiRouter.post("/admin/uploads", upload.single("file"), async (req, res) => {
+    try {
+      const file = req.file;
+      if (!file) return res.status(400).json({ message: "No se recibió ningún archivo" });
+
+      const publicUrl = `/bloodhound/uploads/${file.filename}`;
+
+      const asset = await storage.createUploadedAsset({
+        filename: file.filename,
+        originalName: file.originalname,
+        mime: file.mimetype,
+        size: file.size ?? 0,
+        publicUrl,
+      });
+
+      return res.status(201).json({ asset });
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      console.error("Error uploading file:", err.message, err);
+      const msg =
+        err.message?.includes("EACCES") || err.message?.includes("permission denied")
+          ? "Sin permiso para escribir en la carpeta de uploads. Revisa permisos en el servidor."
+          : err.message?.includes("uploaded_assets") || err.message?.includes("relation")
+            ? "Falta la tabla uploaded_assets. Ejecuta npm run db:push en el servidor."
+            : err.message || "Error interno del servidor";
+      return res.status(500).json({ message: msg });
+    }
+  });
+
+  apiRouter.delete("/admin/uploads/:id", async (req, res) => {
+    try {
+      const id = z.coerce.number().int().positive().parse(req.params.id);
+      await storage.deleteUploadedAsset(id);
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      return res.status(400).json({ message: "Solicitud inválida" });
+    }
+  });
 
   apiRouter.get("/health", (req, res) => {
     res.status(200).json({ status: "ok" });
