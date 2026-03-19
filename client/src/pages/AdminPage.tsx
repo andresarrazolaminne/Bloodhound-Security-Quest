@@ -3396,10 +3396,114 @@ const AdminPage = () => {
                 </TabsContent>
 
                 <TabsContent value="login" className="space-y-6">
-                  <div className="text-center p-8 bg-gray-50 rounded-lg">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Configuración de Página de Login</h3>
-                    <p className="text-gray-600">La configuración de página de login estará disponible próximamente.</p>
-                  </div>
+                  <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Configuración de Página de Login</h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label htmlFor="login-title" className="block text-sm font-medium text-gray-700">
+                            Título de Login
+                          </label>
+                          <Input
+                            id="login-title"
+                            value={systemConfig.loginTitle}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              loginTitle: e.target.value
+                            })}
+                            placeholder="Lanzamiento"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label htmlFor="login-subtitle" className="block text-sm font-medium text-gray-700">
+                            Subtítulo de Login (Año)
+                          </label>
+                          <Input
+                            id="login-subtitle"
+                            value={systemConfig.loginSubtitle}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              loginSubtitle: e.target.value
+                            })}
+                            placeholder="2026"
+                          />
+                        </div>
+
+                        <div className="space-y-2 md:col-span-2">
+                          <label htmlFor="login-welcome" className="block text-sm font-medium text-gray-700">
+                            Texto de Bienvenida
+                          </label>
+                          <Input
+                            id="login-welcome"
+                            value={systemConfig.loginWelcomeText}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              loginWelcomeText: e.target.value
+                            })}
+                            placeholder="Bienvenido al reto de identificación de riesgos"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label htmlFor="login-button-text" className="block text-sm font-medium text-gray-700">
+                            Texto del Botón de Login
+                          </label>
+                          <Input
+                            id="login-button-text"
+                            value={systemConfig.loginButtonText}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              loginButtonText: e.target.value
+                            })}
+                            placeholder="Ingresar"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label htmlFor="login-document-label" className="block text-sm font-medium text-gray-700">
+                            Etiqueta Campo Documento
+                          </label>
+                          <Input
+                            id="login-document-label"
+                            value={systemConfig.loginDocumentLabel}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              loginDocumentLabel: e.target.value
+                            })}
+                            placeholder="Número de documento"
+                          />
+                        </div>
+
+                        <div className="space-y-2 md:col-span-2">
+                          <label htmlFor="login-name-label" className="block text-sm font-medium text-gray-700">
+                            Etiqueta Campo Nombre
+                          </label>
+                          <Input
+                            id="login-name-label"
+                            value={systemConfig.loginNameLabel}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              loginNameLabel: e.target.value
+                            })}
+                            placeholder="Nombre completo"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button type="submit" className="w-full" disabled={isLoading || updatingConfig}>
+                      {isLoading || updatingConfig ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Actualizando Login...
+                        </>
+                      ) : (
+                        "Actualizar Configuración de Login"
+                      )}
+                    </Button>
+                  </form>
                 </TabsContent>
               </Tabs>
             </CardContent>
