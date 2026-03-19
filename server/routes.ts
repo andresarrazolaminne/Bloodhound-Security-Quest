@@ -6,6 +6,11 @@ import { insertUserSchema, insertMapSegmentAssetsSchema, insertSystemConfigSchem
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import multer from "multer";
+import fs from "fs";
+import path from "path";
+
+const UPLOADS_DIR = process.env.UPLOADS_DIR || "/usr/share/nginx/html/bloodhound/uploads";
 
 
 // Función para generar un código de seguridad alfanumérico aleatorio
