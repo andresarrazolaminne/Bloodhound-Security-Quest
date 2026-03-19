@@ -395,6 +395,7 @@ export class DatabaseStorage implements IStorage {
         loginLogoImageUrl: '',
         headerLogoImageUrl: '',
         preloadImageUrl: '',
+        scanButtonEnabled: true,
         scanButtonText: '¡Escanea aquí!',
         helpButtonText: 'Ayuda',
         siteMapButtonText: 'Mapa del Sitio',
@@ -420,6 +421,7 @@ export class DatabaseStorage implements IStorage {
     loginLogoImageUrl?: string;
     headerLogoImageUrl?: string;
     preloadImageUrl?: string;
+    scanButtonEnabled?: boolean;
     scanButtonText?: string;
     helpButtonText?: string;
     siteMapButtonText?: string;

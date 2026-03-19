@@ -568,6 +568,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           backgroundImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
           gradientStartColor: '#bb2558',
           gradientEndColor: '#e8cf00',
+          scanButtonEnabled: true,
           scanButtonText: '¡Escanea aquí!',
           helpButtonText: 'Ayuda',
           siteMapButtonText: 'Mapa del Sitio',
@@ -664,8 +665,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       return res.status(201).json({ asset });
     } catch (error) {
-      console.error("Error uploading file:", error);
-      return res.status(500).json({ message: "Error interno del servidor" });
+      const err = error instanceof Error ? error : new Error(String(error));
+      console.error("Error uploading file:", err.message, err);
+      const msg =
+        err.message?.includes("EACCES") || err.message?.includes("permission denied")
+          ? "Sin permiso para escribir en la carpeta de uploads. Revisa permisos en el servidor."
+          : err.message?.includes("uploaded_assets") || err.message?.includes("relation")
+            ? "Falta la tabla uploaded_assets. Ejecuta npm run db:push en el servidor."
+            : err.message || "Error interno del servidor";
+      return res.status(500).json({ message: msg });
     }
   });
 

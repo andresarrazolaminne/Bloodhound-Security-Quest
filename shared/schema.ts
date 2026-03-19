@@ -48,6 +48,7 @@ export const systemConfig = pgTable("system_config", {
   headerLogoImageUrl: text("header_logo_image_url").notNull().default(''),
   headerLogoSize: integer("header_logo_size").notNull().default(32), // Size in pixels (height)
   preloadImageUrl: text("preload_image_url").notNull().default(''),
+  scanButtonEnabled: boolean("scan_button_enabled").notNull().default(true),
   scanButtonText: text("scan_button_text").notNull().default('¡Escanea aquí!'),
   helpButtonText: text("help_button_text").notNull().default('Ayuda'),
   siteMapButtonText: text("site_map_button_text").notNull().default('Mapa del Sitio'),
@@ -141,6 +142,7 @@ export const systemConfigSchema = z.object({
   headerLogoImageUrl: z.string().default(''),
   headerLogoSize: z.number().default(32),
   preloadImageUrl: z.string().default(''),
+  scanButtonEnabled: z.boolean().default(true),
   scanButtonText: z.string().default('¡Escanea aquí!'),
   helpButtonText: z.string().default('Ayuda'),
   siteMapButtonText: z.string().default('Mapa del Sitio'),

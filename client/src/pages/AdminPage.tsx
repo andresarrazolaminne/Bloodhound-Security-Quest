@@ -149,6 +149,7 @@ const AdminPage = () => {
     headerLogoImageUrl: "",
     headerLogoSize: 32,
     preloadImageUrl: "",
+    scanButtonEnabled: true,
     scanButtonText: "",
     helpButtonText: "",
     siteMapButtonText: "",
@@ -269,6 +270,7 @@ const AdminPage = () => {
         headerBackgroundColor: config.headerBackgroundColor || "#3b82f6",
         headerTextColor: config.headerTextColor || "#ffffff",
         progressTextColor: config.progressTextColor || "#ffffff",
+        scanButtonEnabled: config.scanButtonEnabled ?? true,
         scanButtonText: config.scanButtonText || "¡Escanea aquí!",
         helpButtonText: config.helpButtonText || "Ayuda",
         siteMapButtonText: config.siteMapButtonText || "Mapa del Sitio",
@@ -402,6 +404,7 @@ const AdminPage = () => {
             gradientMidColor: data.config.gradientMidColor || "",
             gradientDirection: data.config.gradientDirection || "175deg",
             gradientType: data.config.gradientType || "linear",
+            scanButtonEnabled: data.config.scanButtonEnabled ?? true,
             scanButtonText: data.config.scanButtonText || "¡Escanea aquí!",
             helpButtonText: data.config.helpButtonText || "Ayuda",
             siteMapButtonText: data.config.siteMapButtonText || "Mapa del Sitio",
@@ -1901,6 +1904,27 @@ const AdminPage = () => {
                       <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Textos de Botones</h3>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Mostrar Botón de Escaneo en Mapa
+                          </label>
+                          <div className="flex items-center space-x-2 mt-2">
+                            <input
+                              type="checkbox"
+                              id="scan-button-enabled"
+                              checked={systemConfig.scanButtonEnabled}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                scanButtonEnabled: e.target.checked
+                              })}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <label htmlFor="scan-button-enabled" className="text-sm font-medium text-gray-700">
+                              Habilitado
+                            </label>
+                          </div>
+                        </div>
+
                         <div className="space-y-2">
                           <label htmlFor="scan-button-text" className="block text-sm font-medium text-gray-700">
                             Texto del Botón de Escaneo
