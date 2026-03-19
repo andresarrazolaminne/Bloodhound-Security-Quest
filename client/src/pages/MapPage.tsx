@@ -68,6 +68,17 @@ const MapPage = () => {
     siteMapButtonText: string;
     prizeButtonText: string;
     completionTitle: string;
+    completionRewardHeadline: string;
+    completionRewardDescription: string;
+    completionCodeSectionTitle: string;
+    completionCodeLabel: string;
+    completionCodeHelpText: string;
+    completionCloseButtonText: string;
+    completionSaveButtonText: string;
+    completionShowBrain: boolean;
+    completionShowQr: boolean;
+    completionShowCode: boolean;
+    completionShowSaveButton: boolean;
     loadingText: string;
     headerLogoImageUrl: string;
     headerLogoSize: number;
@@ -102,6 +113,17 @@ const MapPage = () => {
     siteMapButtonText: '',
     prizeButtonText: '',
     completionTitle: '',
+    completionRewardHeadline: '',
+    completionRewardDescription: '',
+    completionCodeSectionTitle: '',
+    completionCodeLabel: '',
+    completionCodeHelpText: '',
+    completionCloseButtonText: '',
+    completionSaveButtonText: '',
+    completionShowBrain: true,
+    completionShowQr: true,
+    completionShowCode: true,
+    completionShowSaveButton: true,
     loadingText: '',
     headerLogoImageUrl: '',
     headerLogoSize: 32,
@@ -171,6 +193,17 @@ const MapPage = () => {
             siteMapButtonText: config.siteMapButtonText,
             prizeButtonText: config.prizeButtonText,
             completionTitle: config.completionTitle,
+            completionRewardHeadline: config.completionRewardHeadline,
+            completionRewardDescription: config.completionRewardDescription,
+            completionCodeSectionTitle: config.completionCodeSectionTitle,
+            completionCodeLabel: config.completionCodeLabel,
+            completionCodeHelpText: config.completionCodeHelpText,
+            completionCloseButtonText: config.completionCloseButtonText,
+            completionSaveButtonText: config.completionSaveButtonText,
+            completionShowBrain: config.completionShowBrain ?? true,
+            completionShowQr: config.completionShowQr ?? true,
+            completionShowCode: config.completionShowCode ?? true,
+            completionShowSaveButton: config.completionShowSaveButton ?? true,
             loadingText: config.loadingText,
             headerLogoImageUrl: config.headerLogoImageUrl,
             headerLogoSize: config.headerLogoSize,
@@ -673,56 +706,62 @@ const MapPage = () => {
             {/* Contenido más compacto */}
             <div className="flex items-center gap-4 mb-3">
               {/* Cerebro animado */}
-              <div className="flex-shrink-0 relative w-12 h-12">
-                <img 
-                  src="https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Cerebro.png" 
-                  alt="Cerebro" 
-                  className="w-full h-full object-contain animate-float"
-                />
-                <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2/3 h-1 bg-black/10 rounded-full blur-sm animate-pulse"></div>
-              </div>
+              {systemConfig.completionShowBrain && (
+                <div className="flex-shrink-0 relative w-12 h-12">
+                  <img 
+                    src="https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Cerebro.png" 
+                    alt="Cerebro" 
+                    className="w-full h-full object-contain animate-float"
+                  />
+                  <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2/3 h-1 bg-black/10 rounded-full blur-sm animate-pulse"></div>
+                </div>
+              )}
               
               <div className="text-left">
                 <p className="text-gray-800 text-lg font-medium">
-                  ¡Reto completado!
+                  {systemConfig.completionRewardHeadline}
                 </p>
                 <p className="text-gray-600 text-sm">
-                  Con el siguiente código puedes reclamar tu premio.
+                  {systemConfig.completionRewardDescription}
                 </p>
               </div>
             </div>
             
-            <div className="border border-gray-200 rounded-lg p-3 w-full bg-gradient-to-b from-yellow-50 to-white mb-3">
-              <h4 className="text-center font-medium text-gray-700 mb-2 text-sm">Código de Redención</h4>
+            {(systemConfig.completionShowQr || systemConfig.completionShowCode) && (
+              <div className="border border-gray-200 rounded-lg p-3 w-full bg-gradient-to-b from-yellow-50 to-white mb-3">
+                <h4 className="text-center font-medium text-gray-700 mb-2 text-sm">{systemConfig.completionCodeSectionTitle}</h4>
               
-              <div className="flex flex-col sm:flex-row gap-3 items-center">
-                {/* QR Code */}
-                <div className="w-36 h-36 sm:w-40 sm:h-40 flex-shrink-0 mx-auto sm:mx-0 bg-white p-2 border border-gray-300 rounded-lg shadow-sm flex items-center justify-center">
-                  {redemptionCode ? (
-                    <img 
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${redemptionCode}`}
-                      alt="QR de redención"
-                      className="max-w-full max-h-full"
-                    />
-                  ) : (
-                    <BrainLoader size="medium" />
+                <div className="flex flex-col sm:flex-row gap-3 items-center">
+                  {/* QR Code */}
+                  {systemConfig.completionShowQr && (
+                    <div className="w-36 h-36 sm:w-40 sm:h-40 flex-shrink-0 mx-auto sm:mx-0 bg-white p-2 border border-gray-300 rounded-lg shadow-sm flex items-center justify-center">
+                      {redemptionCode ? (
+                        <img 
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${redemptionCode}`}
+                          alt="QR de redención"
+                          className="max-w-full max-h-full"
+                        />
+                      ) : (
+                        <BrainLoader size="medium" />
+                      )}
+                    </div>
+                  )}
+                
+                  {/* Código de redención en formato texto */}
+                  {systemConfig.completionShowCode && redemptionCode && (
+                    <div className="flex-grow bg-white p-3 border border-gray-300 rounded-md text-center">
+                      <p className="text-xs text-gray-500 mb-1">{systemConfig.completionCodeLabel}</p>
+                      <p className="font-mono text-lg font-bold tracking-wider select-all break-all">
+                        {redemptionCode}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        {systemConfig.completionCodeHelpText}
+                      </p>
+                    </div>
                   )}
                 </div>
-                
-                {/* Código de redención en formato texto */}
-                {redemptionCode && (
-                  <div className="flex-grow bg-white p-3 border border-gray-300 rounded-md text-center">
-                    <p className="text-xs text-gray-500 mb-1">Código de validación</p>
-                    <p className="font-mono text-lg font-bold tracking-wider select-all break-all">
-                      {redemptionCode}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Muestra este código para reclamar tu premio
-                    </p>
-                  </div>
-                )}
               </div>
-            </div>
+            )}
           </div>
           
           <DialogFooter className="flex-col sm:flex-row gap-2">
@@ -730,14 +769,16 @@ const MapPage = () => {
               onClick={() => setShowCompletionModal(false)}
               className="w-full sm:w-auto order-2 sm:order-1"
             >
-              Cerrar
+              {systemConfig.completionCloseButtonText}
             </OutlineBoxButton>
-            <BoxButton
-              onClick={() => window.print()}
-              className="w-full sm:w-auto order-1 sm:order-2"
-            >
-              Guardar Premio
-            </BoxButton>
+            {systemConfig.completionShowSaveButton && (
+              <BoxButton
+                onClick={() => window.print()}
+                className="w-full sm:w-auto order-1 sm:order-2"
+              >
+                {systemConfig.completionSaveButtonText}
+              </BoxButton>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

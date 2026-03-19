@@ -401,6 +401,17 @@ export class DatabaseStorage implements IStorage {
         siteMapButtonText: 'Mapa del Sitio',
         prizeButtonText: 'Ver Código Premio',
         completionTitle: '¡Felicidades, has completado el reto!',
+        completionRewardHeadline: '¡Reto completado!',
+        completionRewardDescription: 'Con el siguiente código puedes reclamar tu premio.',
+        completionCodeSectionTitle: 'Código de Redención',
+        completionCodeLabel: 'Código de validación',
+        completionCodeHelpText: 'Muestra este código para reclamar tu premio',
+        completionCloseButtonText: 'Cerrar',
+        completionSaveButtonText: 'Guardar Premio',
+        completionShowBrain: true,
+        completionShowQr: true,
+        completionShowCode: true,
+        completionShowSaveButton: true,
         loadingText: 'Cargando tu mapa...',
         updatedAt: new Date()
       };
@@ -427,6 +438,17 @@ export class DatabaseStorage implements IStorage {
     siteMapButtonText?: string;
     prizeButtonText?: string;
     completionTitle?: string;
+    completionRewardHeadline?: string;
+    completionRewardDescription?: string;
+    completionCodeSectionTitle?: string;
+    completionCodeLabel?: string;
+    completionCodeHelpText?: string;
+    completionCloseButtonText?: string;
+    completionSaveButtonText?: string;
+    completionShowBrain?: boolean;
+    completionShowQr?: boolean;
+    completionShowCode?: boolean;
+    completionShowSaveButton?: boolean;
     loadingText?: string;
   }): Promise<SystemConfig> {
     try {

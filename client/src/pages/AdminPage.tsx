@@ -137,6 +137,17 @@ const AdminPage = () => {
     siteMapButtonText: "",
     prizeButtonText: "",
     completionTitle: "",
+    completionRewardHeadline: "¡Reto completado!",
+    completionRewardDescription: "Con el siguiente código puedes reclamar tu premio.",
+    completionCodeSectionTitle: "Código de Redención",
+    completionCodeLabel: "Código de validación",
+    completionCodeHelpText: "Muestra este código para reclamar tu premio",
+    completionCloseButtonText: "Cerrar",
+    completionSaveButtonText: "Guardar Premio",
+    completionShowBrain: true,
+    completionShowQr: true,
+    completionShowCode: true,
+    completionShowSaveButton: true,
     loadingText: "",
     // Mensajes de logros y trampas
     achievementUnlockedTitle: "¡Logro Desbloqueado!",
@@ -258,6 +269,17 @@ const AdminPage = () => {
         siteMapButtonText: config.siteMapButtonText || "Mapa del Sitio",
         prizeButtonText: config.prizeButtonText || "Ver Código Premio",
         completionTitle: config.completionTitle || "¡Felicidades, has completado el reto!",
+        completionRewardHeadline: config.completionRewardHeadline || "¡Reto completado!",
+        completionRewardDescription: config.completionRewardDescription || "Con el siguiente código puedes reclamar tu premio.",
+        completionCodeSectionTitle: config.completionCodeSectionTitle || "Código de Redención",
+        completionCodeLabel: config.completionCodeLabel || "Código de validación",
+        completionCodeHelpText: config.completionCodeHelpText || "Muestra este código para reclamar tu premio",
+        completionCloseButtonText: config.completionCloseButtonText || "Cerrar",
+        completionSaveButtonText: config.completionSaveButtonText || "Guardar Premio",
+        completionShowBrain: config.completionShowBrain ?? true,
+        completionShowQr: config.completionShowQr ?? true,
+        completionShowCode: config.completionShowCode ?? true,
+        completionShowSaveButton: config.completionShowSaveButton ?? true,
         loadingText: config.loadingText || "Cargando tu mapa...",
         loginTitle: config.loginTitle || "Lanzamiento",
         loginSubtitle: config.loginSubtitle || "2025",
@@ -392,6 +414,17 @@ const AdminPage = () => {
             siteMapButtonText: data.config.siteMapButtonText || "Mapa del Sitio",
             prizeButtonText: data.config.prizeButtonText || "Ver Código Premio",
             completionTitle: data.config.completionTitle || "¡Felicidades, has completado el reto!",
+            completionRewardHeadline: data.config.completionRewardHeadline || "¡Reto completado!",
+            completionRewardDescription: data.config.completionRewardDescription || "Con el siguiente código puedes reclamar tu premio.",
+            completionCodeSectionTitle: data.config.completionCodeSectionTitle || "Código de Redención",
+            completionCodeLabel: data.config.completionCodeLabel || "Código de validación",
+            completionCodeHelpText: data.config.completionCodeHelpText || "Muestra este código para reclamar tu premio",
+            completionCloseButtonText: data.config.completionCloseButtonText || "Cerrar",
+            completionSaveButtonText: data.config.completionSaveButtonText || "Guardar Premio",
+            completionShowBrain: data.config.completionShowBrain ?? true,
+            completionShowQr: data.config.completionShowQr ?? true,
+            completionShowCode: data.config.completionShowCode ?? true,
+            completionShowSaveButton: data.config.completionShowSaveButton ?? true,
             loadingText: data.config.loadingText || "Cargando tu mapa...",
             // Mensajes de logros y trampas
             achievementUnlockedTitle: data.config.achievementUnlockedTitle || "¡Logro Desbloqueado!",
@@ -1977,6 +2010,178 @@ const AdminPage = () => {
                         <p className="text-xs text-gray-500">
                           Mensaje que se muestra durante las pantallas de carga
                         </p>
+                      </div>
+                    </div>
+
+                    {/* Modal de victoria: textos y componentes */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Modal de Victoria (Premio)</h3>
+
+                      <div className="space-y-4 bg-amber-50 p-4 rounded-lg border border-amber-100">
+                        <p className="text-sm text-amber-900">
+                          Personaliza exactamente qué verá el jugador al completar el reto: textos, botones y componentes visibles.
+                        </p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label htmlFor="completion-reward-headline" className="block text-sm font-medium text-gray-700">
+                              Título del Mensaje de Premio
+                            </label>
+                            <Input
+                              id="completion-reward-headline"
+                              value={systemConfig.completionRewardHeadline}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionRewardHeadline: e.target.value
+                              })}
+                              placeholder="¡Reto completado!"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <label htmlFor="completion-reward-description" className="block text-sm font-medium text-gray-700">
+                              Descripción del Premio
+                            </label>
+                            <Input
+                              id="completion-reward-description"
+                              value={systemConfig.completionRewardDescription}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionRewardDescription: e.target.value
+                              })}
+                              placeholder="Con el siguiente código puedes reclamar tu premio."
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <label htmlFor="completion-code-section-title" className="block text-sm font-medium text-gray-700">
+                              Título de la Tarjeta de Código
+                            </label>
+                            <Input
+                              id="completion-code-section-title"
+                              value={systemConfig.completionCodeSectionTitle}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionCodeSectionTitle: e.target.value
+                              })}
+                              placeholder="Código de Redención"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <label htmlFor="completion-code-label" className="block text-sm font-medium text-gray-700">
+                              Etiqueta del Código
+                            </label>
+                            <Input
+                              id="completion-code-label"
+                              value={systemConfig.completionCodeLabel}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionCodeLabel: e.target.value
+                              })}
+                              placeholder="Código de validación"
+                            />
+                          </div>
+
+                          <div className="space-y-2 md:col-span-2">
+                            <label htmlFor="completion-code-help-text" className="block text-sm font-medium text-gray-700">
+                              Texto de Ayuda del Código
+                            </label>
+                            <Input
+                              id="completion-code-help-text"
+                              value={systemConfig.completionCodeHelpText}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionCodeHelpText: e.target.value
+                              })}
+                              placeholder="Muestra este código para reclamar tu premio"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <label htmlFor="completion-close-button-text" className="block text-sm font-medium text-gray-700">
+                              Texto del Botón Secundario
+                            </label>
+                            <Input
+                              id="completion-close-button-text"
+                              value={systemConfig.completionCloseButtonText}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionCloseButtonText: e.target.value
+                              })}
+                              placeholder="Cerrar"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <label htmlFor="completion-save-button-text" className="block text-sm font-medium text-gray-700">
+                              Texto del Botón Principal
+                            </label>
+                            <Input
+                              id="completion-save-button-text"
+                              value={systemConfig.completionSaveButtonText}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionSaveButtonText: e.target.value
+                              })}
+                              placeholder="Guardar Premio"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                          <label className="flex items-center gap-2 text-sm text-gray-700">
+                            <input
+                              type="checkbox"
+                              checked={systemConfig.completionShowBrain}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionShowBrain: e.target.checked
+                              })}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            Mostrar icono animado (cerebro)
+                          </label>
+
+                          <label className="flex items-center gap-2 text-sm text-gray-700">
+                            <input
+                              type="checkbox"
+                              checked={systemConfig.completionShowQr}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionShowQr: e.target.checked
+                              })}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            Mostrar QR de redención
+                          </label>
+
+                          <label className="flex items-center gap-2 text-sm text-gray-700">
+                            <input
+                              type="checkbox"
+                              checked={systemConfig.completionShowCode}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionShowCode: e.target.checked
+                              })}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            Mostrar código en texto
+                          </label>
+
+                          <label className="flex items-center gap-2 text-sm text-gray-700">
+                            <input
+                              type="checkbox"
+                              checked={systemConfig.completionShowSaveButton}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionShowSaveButton: e.target.checked
+                              })}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            Mostrar botón principal (guardar/imprimir)
+                          </label>
+                        </div>
                       </div>
                     </div>
 
