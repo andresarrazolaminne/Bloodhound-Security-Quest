@@ -1235,24 +1235,29 @@ const AdminPage = () => {
                             Ver Ranking
                           </Button>
                           
-                          {venueRankings[venue.id] && (
+                          {(() => {
+                            const ranking = venueRankings[venue.id] ?? [];
+                            // If ranking can't be loaded (e.g. backend 500), show nothing instead of crashing.
+                            if (!ranking) return null;
+                            return (
                             <div className="mt-3 p-3 bg-gray-50 rounded-md">
                               <h4 className="font-medium text-sm mb-2">Ranking de {venue.name}</h4>
                               <div className="space-y-1 max-h-32 overflow-y-auto">
-                                {venueRankings[venue.id].slice(0, 5).map((participant, index) => (
+                                {ranking.slice(0, 5).map((participant: any, index: number) => (
                                   <div key={participant.user.id} className="flex justify-between text-xs">
                                     <span>#{index + 1} {participant.user.name}</span>
                                     <span className="font-medium">{participant.completionPercentage.toFixed(1)}%</span>
                                   </div>
                                 ))}
-                                {venueRankings[venue.id].length > 5 && (
+                                {ranking.length > 5 && (
                                   <div className="text-xs text-gray-500 text-center">
-                                    +{venueRankings[venue.id].length - 5} más...
+                                    +{ranking.length - 5} más...
                                   </div>
                                 )}
                               </div>
                             </div>
-                          )}
+                            );
+                          })()}
                         </div>
                       </CardContent>
 
