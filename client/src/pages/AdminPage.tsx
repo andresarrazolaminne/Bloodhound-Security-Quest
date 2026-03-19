@@ -39,7 +39,8 @@ import {
   Clock,
   AlertCircle,
   RefreshCw,
-  Users
+  Users,
+  Copy
 
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
@@ -577,6 +578,22 @@ const AdminPage = () => {
       ...prev,
       [field]: publicUrl,
     }));
+  };
+
+  const handleCopyUploadedAssetUrl = async (publicUrl: string) => {
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      toast({
+        title: "URL copiada",
+        description: "La URL de la imagen fue copiada al portapapeles.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo copiar la URL. Intenta manualmente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const fetchVenueRanking = async (venueId: number) => {
@@ -2430,6 +2447,14 @@ const AdminPage = () => {
                                     onClick={() => handleApplyUploadedAsset(uploadTargetField, asset.publicUrl)}
                                   >
                                     Usar
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="h-8 px-2 text-xs"
+                                    onClick={() => handleCopyUploadedAssetUrl(asset.publicUrl)}
+                                  >
+                                    <Copy className="h-4 w-4" />
                                   </Button>
                                   <Button
                                     type="button"
