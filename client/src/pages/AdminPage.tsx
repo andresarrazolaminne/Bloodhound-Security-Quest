@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { MapSegmentAsset, Venue, InsertVenue } from "@shared/schema";
+import { deleteUploadedAsset, listUploadedAssets, uploadAsset, type UploadedAssetDTO } from "@/lib/uploadAssets";
 import QRGenerator from '@/tools/QRGenerator';
 
 import {
@@ -69,6 +70,16 @@ interface MapAssetFormData {
   generateNewCode?: boolean;
 }
 
+type ImageFieldKey =
+  | "backgroundImageUrl"
+  | "loginLogoImageUrl"
+  | "registrationImageUrl"
+  | "preloadImageUrl"
+  | "headerLogoImageUrl"
+  | "footerLogoUrl"
+  | "cobrandingImageUrl"
+  | "siteMapImageUrl";
+
 const AdminPage = () => {
   // Redención de premios
   const [redemptionCode, setRedemptionCode] = useState("");
@@ -88,6 +99,11 @@ const AdminPage = () => {
   const [selectedAsset, setSelectedAsset] = useState<MapSegmentAsset | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [uploadedAssets, setUploadedAssets] = useState<UploadedAssetDTO[]>([]);
+  const [isLoadingUploads, setIsLoadingUploads] = useState(false);
+  const [uploadingAsset, setUploadingAsset] = useState(false);
+  const [uploadTargetField, setUploadTargetField] = useState<ImageFieldKey>("backgroundImageUrl");
+  const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(null);
   const [systemConfig, setSystemConfig] = useState({
     instructionsText: "",
     siteMapImageUrl: "",
@@ -480,6 +496,7 @@ const AdminPage = () => {
     fetchSystemConfig();
     fetchUserRanking();
     fetchVenues();
+    fetchUploadedAssets();
   }, []);
   
   // Filtrar los usuarios cuando cambia el filtro o los datos
@@ -537,6 +554,29 @@ const AdminPage = () => {
     } finally {
       setLoadingVenues(false);
     }
+  };
+
+  const fetchUploadedAssets = async () => {
+    try {
+      setIsLoadingUploads(true);
+      const assets = await listUploadedAssets();
+      setUploadedAssets(assets);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Error al cargar archivos subidos",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingUploads(false);
+    }
+  };
+
+  const handleApplyUploadedAsset = (field: ImageFieldKey, publicUrl: string) => {
+    setSystemConfig((prev) => ({
+      ...prev,
+      [field]: publicUrl,
+    }));
   };
 
   const fetchVenueRanking = async (venueId: number) => {
@@ -2281,6 +2321,147 @@ const AdminPage = () => {
 
                 <TabsContent value="images" className="space-y-6">
                   <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2 bg-purple-50 px-3 py-2 rounded-t-lg">
+                        📁 Biblioteca de Imágenes
+                      </h3>
+                      <div className="bg-purple-50 p-4 rounded-b-lg space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div className="space-y-2">
+                            <label className="block text-sm font-medium text-gray-700">Campo objetivo</label>
+                            <select
+                              value={uploadTargetField}
+                              onChange={(e) => setUploadTargetField(e.target.value as ImageFieldKey)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="backgroundImageUrl">Fondo de página</option>
+                              <option value="loginLogoImageUrl">Logo de login</option>
+                              <option value="registrationImageUrl">Imagen de registro</option>
+                              <option value="preloadImageUrl">Imagen de carga</option>
+                              <option value="headerLogoImageUrl">Logo de cabecera</option>
+                              <option value="footerLogoUrl">Logo de pie</option>
+                              <option value="cobrandingImageUrl">Imagen cobranding</option>
+                              <option value="siteMapImageUrl">Mapa del sitio</option>
+                            </select>
+                          </div>
+                          <div className="space-y-2 md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700">Subir archivo</label>
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => setSelectedUploadFile(e.target.files?.[0] ?? null)}
+                            />
+                            <p className="text-xs text-gray-500">PNG/JPG/WEBP/GIF/SVG</p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            onClick={async () => {
+                              if (!selectedUploadFile) {
+                                toast({
+                                  title: "Selecciona un archivo",
+                                  description: "Primero elige una imagen para subir.",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+                              try {
+                                setUploadingAsset(true);
+                                await uploadAsset(selectedUploadFile);
+                                setSelectedUploadFile(null);
+                                await fetchUploadedAssets();
+                                toast({
+                                  title: "Archivo subido",
+                                  description: "Listo para usar en la configuración.",
+                                });
+                              } catch (error) {
+                                toast({
+                                  title: "Error",
+                                  description: "No se pudo subir el archivo.",
+                                  variant: "destructive",
+                                });
+                              } finally {
+                                setUploadingAsset(false);
+                              }
+                            }}
+                            disabled={uploadingAsset}
+                          >
+                            {uploadingAsset ? "Subiendo..." : "Subir imagen"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => fetchUploadedAssets()}
+                            disabled={isLoadingUploads}
+                          >
+                            <RefreshCw className="h-4 w-4 mr-1" />
+                            Refrescar
+                          </Button>
+                        </div>
+
+                        {uploadedAssets.length === 0 ? (
+                          <p className="text-sm text-gray-600">
+                            {isLoadingUploads ? "Cargando archivos..." : "No hay archivos subidos todavía."}
+                          </p>
+                        ) : (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {uploadedAssets.map((asset) => (
+                              <div
+                                key={asset.id}
+                                className="border border-gray-200 rounded-lg p-2 space-y-2 bg-white"
+                              >
+                                <div className="h-24 w-full bg-gray-50 rounded overflow-hidden flex items-center justify-center">
+                                  <img
+                                    src={asset.publicUrl}
+                                    alt={asset.originalName}
+                                    className="max-h-24 w-full object-contain"
+                                  />
+                                </div>
+                                <p className="text-[10px] text-gray-600 truncate" title={asset.originalName}>
+                                  {asset.originalName}
+                                </p>
+                                <div className="flex gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="secondary"
+                                    className="h-8 px-2 text-xs flex-1"
+                                    onClick={() => handleApplyUploadedAsset(uploadTargetField, asset.publicUrl)}
+                                  >
+                                    Usar
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    className="h-8 px-2 text-xs"
+                                    onClick={async () => {
+                                      try {
+                                        await deleteUploadedAsset(asset.id);
+                                        await fetchUploadedAssets();
+                                        toast({
+                                          title: "Eliminado",
+                                          description: "El archivo fue eliminado.",
+                                        });
+                                      } catch (error) {
+                                        toast({
+                                          title: "Error",
+                                          description: "No se pudo eliminar el archivo.",
+                                          variant: "destructive",
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Background Settings */}
                     <div className="space-y-4">
                       <h3 className="text-lg font-semibold text-gray-900 border-b pb-2 bg-blue-50 px-3 py-2 rounded-t-lg">
