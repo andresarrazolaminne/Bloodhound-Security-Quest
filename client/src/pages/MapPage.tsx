@@ -13,7 +13,7 @@ import HtmlContent from "@/components/HtmlContent";
 import { playQRSuccessSound, playQRErrorSound, playCompletionSound } from '@/lib/sounds';
 import BrainLoader from "@/components/BrainLoader";
 import SegmentContentModal from '@/components/SegmentContentModal';
-import { withApiBase, withUiBase } from "@/lib/paths";
+import { withApiBase, withUiCampaign } from "@/lib/paths";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 
@@ -143,7 +143,7 @@ const MapPage = () => {
   // Redirect if not logged in
   useEffect(() => {
     if (!currentUser) {
-      setLocation(withUiBase("/"));
+      setLocation(withUiCampaign("/"));
       return;
     }
 
@@ -452,7 +452,7 @@ const MapPage = () => {
 
   const handleLogout = () => {
     logout();
-    setLocation(withUiBase("/"));
+    setLocation(withUiCampaign("/"));
   };
 
   if (!currentUser) {

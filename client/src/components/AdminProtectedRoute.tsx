@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Redirect, useLocation } from 'wouter';
-import { withUiBase } from '@/lib/paths';
+import { getActiveCampaignSlug, withUiCampaign } from '@/lib/paths';
 
 interface AdminProtectedRouteProps {
   component: React.ComponentType;
@@ -27,7 +27,7 @@ const AdminProtectedRoute = ({ component: Component }: AdminProtectedRouteProps)
 
   // Si no está autenticado, redirigir a la página de login de administrador
   if (!isAuthenticated) {
-    return <Redirect to={withUiBase("/admin-login")} />;
+    return <Redirect to={withUiCampaign("/admin-login", getActiveCampaignSlug())} />;
   }
 
   // Si está autenticado, mostrar el componente

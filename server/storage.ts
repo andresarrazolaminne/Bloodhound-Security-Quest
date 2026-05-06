@@ -1,4 +1,5 @@
 import { 
+  campaigns,
   mapSegments, 
   users, 
   prizes, 
@@ -25,6 +26,8 @@ import {
   type InsertVenue,
   type UploadedAsset,
   type InsertUploadedAsset,
+  type Campaign,
+  type InsertCampaign,
   insertSystemConfigSchema
 } from '@shared/schema';
 import { nanoid } from 'nanoid';
@@ -36,48 +39,53 @@ const UPLOADS_DIR =
   process.env.UPLOADS_DIR ?? "/usr/share/nginx/html/bloodhound/uploads";
 
 export interface IStorage {
+  // Campaign operations
+  ensureCampaignBySlug(slug: string, name?: string): Promise<Campaign>;
+  getCampaignBySlug(slug: string): Promise<Campaign | undefined>;
+  listCampaigns(): Promise<Campaign[]>;
+
   // User operations
-  getUserByDocumentNumber(documentNumber: string): Promise<User | undefined>;
-  getUserById(userId: number): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  deleteUserAndAllData(userId: number): Promise<void>;
+  getUserByDocumentNumber(documentNumber: string, campaignId?: number): Promise<User | undefined>;
+  getUserById(userId: number, campaignId?: number): Promise<User | undefined>;
+  createUser(user: InsertUser, campaignId?: number): Promise<User>;
+  deleteUserAndAllData(userId: number, campaignId?: number): Promise<void>;
 
   // Map segment operations
-  getSegmentsByUserId(userId: number): Promise<MapSegment[]>;
-  unlockSegment(userId: number, segmentId: number): Promise<MapSegment>;
+  getSegmentsByUserId(userId: number, campaignId?: number): Promise<MapSegment[]>;
+  unlockSegment(userId: number, segmentId: number, campaignId?: number): Promise<MapSegment>;
   
   // Trap points operations
-  addTrapPoints(userId: number, segmentId: number, points?: number): Promise<TrapPoints>;
-  getTrapPointsByUserId(userId: number): Promise<TrapPoints[]>;
-  getTotalTrapPointsByUserId(userId: number): Promise<number>;
+  addTrapPoints(userId: number, segmentId: number, points?: number, campaignId?: number): Promise<TrapPoints>;
+  getTrapPointsByUserId(userId: number, campaignId?: number): Promise<TrapPoints[]>;
+  getTotalTrapPointsByUserId(userId: number, campaignId?: number): Promise<number>;
   
   // Reset all user data (for testing)
-  resetAllUserData(): Promise<void>;
+  resetAllUserData(campaignId?: number): Promise<void>;
 
   // Prize operations
-  getPrizeByUserId(userId: number): Promise<Prize | undefined>;
-  createRedemptionCode(userId: number): Promise<string>;
-  redeemPrize(userId: number): Promise<Prize>;
-  getPrizeByRedemptionCode(code: string): Promise<Prize | undefined>;
+  getPrizeByUserId(userId: number, campaignId?: number): Promise<Prize | undefined>;
+  createRedemptionCode(userId: number, campaignId?: number): Promise<string>;
+  redeemPrize(userId: number, campaignId?: number): Promise<Prize>;
+  getPrizeByRedemptionCode(code: string, campaignId?: number): Promise<Prize | undefined>;
 
   // Map segment assets operations (for admin dashboard)
-  getAllMapSegmentAssets(): Promise<MapSegmentAsset[]>;
-  getMapSegmentAsset(segmentId: number): Promise<MapSegmentAsset | undefined>;
-  createMapSegmentAsset(asset: InsertMapSegmentAsset): Promise<MapSegmentAsset>;
-  updateMapSegmentAsset(segmentId: number, asset: Partial<InsertMapSegmentAsset>): Promise<MapSegmentAsset>;
-  deleteMapSegmentAsset(segmentId: number): Promise<void>;
+  getAllMapSegmentAssets(campaignId?: number): Promise<MapSegmentAsset[]>;
+  getMapSegmentAsset(segmentId: number, campaignId?: number): Promise<MapSegmentAsset | undefined>;
+  createMapSegmentAsset(asset: InsertMapSegmentAsset, campaignId?: number): Promise<MapSegmentAsset>;
+  updateMapSegmentAsset(segmentId: number, asset: Partial<InsertMapSegmentAsset>, campaignId?: number): Promise<MapSegmentAsset>;
+  deleteMapSegmentAsset(segmentId: number, campaignId?: number): Promise<void>;
   
   // System configuration operations
-  getSystemConfig(): Promise<any>;
-  updateSystemConfig(configData: any): Promise<any>;
+  getSystemConfig(campaignId?: number): Promise<any>;
+  updateSystemConfig(configData: any, campaignId?: number): Promise<any>;
 
   // Uploaded assets (admin dashboard)
-  listUploadedAssets(): Promise<UploadedAsset[]>;
-  createUploadedAsset(asset: InsertUploadedAsset): Promise<UploadedAsset>;
-  deleteUploadedAsset(id: number): Promise<void>;
+  listUploadedAssets(campaignId?: number): Promise<UploadedAsset[]>;
+  createUploadedAsset(asset: InsertUploadedAsset, campaignId?: number): Promise<UploadedAsset>;
+  deleteUploadedAsset(id: number, campaignId?: number): Promise<void>;
   
   // Admin statistics
-  getAllUsersWithProgress(): Promise<Array<{
+  getAllUsersWithProgress(campaignId?: number): Promise<Array<{
     user: User;
     segments: MapSegment[];
     totalSegments: number;
@@ -87,14 +95,14 @@ export interface IStorage {
   }>>;
 
   // Venue operations (CRUD)
-  getAllVenues(): Promise<Venue[]>;
-  getVenueById(id: number): Promise<Venue | undefined>;
-  createVenue(venue: InsertVenue): Promise<Venue>;
-  updateVenue(id: number, venue: Partial<InsertVenue>): Promise<Venue>;
-  deleteVenue(id: number): Promise<void>;
+  getAllVenues(campaignId?: number): Promise<Venue[]>;
+  getVenueById(id: number, campaignId?: number): Promise<Venue | undefined>;
+  createVenue(venue: InsertVenue, campaignId?: number): Promise<Venue>;
+  updateVenue(id: number, venue: Partial<InsertVenue>, campaignId?: number): Promise<Venue>;
+  deleteVenue(id: number, campaignId?: number): Promise<void>;
   
   // Venue-specific ranking operations
-  getVenueRanking(venueId: number): Promise<Array<{
+  getVenueRanking(venueId: number, campaignId?: number): Promise<Array<{
     user: User;
     completionPercentage: number;
     totalSegments: number;
@@ -105,11 +113,11 @@ export interface IStorage {
   }>>;
 
   // User scores operations
-  addUserScore(userId: number, segmentId: number, points: number, isTrap: boolean): Promise<UserScores>;
-  getUserScores(userId: number): Promise<UserScores[]>;
-  getUserScoreBySegment(userId: number, segmentId: number): Promise<UserScores | undefined>;
-  calculateTotalScore(userId: number): Promise<number>;
-  getVenueScoreRanking(venueId: number): Promise<Array<{
+  addUserScore(userId: number, segmentId: number, points: number, isTrap: boolean, campaignId?: number): Promise<UserScores>;
+  getUserScores(userId: number, campaignId?: number): Promise<UserScores[]>;
+  getUserScoreBySegment(userId: number, segmentId: number, campaignId?: number): Promise<UserScores | undefined>;
+  calculateTotalScore(userId: number, campaignId?: number): Promise<number>;
+  getVenueScoreRanking(venueId: number, campaignId?: number): Promise<Array<{
     user: User;
     validQRsScanned: number;
     trapQRsScanned: number;
@@ -123,59 +131,101 @@ import { db } from "./db";
 import { asc, desc, eq, and, count } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
-  async getUserByDocumentNumber(documentNumber: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.documentNumber, documentNumber));
+  private async getDefaultCampaignId(): Promise<number> {
+    const campaign = await this.ensureCampaignBySlug("default", "Default Campaign");
+    return campaign.id;
+  }
+
+  private async resolveCampaignId(campaignId?: number): Promise<number> {
+    return campaignId ?? this.getDefaultCampaignId();
+  }
+
+  async ensureCampaignBySlug(slug: string, name?: string): Promise<Campaign> {
+    const existing = await this.getCampaignBySlug(slug);
+    if (existing) return existing;
+    const [created] = await db
+      .insert(campaigns)
+      .values({
+        slug,
+        name: name ?? slug,
+        isActive: true,
+      })
+      .returning();
+    return created;
+  }
+
+  async getCampaignBySlug(slug: string): Promise<Campaign | undefined> {
+    const [campaign] = await db.select().from(campaigns).where(eq(campaigns.slug, slug)).limit(1);
+    return campaign;
+  }
+
+  async listCampaigns(): Promise<Campaign[]> {
+    return db.select().from(campaigns).orderBy(asc(campaigns.name));
+  }
+
+  async getUserByDocumentNumber(documentNumber: string, campaignId?: number): Promise<User | undefined> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.documentNumber, documentNumber), eq(users.campaignId, scopedCampaignId)));
     return user || undefined;
   }
 
-  async getUserById(userId: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, userId));
+  async getUserById(userId: number, campaignId?: number): Promise<User | undefined> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
+    const [user] = await db.select().from(users).where(and(eq(users.id, userId), eq(users.campaignId, scopedCampaignId)));
     return user || undefined;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
+  async createUser(insertUser: InsertUser, campaignId?: number): Promise<User> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     const [user] = await db
       .insert(users)
-      .values(insertUser)
+      .values({ ...insertUser, campaignId: scopedCampaignId })
       .returning();
     return user;
   }
 
-  async deleteUserAndAllData(userId: number): Promise<void> {
+  async deleteUserAndAllData(userId: number, campaignId?: number): Promise<void> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     // Eliminar en orden correcto para evitar conflictos de foreign key
     
     // 1. Eliminar puntos de trampa del usuario
-    await db.delete(trapPoints).where(eq(trapPoints.userId, userId));
+    await db.delete(trapPoints).where(and(eq(trapPoints.userId, userId), eq(trapPoints.campaignId, scopedCampaignId)));
     
     // 2. Eliminar scores del usuario
-    await db.delete(userScores).where(eq(userScores.userId, userId));
+    await db.delete(userScores).where(and(eq(userScores.userId, userId), eq(userScores.campaignId, scopedCampaignId)));
     
     // 3. Eliminar segmentos del mapa del usuario
-    await db.delete(mapSegments).where(eq(mapSegments.userId, userId));
+    await db.delete(mapSegments).where(and(eq(mapSegments.userId, userId), eq(mapSegments.campaignId, scopedCampaignId)));
     
     // 4. Eliminar premios del usuario
-    await db.delete(prizes).where(eq(prizes.userId, userId));
+    await db.delete(prizes).where(and(eq(prizes.userId, userId), eq(prizes.campaignId, scopedCampaignId)));
     
     // 5. Finalmente eliminar el usuario
-    await db.delete(users).where(eq(users.id, userId));
+    await db.delete(users).where(and(eq(users.id, userId), eq(users.campaignId, scopedCampaignId)));
   }
 
-  async getSegmentsByUserId(userId: number): Promise<MapSegment[]> {
+  async getSegmentsByUserId(userId: number, campaignId?: number): Promise<MapSegment[]> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     return await db
       .select()
       .from(mapSegments)
-      .where(eq(mapSegments.userId, userId))
+      .where(and(eq(mapSegments.userId, userId), eq(mapSegments.campaignId, scopedCampaignId)))
       .orderBy(asc(mapSegments.segmentId));
   }
 
-  async unlockSegment(userId: number, segmentId: number): Promise<MapSegment> {
+  async unlockSegment(userId: number, segmentId: number, campaignId?: number): Promise<MapSegment> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     // Verificar si ya existe el segmento para este usuario
     const existingSegment = await db
       .select()
       .from(mapSegments)
       .where(and(
         eq(mapSegments.userId, userId),
-        eq(mapSegments.segmentId, segmentId)
+        eq(mapSegments.segmentId, segmentId),
+        eq(mapSegments.campaignId, scopedCampaignId)
       ));
 
     if (existingSegment.length > 0 && existingSegment[0].unlocked) {
@@ -196,6 +246,7 @@ export class DatabaseStorage implements IStorage {
       const [newSegment] = await db
         .insert(mapSegments)
         .values({
+          campaignId: scopedCampaignId,
           userId,
           segmentId,
           unlocked: true
@@ -206,26 +257,29 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getPrizeByUserId(userId: number): Promise<Prize | undefined> {
+  async getPrizeByUserId(userId: number, campaignId?: number): Promise<Prize | undefined> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     const [prize] = await db
       .select()
       .from(prizes)
-      .where(eq(prizes.userId, userId));
+      .where(and(eq(prizes.userId, userId), eq(prizes.campaignId, scopedCampaignId)));
     return prize || undefined;
   }
 
-  async createRedemptionCode(userId: number): Promise<string> {
+  async createRedemptionCode(userId: number, campaignId?: number): Promise<string> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     // Buscar premio existente
     let [prize] = await db
       .select()
       .from(prizes)
-      .where(eq(prizes.userId, userId));
+      .where(and(eq(prizes.userId, userId), eq(prizes.campaignId, scopedCampaignId)));
     
     // Si no existe premio, crear uno nuevo
     if (!prize) {
       [prize] = await db
         .insert(prizes)
         .values({
+          campaignId: scopedCampaignId,
           userId,
           redeemed: false
         })
@@ -248,11 +302,12 @@ export class DatabaseStorage implements IStorage {
     return code;
   }
 
-  async redeemPrize(userId: number): Promise<Prize> {
+  async redeemPrize(userId: number, campaignId?: number): Promise<Prize> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     const [prize] = await db
       .select()
       .from(prizes)
-      .where(eq(prizes.userId, userId));
+      .where(and(eq(prizes.userId, userId), eq(prizes.campaignId, scopedCampaignId)));
     
     if (!prize) {
       throw new Error("No prize found for user");
@@ -274,42 +329,48 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getPrizeByRedemptionCode(code: string): Promise<Prize | undefined> {
+  async getPrizeByRedemptionCode(code: string, campaignId?: number): Promise<Prize | undefined> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     const [prize] = await db
       .select()
       .from(prizes)
-      .where(eq(prizes.redemptionCode, code));
+      .where(and(eq(prizes.redemptionCode, code), eq(prizes.campaignId, scopedCampaignId)));
     return prize || undefined;
   }
 
-  async getAllMapSegmentAssets(): Promise<MapSegmentAsset[]> {
+  async getAllMapSegmentAssets(campaignId?: number): Promise<MapSegmentAsset[]> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     return await db
       .select()
       .from(mapSegmentAssets)
+      .where(eq(mapSegmentAssets.campaignId, scopedCampaignId))
       .orderBy(asc(mapSegmentAssets.segmentId));
   }
 
-  async getMapSegmentAsset(segmentId: number): Promise<MapSegmentAsset | undefined> {
+  async getMapSegmentAsset(segmentId: number, campaignId?: number): Promise<MapSegmentAsset | undefined> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     const [asset] = await db
       .select()
       .from(mapSegmentAssets)
-      .where(eq(mapSegmentAssets.segmentId, segmentId));
+      .where(and(eq(mapSegmentAssets.segmentId, segmentId), eq(mapSegmentAssets.campaignId, scopedCampaignId)));
     return asset || undefined;
   }
 
-  async createMapSegmentAsset(asset: InsertMapSegmentAsset): Promise<MapSegmentAsset> {
+  async createMapSegmentAsset(asset: InsertMapSegmentAsset, campaignId?: number): Promise<MapSegmentAsset> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     const [newAsset] = await db
       .insert(mapSegmentAssets)
-      .values(asset)
+      .values({ ...asset, campaignId: scopedCampaignId })
       .returning();
     return newAsset;
   }
 
-  async updateMapSegmentAsset(segmentId: number, asset: Partial<InsertMapSegmentAsset>): Promise<MapSegmentAsset> {
+  async updateMapSegmentAsset(segmentId: number, asset: Partial<InsertMapSegmentAsset>, campaignId?: number): Promise<MapSegmentAsset> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     const [updatedAsset] = await db
       .update(mapSegmentAssets)
       .set(asset)
-      .where(eq(mapSegmentAssets.segmentId, segmentId))
+      .where(and(eq(mapSegmentAssets.segmentId, segmentId), eq(mapSegmentAssets.campaignId, scopedCampaignId)))
       .returning();
     
     if (!updatedAsset) {
@@ -319,17 +380,20 @@ export class DatabaseStorage implements IStorage {
     return updatedAsset;
   }
 
-  async deleteMapSegmentAsset(segmentId: number): Promise<void> {
+  async deleteMapSegmentAsset(segmentId: number, campaignId?: number): Promise<void> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     await db
       .delete(mapSegmentAssets)
-      .where(eq(mapSegmentAssets.segmentId, segmentId));
+      .where(and(eq(mapSegmentAssets.segmentId, segmentId), eq(mapSegmentAssets.campaignId, scopedCampaignId)));
   }
   
   // Trap points operations
-  async addTrapPoints(userId: number, segmentId: number, points: number = 1): Promise<TrapPoints> {
+  async addTrapPoints(userId: number, segmentId: number, points: number = 1, campaignId?: number): Promise<TrapPoints> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     const [trapPoint] = await db
       .insert(trapPoints)
       .values({
+        campaignId: scopedCampaignId,
         userId,
         segmentId,
         pointsAwarded: points
@@ -339,31 +403,35 @@ export class DatabaseStorage implements IStorage {
     return trapPoint;
   }
 
-  async getTrapPointsByUserId(userId: number): Promise<TrapPoints[]> {
+  async getTrapPointsByUserId(userId: number, campaignId?: number): Promise<TrapPoints[]> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     return await db
       .select()
       .from(trapPoints)
-      .where(eq(trapPoints.userId, userId))
+      .where(and(eq(trapPoints.userId, userId), eq(trapPoints.campaignId, scopedCampaignId)))
       .orderBy(desc(trapPoints.scannedAt));
   }
 
-  async getTotalTrapPointsByUserId(userId: number): Promise<number> {
-    const userTrapPoints = await this.getTrapPointsByUserId(userId);
+  async getTotalTrapPointsByUserId(userId: number, campaignId?: number): Promise<number> {
+    const userTrapPoints = await this.getTrapPointsByUserId(userId, campaignId);
     return userTrapPoints.reduce((total, trapPoint) => total + (trapPoint.pointsAwarded || 0), 0);
   }
 
-  async resetAllUserData(): Promise<void> {
-    await db.delete(trapPoints);
-    await db.delete(mapSegments);
-    await db.delete(prizes);
-    await db.delete(users);
+  async resetAllUserData(campaignId?: number): Promise<void> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
+    await db.delete(trapPoints).where(eq(trapPoints.campaignId, scopedCampaignId));
+    await db.delete(mapSegments).where(eq(mapSegments.campaignId, scopedCampaignId));
+    await db.delete(prizes).where(eq(prizes.campaignId, scopedCampaignId));
+    await db.delete(users).where(eq(users.campaignId, scopedCampaignId));
   }
 
-  async getSystemConfig() {
+  async getSystemConfig(campaignId?: number) {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     try {
       const [config] = await db
         .select()
         .from(systemConfig)
+        .where(eq(systemConfig.campaignId, scopedCampaignId))
         .limit(1);
       
       if (config) {
@@ -376,6 +444,7 @@ export class DatabaseStorage implements IStorage {
       
       return {
         id: 1,
+        campaignId: scopedCampaignId,
         instructionsText: "Bienvenido a nuestra aplicación. Sigue las instrucciones para participar.",
         siteMapImageUrl: "https://placehold.co/1200x800/e2e8f0/64748b?text=Mapa+del+Sitio",
         footerLogoUrl: "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png",
@@ -450,11 +519,12 @@ export class DatabaseStorage implements IStorage {
     completionShowCode?: boolean;
     completionShowSaveButton?: boolean;
     loadingText?: string;
-  }): Promise<SystemConfig> {
+  }, campaignId?: number): Promise<SystemConfig> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     try {
-      const validatedData = insertSystemConfigSchema.parse(configData);
+      const validatedData = insertSystemConfigSchema.parse({ ...configData, campaignId: scopedCampaignId });
       
-      const existingConfig = await this.getSystemConfig();
+      const existingConfig = await this.getSystemConfig(scopedCampaignId);
       
       if (existingConfig) {
         const [updatedConfig] = await db
@@ -484,32 +554,36 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async listUploadedAssets(): Promise<UploadedAsset[]> {
+  async listUploadedAssets(campaignId?: number): Promise<UploadedAsset[]> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     return await db
       .select()
       .from(uploadedAssets)
+      .where(eq(uploadedAssets.campaignId, scopedCampaignId))
       .orderBy(desc(uploadedAssets.createdAt));
   }
 
-  async createUploadedAsset(asset: InsertUploadedAsset): Promise<UploadedAsset> {
+  async createUploadedAsset(asset: InsertUploadedAsset, campaignId?: number): Promise<UploadedAsset> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     const [created] = await db
       .insert(uploadedAssets)
-      .values(asset)
+      .values({ ...asset, campaignId: scopedCampaignId })
       .returning();
 
     return created;
   }
 
-  async deleteUploadedAsset(id: number): Promise<void> {
+  async deleteUploadedAsset(id: number, campaignId?: number): Promise<void> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     const [asset] = await db
       .select()
       .from(uploadedAssets)
-      .where(eq(uploadedAssets.id, id))
+      .where(and(eq(uploadedAssets.id, id), eq(uploadedAssets.campaignId, scopedCampaignId)))
       .limit(1);
 
     if (!asset) return;
 
-    await db.delete(uploadedAssets).where(eq(uploadedAssets.id, id));
+    await db.delete(uploadedAssets).where(and(eq(uploadedAssets.id, id), eq(uploadedAssets.campaignId, scopedCampaignId)));
 
     // Try to delete the physical file too (best-effort; DB delete shouldn't fail).
     try {
@@ -520,7 +594,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getAllUsersWithProgress(): Promise<Array<{
+  async getAllUsersWithProgress(campaignId?: number): Promise<Array<{
     user: User;
     segments: MapSegment[];
     totalSegments: number;
@@ -530,22 +604,23 @@ export class DatabaseStorage implements IStorage {
   }>> {
     const result = [];
     
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     // Get all valid (non-trap) segment assets to calculate actual total segments
-    const allAssets = await this.getAllMapSegmentAssets();
+    const allAssets = await this.getAllMapSegmentAssets(scopedCampaignId);
     const validAssets = allAssets.filter(asset => !asset.isTrap);
     const totalSegments = validAssets.length;
     const validSegmentIds = validAssets.map(asset => asset.segmentId);
     
-    const allUsers = await db.select().from(users);
+    const allUsers = await db.select().from(users).where(eq(users.campaignId, scopedCampaignId));
     
     for (const user of allUsers) {
-      const segments = await this.getSegmentsByUserId(user.id);
+      const segments = await this.getSegmentsByUserId(user.id, scopedCampaignId);
       // Only count unlocked segments that correspond to valid (non-trap) assets
       const unlockedSegments = segments.filter(s => 
         s.unlocked && validSegmentIds.includes(s.segmentId)
       ).length;
       const completionPercentage = totalSegments > 0 ? (unlockedSegments / totalSegments) * 100 : 0;
-      const prize = await this.getPrizeByUserId(user.id);
+      const prize = await this.getPrizeByUserId(user.id, scopedCampaignId);
       
       result.push({
         user,
@@ -578,25 +653,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Venue operations (CRUD)
-  async getAllVenues(): Promise<Venue[]> {
-    return await db.select().from(venues).orderBy(asc(venues.name));
+  async getAllVenues(campaignId?: number): Promise<Venue[]> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
+    return await db.select().from(venues).where(eq(venues.campaignId, scopedCampaignId)).orderBy(asc(venues.name));
   }
 
-  async getVenueById(id: number): Promise<Venue | undefined> {
-    const [venue] = await db.select().from(venues).where(eq(venues.id, id));
+  async getVenueById(id: number, campaignId?: number): Promise<Venue | undefined> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
+    const [venue] = await db.select().from(venues).where(and(eq(venues.id, id), eq(venues.campaignId, scopedCampaignId)));
     return venue;
   }
 
-  async createVenue(venue: InsertVenue): Promise<Venue> {
-    const [newVenue] = await db.insert(venues).values(venue).returning();
+  async createVenue(venue: InsertVenue, campaignId?: number): Promise<Venue> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
+    const [newVenue] = await db.insert(venues).values({ ...venue, campaignId: scopedCampaignId }).returning();
     return newVenue;
   }
 
-  async updateVenue(id: number, venue: Partial<InsertVenue>): Promise<Venue> {
+  async updateVenue(id: number, venue: Partial<InsertVenue>, campaignId?: number): Promise<Venue> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     const [updatedVenue] = await db
       .update(venues)
       .set({ ...venue, updatedAt: new Date() })
-      .where(eq(venues.id, id))
+      .where(and(eq(venues.id, id), eq(venues.campaignId, scopedCampaignId)))
       .returning();
     
     if (!updatedVenue) {
@@ -606,12 +685,13 @@ export class DatabaseStorage implements IStorage {
     return updatedVenue;
   }
 
-  async deleteVenue(id: number): Promise<void> {
-    await db.delete(venues).where(eq(venues.id, id));
+  async deleteVenue(id: number, campaignId?: number): Promise<void> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
+    await db.delete(venues).where(and(eq(venues.id, id), eq(venues.campaignId, scopedCampaignId)));
   }
 
   // Venue-specific ranking operations
-  async getVenueRanking(venueId: number): Promise<Array<{
+  async getVenueRanking(venueId: number, campaignId?: number): Promise<Array<{
     user: User;
     completionPercentage: number;
     totalSegments: number;
@@ -620,9 +700,10 @@ export class DatabaseStorage implements IStorage {
     score: number;
     trapPenalties: number;
   }>> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     const result = [];
     
-    const config = await this.getSystemConfig();
+    const config = await this.getSystemConfig(scopedCampaignId);
     let totalSegments = 9;
     
     if (config && config.mapGridSize) {
@@ -634,15 +715,15 @@ export class DatabaseStorage implements IStorage {
     const venueUsers = await db
       .select()
       .from(users)
-      .where(eq(users.venueId, venueId));
+      .where(and(eq(users.venueId, venueId), eq(users.campaignId, scopedCampaignId)));
     
     for (const user of venueUsers) {
-      const segments = await this.getSegmentsByUserId(user.id);
+      const segments = await this.getSegmentsByUserId(user.id, scopedCampaignId);
       const unlockedSegments = segments.filter(s => s.unlocked).length;
       const completionPercentage = (unlockedSegments / totalSegments) * 100;
       
       // Calculate trap penalties
-      const trapPointsRecords = await this.getTrapPointsByUserId(user.id);
+      const trapPointsRecords = await this.getTrapPointsByUserId(user.id, scopedCampaignId);
       const trapPenalties = trapPointsRecords.reduce((total, record) => total + (record.pointsAwarded || 0), 0);
       
       // Calculate score: number of unlocked segments minus 0.5 points per trap penalty
@@ -694,10 +775,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   // User scores operations
-  async addUserScore(userId: number, segmentId: number, points: number, isTrap: boolean): Promise<UserScores> {
+  async addUserScore(userId: number, segmentId: number, points: number, isTrap: boolean, campaignId?: number): Promise<UserScores> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     const [score] = await db
       .insert(userScores)
       .values({
+        campaignId: scopedCampaignId,
         userId,
         segmentId,
         points,
@@ -708,48 +791,52 @@ export class DatabaseStorage implements IStorage {
     return score;
   }
 
-  async getUserScores(userId: number): Promise<UserScores[]> {
+  async getUserScores(userId: number, campaignId?: number): Promise<UserScores[]> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     return await db
       .select()
       .from(userScores)
-      .where(eq(userScores.userId, userId))
+      .where(and(eq(userScores.userId, userId), eq(userScores.campaignId, scopedCampaignId)))
       .orderBy(asc(userScores.scannedAt));
   }
 
-  async getUserScoreBySegment(userId: number, segmentId: number): Promise<UserScores | undefined> {
+  async getUserScoreBySegment(userId: number, segmentId: number, campaignId?: number): Promise<UserScores | undefined> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     const [score] = await db
       .select()
       .from(userScores)
       .where(and(
         eq(userScores.userId, userId),
-        eq(userScores.segmentId, segmentId)
+        eq(userScores.segmentId, segmentId),
+        eq(userScores.campaignId, scopedCampaignId)
       ));
     
     return score;
   }
 
-  async calculateTotalScore(userId: number): Promise<number> {
-    const scores = await this.getUserScores(userId);
+  async calculateTotalScore(userId: number, campaignId?: number): Promise<number> {
+    const scores = await this.getUserScores(userId, campaignId);
     return scores.reduce((total, score) => total + score.points, 0);
   }
 
-  async getVenueScoreRanking(venueId: number): Promise<Array<{
+  async getVenueScoreRanking(venueId: number, campaignId?: number): Promise<Array<{
     user: User;
     validQRsScanned: number;
     trapQRsScanned: number;
     totalScore: number;
     position: number;
   }>> {
+    const scopedCampaignId = await this.resolveCampaignId(campaignId);
     const result = [];
     
     // Get users from specific venue
     const venueUsers = await db
       .select()
       .from(users)
-      .where(eq(users.venueId, venueId));
+      .where(and(eq(users.venueId, venueId), eq(users.campaignId, scopedCampaignId)));
     
     for (const user of venueUsers) {
-      const scores = await this.getUserScores(user.id);
+      const scores = await this.getUserScores(user.id, scopedCampaignId);
       
       const validQRsScanned = scores.filter(s => !s.isTrap).length;
       const trapQRsScanned = scores.filter(s => s.isTrap).length;

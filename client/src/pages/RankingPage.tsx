@@ -33,6 +33,10 @@ interface SystemConfig {
   headerLogoSize: number;
   headerBackgroundColor: string;
   headerTextColor: string;
+  backgroundImageUrl: string;
+  backgroundSize: string;
+  backgroundRepeat: string;
+  backgroundPosition: string;
   gradientStartColor: string;
   gradientEndColor: string;
   gradientMidColor: string;
@@ -49,6 +53,10 @@ const RankingPage = () => {
     headerLogoSize: 64,
     headerBackgroundColor: "#3b82f6",
     headerTextColor: "#ffffff",
+    backgroundImageUrl: "",
+    backgroundSize: "auto",
+    backgroundRepeat: "repeat",
+    backgroundPosition: "center",
     gradientStartColor: "#bb2558",
     gradientEndColor: "#e8cf00",
     gradientMidColor: "",

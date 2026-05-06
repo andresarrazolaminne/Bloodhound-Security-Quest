@@ -1,5 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
-import { withApiBase } from "./paths";
+import { getActiveCampaignSlug, withApiBase } from "./paths";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -14,9 +14,14 @@ export async function apiRequest(
   data?: unknown | undefined,
 ): Promise<Response> {
   const apiUrl = withApiBase(url);
+  const campaignSlug = getActiveCampaignSlug();
+  const adminAuth = sessionStorage.getItem("adminApiToken");
+  const headers: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
+  if (campaignSlug) headers["x-campaign-slug"] = campaignSlug;
+  if (adminAuth) headers["x-admin-auth"] = adminAuth;
   const res = await fetch(apiUrl, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -33,8 +38,14 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const url = typeof queryKey[0] === "string" ? withApiBase(queryKey[0]) : String(queryKey[0]);
+    const campaignSlug = getActiveCampaignSlug();
+    const adminAuth = sessionStorage.getItem("adminApiToken");
+    const headers: Record<string, string> = {};
+    if (campaignSlug) headers["x-campaign-slug"] = campaignSlug;
+    if (adminAuth) headers["x-admin-auth"] = adminAuth;
     const res = await fetch(url, {
       credentials: "include",
+      headers,
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

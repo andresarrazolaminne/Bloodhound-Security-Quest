@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { withUiBase } from "@/lib/paths";
+import { getActiveCampaignSlug, withUiCampaign } from "@/lib/paths";
 
 // Este código se guardará de forma segura en el backend posteriormente
 const ADMIN_ACCESS_CODE = "admin123";
@@ -36,6 +36,7 @@ const AdminLoginPage = () => {
       if (accessCode === ADMIN_ACCESS_CODE) {
         // Guardar el estado de autenticación en sessionStorage
         sessionStorage.setItem("adminAuthenticated", "true");
+        sessionStorage.setItem("adminApiToken", accessCode);
         
         toast({
           title: "Acceso correcto",
@@ -43,7 +44,7 @@ const AdminLoginPage = () => {
         });
         
         // Redirigir al panel de administración
-        setLocation(withUiBase("/admin"));
+        setLocation(withUiCampaign("/admin", getActiveCampaignSlug()));
       } else {
         toast({
           title: "Código incorrecto",

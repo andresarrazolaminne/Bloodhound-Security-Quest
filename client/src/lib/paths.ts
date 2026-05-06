@@ -18,6 +18,28 @@ export const UI_BASE_PATH = normalizeBasePath(
   import.meta.env.VITE_BASE_PATH as string | undefined,
 );
 
+const CAMPAIGN_STORAGE_KEY = "activeCampaignSlug";
+
+export function getCampaignSlugFromPath(pathname: string = window.location.pathname): string | null {
+  const normalized = pathname.replace(/\/+$/, "");
+  if (!UI_BASE_PATH) {
+    const parts = normalized.split("/").filter(Boolean);
+    return parts[0] || null;
+  }
+  if (!normalized.startsWith(UI_BASE_PATH)) return null;
+  const rest = normalized.slice(UI_BASE_PATH.length);
+  const parts = rest.split("/").filter(Boolean);
+  return parts[0] || null;
+}
+
+export function setActiveCampaignSlug(slug: string) {
+  localStorage.setItem(CAMPAIGN_STORAGE_KEY, slug);
+}
+
+export function getActiveCampaignSlug(): string | null {
+  return localStorage.getItem(CAMPAIGN_STORAGE_KEY);
+}
+
 export function withUiBase(path: string): string {
   // Permitir path '' (útil para algunos casos)
   const raw = path ?? "";
@@ -40,13 +62,33 @@ export function withUiBase(path: string): string {
   return `${UI_BASE_PATH}${p}`;
 }
 
+export function withUiCampaign(path: string, campaignSlug?: string | null): string {
+  const slug = campaignSlug ?? getActiveCampaignSlug();
+  const base = withUiBase("/");
+  if (!slug) return withUiBase(path);
+  let p = path;
+  if (!p.startsWith("/")) p = `/${p}`;
+  if (p === "/") return `${base}${slug}/`;
+  return `${base}${slug}${p}`;
+}
+
 export function withApiBase(apiPath: string): string {
-  if (!UI_BASE_PATH) return apiPath;
+  const slug = getActiveCampaignSlug();
+  const addCampaignQuery = (value: string) => {
+    if (!slug || (!value.startsWith("/api") && !value.includes("/api"))) return value;
+    const separator = value.includes("?") ? "&" : "?";
+    if (value.includes("campaignSlug=")) return value;
+    return `${value}${separator}campaignSlug=${encodeURIComponent(slug)}`;
+  };
+
+  if (!UI_BASE_PATH) return addCampaignQuery(apiPath);
 
   // Evitar doble prefijo si ya viene prefijado.
-  if (apiPath.startsWith(`${UI_BASE_PATH}/api`)) return apiPath;
+  if (apiPath.startsWith(`${UI_BASE_PATH}/api`)) {
+    return addCampaignQuery(apiPath);
+  }
 
-  if (apiPath.startsWith("/api")) return `${UI_BASE_PATH}${apiPath}`;
+  if (apiPath.startsWith("/api")) return addCampaignQuery(`${UI_BASE_PATH}${apiPath}`);
   return apiPath;
 }
 

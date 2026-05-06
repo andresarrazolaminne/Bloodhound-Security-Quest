@@ -11,6 +11,12 @@ import fs from "fs";
 import path from "path";
 
 const UPLOADS_DIR = process.env.UPLOADS_DIR || "/usr/share/nginx/html/bloodhound/uploads";
+const ADMIN_API_TOKEN = process.env.ADMIN_API_TOKEN || "admin123";
+
+type CampaignRequest = express.Request & {
+  campaignId?: number;
+  campaignSlug?: string;
+};
 
 
 // Función para generar un código de seguridad alfanumérico aleatorio
@@ -29,12 +35,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const apiRouter = express.Router();
   app.use("/api", apiRouter);
 
+  apiRouter.use(async (req, res, next) => {
+    if (req.path === "/health" || req.path === "/admin/campaigns") return next();
+    const requestedSlug = String(req.header("x-campaign-slug") || req.query.campaignSlug || "").trim();
+    const slug = requestedSlug || process.env.DEFAULT_CAMPAIGN_SLUG || "default";
+    const campaign = await storage.ensureCampaignBySlug(slug, slug === "default" ? "Default Campaign" : slug);
+    if (!campaign.isActive) return res.status(404).json({ message: "Campaña no encontrada" });
+    (req as CampaignRequest).campaignId = campaign.id;
+    (req as CampaignRequest).campaignSlug = campaign.slug;
+    next();
+  });
+
+  apiRouter.use("/admin", (req, res, next) => {
+    const token = req.header("x-admin-auth");
+    if (token !== ADMIN_API_TOKEN) {
+      return res.status(401).json({ message: "No autorizado" });
+    }
+    next();
+  });
+
+  apiRouter.get("/admin/campaigns", async (_req, res) => {
+    try {
+      const campaigns = await storage.listCampaigns();
+      return res.status(200).json({ campaigns });
+    } catch (error) {
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
   // User routes
   apiRouter.post("/login", async (req, res) => {
     try {
       const documentNumber = z.string().min(1).parse(req.body.documentNumber);
       
-      const user = await storage.getUserByDocumentNumber(documentNumber);
+      const user = await storage.getUserByDocumentNumber(documentNumber, (req as unknown as CampaignRequest).campaignId);
       
       if (!user) {
         return res.status(404).json({ message: "Usuario no encontrado" });
@@ -57,12 +91,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Datos validados:", userData);
       
       // Check if user already exists
-      const existingUser = await storage.getUserByDocumentNumber(userData.documentNumber);
+      const existingUser = await storage.getUserByDocumentNumber(userData.documentNumber, (req as unknown as CampaignRequest).campaignId);
       if (existingUser) {
         return res.status(409).json({ message: "Usuario ya existe" });
       }
       
-      const newUser = await storage.createUser(userData);
+      const newUser = await storage.createUser(userData, (req as unknown as CampaignRequest).campaignId);
       return res.status(201).json({ user: newUser });
     } catch (error) {
       console.error("Error en registro:", error);
@@ -79,7 +113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get active venues for registration
   apiRouter.get("/venues/active", async (req, res) => {
     try {
-      const venues = await storage.getAllVenues();
+      const venues = await storage.getAllVenues((req as CampaignRequest).campaignId);
       const activeVenues = venues.filter(venue => venue.isActive);
       return res.status(200).json({ venues: activeVenues });
     } catch (error) {
@@ -93,12 +127,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { documentNumber } = req.params;
       
-      const user = await storage.getUserByDocumentNumber(documentNumber);
+      const user = await storage.getUserByDocumentNumber(documentNumber, (req as CampaignRequest).campaignId);
       if (!user) {
         return res.status(404).json({ message: "Usuario no encontrado" });
       }
       
-      const segments = await storage.getSegmentsByUserId(user.id);
+      const segments = await storage.getSegmentsByUserId(user.id, (req as CampaignRequest).campaignId);
       return res.status(200).json({ segments });
     } catch (error) {
       return res.status(500).json({ message: "Error interno del servidor" });
@@ -113,13 +147,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         securityCode: z.string().optional()
       }).parse(req.body);
       
-      const user = await storage.getUserByDocumentNumber(documentNumber);
+      const user = await storage.getUserByDocumentNumber(documentNumber, (req as CampaignRequest).campaignId);
       if (!user) {
         return res.status(404).json({ message: "Usuario no encontrado" });
       }
       
       // Obtenemos los datos del segmento de la base de datos
-      const segmentAsset = await storage.getMapSegmentAsset(segmentId);
+      const segmentAsset = await storage.getMapSegmentAsset(segmentId, (req as CampaignRequest).campaignId);
       
       // Verificamos si existe configuración para este segmento
       if (!segmentAsset) {
@@ -145,7 +179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verificar si es un QR trampa
       if (segmentAsset.isTrap) {
         // Check if user has already scanned this trap QR
-        const existingScore = await storage.getUserScoreBySegment(user.id, segmentId);
+        const existingScore = await storage.getUserScoreBySegment(user.id, segmentId, (req as CampaignRequest).campaignId);
         
         if (existingScore) {
           // User has already scanned this QR, don't add/subtract points
@@ -161,11 +195,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Add -5 points for trap QR
-        const trapScore = await storage.addUserScore(user.id, segmentId, -5, true);
+        const trapScore = await storage.addUserScore(user.id, segmentId, -5, true, (req as CampaignRequest).campaignId);
         // Also add to legacy trap points system
-        await storage.addTrapPoints(user.id, segmentId, 1);
+        await storage.addTrapPoints(user.id, segmentId, 1, (req as CampaignRequest).campaignId);
         
-        const totalScore = await storage.calculateTotalScore(user.id);
+        const totalScore = await storage.calculateTotalScore(user.id, (req as CampaignRequest).campaignId);
         
         return res.status(200).json({ 
           isTrap: true,
@@ -179,14 +213,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if user has already scanned this valid QR
-      const existingScore = await storage.getUserScoreBySegment(user.id, segmentId);
+      const existingScore = await storage.getUserScoreBySegment(user.id, segmentId, (req as CampaignRequest).campaignId);
       
       if (existingScore) {
         // User has already scanned this QR, don't add points but ensure segment is unlocked
-        const segment = await storage.unlockSegment(user.id, segmentId);
+        const segment = await storage.unlockSegment(user.id, segmentId, (req as CampaignRequest).campaignId);
         
-        const allSegments = await storage.getSegmentsByUserId(user.id);
-        const allAssets = await storage.getAllMapSegmentAssets();
+        const allSegments = await storage.getSegmentsByUserId(user.id, (req as CampaignRequest).campaignId);
+        const allAssets = await storage.getAllMapSegmentAssets((req as CampaignRequest).campaignId);
         const validAssets = allAssets.filter(asset => !asset.isTrap);
         const totalSegments = validAssets.length;
         const validSegmentIds = validAssets.map(asset => asset.segmentId);
@@ -208,15 +242,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Add +10 points for valid QR
-      await storage.addUserScore(user.id, segmentId, 10, false);
+      await storage.addUserScore(user.id, segmentId, 10, false, (req as CampaignRequest).campaignId);
       
-      const segment = await storage.unlockSegment(user.id, segmentId);
+      const segment = await storage.unlockSegment(user.id, segmentId, (req as CampaignRequest).campaignId);
       
       // Check if all segments are completed
-      const allSegments = await storage.getSegmentsByUserId(user.id);
+      const allSegments = await storage.getSegmentsByUserId(user.id, (req as CampaignRequest).campaignId);
       
       // Get all valid (non-trap) segment assets to calculate actual progress
-      const allAssets = await storage.getAllMapSegmentAssets();
+      const allAssets = await storage.getAllMapSegmentAssets((req as CampaignRequest).campaignId);
       const validAssets = allAssets.filter(asset => !asset.isTrap);
       const totalSegments = validAssets.length;
       
@@ -229,7 +263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let redemptionCode = null;
       if (unlockedSegments === totalSegments) {
         // Create redemption code if all segments are unlocked
-        redemptionCode = await storage.createRedemptionCode(user.id);
+        redemptionCode = await storage.createRedemptionCode(user.id, (req as CampaignRequest).campaignId);
         
         // Si el usuario completó el mapa y no tiene fecha de completado, registramos la fecha
         if (!user.completedAt) {
@@ -261,18 +295,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { documentNumber } = req.params;
       
-      const user = await storage.getUserByDocumentNumber(documentNumber);
+      const user = await storage.getUserByDocumentNumber(documentNumber, (req as CampaignRequest).campaignId);
       if (!user) {
         return res.status(404).json({ message: "Usuario no encontrado" });
       }
       
-      const prize = await storage.getPrizeByUserId(user.id);
+      const prize = await storage.getPrizeByUserId(user.id, (req as CampaignRequest).campaignId);
       
       // Check if user has unlocked all segments
-      const segments = await storage.getSegmentsByUserId(user.id);
+      const segments = await storage.getSegmentsByUserId(user.id, (req as CampaignRequest).campaignId);
       
       // Get all valid (non-trap) segment assets to calculate actual progress
-      const allAssets = await storage.getAllMapSegmentAssets();
+      const allAssets = await storage.getAllMapSegmentAssets((req as CampaignRequest).campaignId);
       const validAssets = allAssets.filter(asset => !asset.isTrap);
       const totalSegments = validAssets.length;
       
@@ -287,7 +321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate redemption code if completed and not already generated
       let redemptionCode = prize?.redemptionCode;
       if (completed && !redemptionCode) {
-        redemptionCode = await storage.createRedemptionCode(user.id);
+        redemptionCode = await storage.createRedemptionCode(user.id, (req as CampaignRequest).campaignId);
       }
       
       return res.status(200).json({ 
@@ -306,7 +340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         redemptionCode: z.string()
       }).parse(req.body);
       
-      const prize = await storage.getPrizeByRedemptionCode(redemptionCode);
+      const prize = await storage.getPrizeByRedemptionCode(redemptionCode, (req as CampaignRequest).campaignId);
       if (!prize) {
         return res.status(404).json({ message: "Código de redención inválido" });
       }
@@ -318,7 +352,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const updatedPrize = await storage.redeemPrize(prize.userId);
+      const updatedPrize = await storage.redeemPrize(prize.userId, (req as CampaignRequest).campaignId);
       
       return res.status(200).json({ 
         message: "Premio reclamado exitosamente",
@@ -337,13 +371,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { documentNumber } = req.params;
       
-      const user = await storage.getUserByDocumentNumber(documentNumber);
+      const user = await storage.getUserByDocumentNumber(documentNumber, (req as CampaignRequest).campaignId);
       if (!user) {
         return res.status(404).json({ message: "Usuario no encontrado" });
       }
       
-      const trapPoints = await storage.getTrapPointsByUserId(user.id);
-      const totalTrapPoints = await storage.getTotalTrapPointsByUserId(user.id);
+      const trapPoints = await storage.getTrapPointsByUserId(user.id, (req as CampaignRequest).campaignId);
+      const totalTrapPoints = await storage.getTotalTrapPointsByUserId(user.id, (req as CampaignRequest).campaignId);
       
       return res.status(200).json({
         trapPoints,
@@ -357,13 +391,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Obtener ranking de puntos trampa para mostrar en el admin
   apiRouter.get("/admin/trap-points-ranking", async (req, res) => {
     try {
-      const usersWithProgress = await storage.getAllUsersWithProgress();
+      const usersWithProgress = await storage.getAllUsersWithProgress((req as CampaignRequest).campaignId);
       
       // Agregar puntos trampa a cada usuario
       const ranking = await Promise.all(
         usersWithProgress.map(async (userProgress) => {
-          const totalTrapPoints = await storage.getTotalTrapPointsByUserId(userProgress.user.id);
-          const trapPointsHistory = await storage.getTrapPointsByUserId(userProgress.user.id);
+          const totalTrapPoints = await storage.getTotalTrapPointsByUserId(userProgress.user.id, (req as CampaignRequest).campaignId);
+          const trapPointsHistory = await storage.getTrapPointsByUserId(userProgress.user.id, (req as CampaignRequest).campaignId);
           
           return {
             ...userProgress,
@@ -386,7 +420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin Dashboard routes for map segment assets
   apiRouter.get("/admin/map-assets", async (req, res) => {
     try {
-      const assets = await storage.getAllMapSegmentAssets();
+      const assets = await storage.getAllMapSegmentAssets((req as CampaignRequest).campaignId);
       return res.status(200).json({ assets });
     } catch (error) {
       return res.status(500).json({ message: "Error interno del servidor" });
@@ -406,7 +440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verificar si el segmento existe en la base de datos
       // En lugar de limitar por tamaño de cuadrícula, permitimos cualquier segmento existente
-      const asset = await storage.getMapSegmentAsset(segmentId);
+      const asset = await storage.getMapSegmentAsset(segmentId, (req as CampaignRequest).campaignId);
       
       if (!asset) {
         // Es una respuesta 200 vacía en lugar de 404 para evitar errores en consola
@@ -425,7 +459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const assetData = insertMapSegmentAssetsSchema.parse(req.body);
       
       // Verificar si ya existe un asset para este segmento
-      const existingAsset = await storage.getMapSegmentAsset(assetData.segmentId);
+      const existingAsset = await storage.getMapSegmentAsset(assetData.segmentId, (req as CampaignRequest).campaignId);
       if (existingAsset) {
         return res.status(409).json({ 
           message: "Ya existe un asset para este segmento", 
@@ -438,7 +472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         assetData.securityCode = generateSecurityCode();
       }
       
-      const newAsset = await storage.createMapSegmentAsset(assetData);
+      const newAsset = await storage.createMapSegmentAsset(assetData, (req as CampaignRequest).campaignId);
       return res.status(201).json({ asset: newAsset });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -456,7 +490,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const segmentId = parseInt(req.params.segmentId);
       
       // Verificar si el asset existe
-      const existingAsset = await storage.getMapSegmentAsset(segmentId);
+      const existingAsset = await storage.getMapSegmentAsset(segmentId, (req as CampaignRequest).campaignId);
       if (!existingAsset) {
         return res.status(404).json({ message: "Asset no encontrado" });
       }
@@ -478,7 +512,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updatedData.securityCode = generateSecurityCode();
       }
       
-      const updatedAsset = await storage.updateMapSegmentAsset(segmentId, updatedData);
+      const updatedAsset = await storage.updateMapSegmentAsset(segmentId, updatedData, (req as CampaignRequest).campaignId);
       return res.status(200).json({ asset: updatedAsset });
     } catch (error) {
       console.error('Error updating map asset:', error);
@@ -497,12 +531,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const segmentId = parseInt(req.params.segmentId);
       
       // Verificar si el asset existe
-      const existingAsset = await storage.getMapSegmentAsset(segmentId);
+      const existingAsset = await storage.getMapSegmentAsset(segmentId, (req as CampaignRequest).campaignId);
       if (!existingAsset) {
         return res.status(404).json({ message: "Asset no encontrado" });
       }
       
-      await storage.deleteMapSegmentAsset(segmentId);
+      await storage.deleteMapSegmentAsset(segmentId, (req as CampaignRequest).campaignId);
       return res.status(200).json({ message: "Asset eliminado exitosamente" });
     } catch (error) {
       return res.status(500).json({ message: "Error interno del servidor" });
@@ -512,7 +546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint para limpiar la base de datos (solo para pruebas)
   apiRouter.post("/admin/reset-data", async (_req, res) => {
     try {
-      await storage.resetAllUserData();
+      await storage.resetAllUserData((_req as CampaignRequest).campaignId);
       return res.status(200).json({ message: "Datos de usuarios reiniciados exitosamente" });
     } catch (error) {
       return res.status(500).json({ message: "Error interno del servidor" });
@@ -529,13 +563,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verificar si el usuario existe
-      const user = await storage.getUserById(userId);
+      const user = await storage.getUserById(userId, (req as CampaignRequest).campaignId);
       if (!user) {
         return res.status(404).json({ message: "Usuario no encontrado" });
       }
 
       // Eliminar todos los datos relacionados con el usuario
-      await storage.deleteUserAndAllData(userId);
+      await storage.deleteUserAndAllData(userId, (req as CampaignRequest).campaignId);
       
       return res.status(200).json({ 
         message: `Usuario ${user.documentNumber} eliminado exitosamente` 
@@ -550,7 +584,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // System configuration routes
   apiRouter.get("/system-config", async (_req, res) => {
     try {
-      const config = await storage.getSystemConfig();
+      const config = await storage.getSystemConfig((_req as CampaignRequest).campaignId);
       return res.status(200).json({ config });
     } catch (error) {
       console.error('Error getting system config:', error);
@@ -593,7 +627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   apiRouter.post("/admin/system-config", async (req, res) => {
     try {
       const configData = insertSystemConfigSchema.parse(req.body);
-      const config = await storage.updateSystemConfig(configData);
+      const config = await storage.updateSystemConfig(configData, (req as CampaignRequest).campaignId);
       return res.status(200).json({ config });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -650,7 +684,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   apiRouter.get("/admin/uploads", async (_req, res) => {
     try {
-      const assets = await storage.listUploadedAssets();
+      const assets = await storage.listUploadedAssets((_req as CampaignRequest).campaignId);
       return res.status(200).json({ assets });
     } catch (error) {
       console.error("Error listing uploads:", error);
@@ -671,7 +705,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mime: file.mimetype,
         size: file.size ?? 0,
         publicUrl,
-      });
+      }, (req as CampaignRequest).campaignId);
 
       return res.status(201).json({ asset });
     } catch (error) {
@@ -690,7 +724,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   apiRouter.delete("/admin/uploads/:id", async (req, res) => {
     try {
       const id = z.coerce.number().int().positive().parse(req.params.id);
-      await storage.deleteUploadedAsset(id);
+      await storage.deleteUploadedAsset(id, (req as CampaignRequest).campaignId);
       return res.status(200).json({ success: true });
     } catch (error) {
       return res.status(400).json({ message: "Solicitud inválida" });
@@ -776,7 +810,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const segment of segmentData) {
         try {
           // Verificar si ya existe
-          const existing = await storage.getMapSegmentAsset(segment.segmentId);
+          const existing = await storage.getMapSegmentAsset(segment.segmentId, (_req as CampaignRequest).campaignId);
           
           if (existing) {
             // Actualizar registro existente
@@ -792,7 +826,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               title: segment.title,
               description: segment.description,
               securityCode,
-            });
+            }, (_req as CampaignRequest).campaignId);
             results.push({ segmentId: segment.segmentId, action: 'updated', asset: updated });
           } else {
             // Crear nuevo registro
@@ -806,7 +840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               title: segment.title,
               description: segment.description,
               securityCode, // Agregar el código de seguridad
-            });
+            }, (_req as CampaignRequest).campaignId);
             results.push({ segmentId: segment.segmentId, action: 'created', asset: created });
           }
         } catch (error) {
@@ -832,13 +866,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   apiRouter.get("/admin/users-progress", async (_req, res) => {
     try {
       // Obtener todos los usuarios con su progreso
-      const users = await storage.getAllUsersWithProgress();
+      const users = await storage.getAllUsersWithProgress((_req as CampaignRequest).campaignId);
       
       // Enriquecer con datos de scoring, traps y sedes
       const enhancedUsers = await Promise.all(
         users.map(async (userProgress) => {
           // Obtener puntos trampa
-          const trapPoints = await storage.getTrapPointsByUserId(userProgress.user.id);
+          const trapPoints = await storage.getTrapPointsByUserId(userProgress.user.id, (_req as CampaignRequest).campaignId);
           const totalTrapPoints = trapPoints.length;
           
           // Obtener segmentos desbloqueados (códigos correctos)
@@ -850,7 +884,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Obtener información de la sede
           const venue = userProgress.user.venueId ? 
-            await storage.getVenueById(userProgress.user.venueId) : null;
+            await storage.getVenueById(userProgress.user.venueId, (_req as CampaignRequest).campaignId) : null;
           
           return {
             ...userProgress,
@@ -900,7 +934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Venue management routes (Admin only)
   apiRouter.get("/admin/venues", async (req, res) => {
     try {
-      const venues = await storage.getAllVenues();
+      const venues = await storage.getAllVenues((req as CampaignRequest).campaignId);
       return res.status(200).json({ venues });
     } catch (error) {
       console.error("Error getting venues:", error);
@@ -915,7 +949,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "ID de sede inválido" });
       }
       
-      const venue = await storage.getVenueById(venueId);
+      const venue = await storage.getVenueById(venueId, (req as CampaignRequest).campaignId);
       if (!venue) {
         return res.status(404).json({ message: "Sede no encontrada" });
       }
@@ -930,7 +964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   apiRouter.post("/admin/venues", async (req, res) => {
     try {
       const venueData = insertVenueSchema.parse(req.body);
-      const newVenue = await storage.createVenue(venueData);
+      const newVenue = await storage.createVenue(venueData, (req as CampaignRequest).campaignId);
       return res.status(201).json({ venue: newVenue });
     } catch (error) {
       console.error("Error creating venue:", error);
@@ -952,7 +986,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const venueData = insertVenueSchema.partial().parse(req.body);
-      const updatedVenue = await storage.updateVenue(venueId, venueData);
+      const updatedVenue = await storage.updateVenue(venueId, venueData, (req as CampaignRequest).campaignId);
       return res.status(200).json({ venue: updatedVenue });
     } catch (error) {
       console.error("Error updating venue:", error);
@@ -973,7 +1007,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "ID de sede inválido" });
       }
       
-      await storage.deleteVenue(venueId);
+      await storage.deleteVenue(venueId, (req as CampaignRequest).campaignId);
       return res.status(200).json({ message: "Sede eliminada exitosamente" });
     } catch (error) {
       console.error("Error deleting venue:", error);
@@ -989,7 +1023,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "ID de sede inválido" });
       }
       
-      const ranking = await storage.getVenueRanking(venueId);
+      const ranking = await storage.getVenueRanking(venueId, (req as CampaignRequest).campaignId);
       return res.status(200).json({ ranking });
     } catch (error) {
       console.error("Error getting venue ranking:", error);
@@ -1005,7 +1039,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "ID de sede inválido" });
       }
       
-      const ranking = await storage.getVenueRanking(venueId);
+      const ranking = await storage.getVenueRanking(venueId, (req as CampaignRequest).campaignId);
       return res.status(200).json({ ranking });
     } catch (error) {
       console.error("Error getting venue ranking:", error);
@@ -1021,7 +1055,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "ID de sede inválido" });
       }
       
-      const ranking = await storage.getVenueScoreRanking(venueId);
+      const ranking = await storage.getVenueScoreRanking(venueId, (req as CampaignRequest).campaignId);
       return res.status(200).json({ ranking });
     } catch (error) {
       console.error("Error getting venue score ranking:", error);

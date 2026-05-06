@@ -1,10 +1,20 @@
-import { pgTable, text, serial, integer, boolean, json, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, json, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+export const campaigns = pgTable("campaigns", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
 
 // System configuration table
 export const systemConfig = pgTable("system_config", {
   id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
   instructionsText: text("instructions_text").notNull(),
   siteMapImageUrl: text("site_map_image_url").notNull(),
   footerLogoUrl: text("footer_logo_url").notNull().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png'),
@@ -77,6 +87,7 @@ export const systemConfig = pgTable("system_config", {
 // Uploaded assets (logos, background, etc.)
 export const uploadedAssets = pgTable("uploaded_assets", {
   id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
   filename: text("filename").notNull(),
   originalName: text("original_name").notNull(),
   mime: text("mime").notNull(),
@@ -99,6 +110,7 @@ export type UploadedAsset = typeof uploadedAssets.$inferSelect;
 // Venues/Sedes table
 export const venues = pgTable("venues", {
   id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
   name: text("name").notNull(),
   description: text("description"),
   location: text("location"),
@@ -111,6 +123,7 @@ export const venues = pgTable("venues", {
 // Schema for system configuration
 export const systemConfigSchema = z.object({
   id: z.number(),
+  campaignId: z.number(),
   instructionsText: z.string(),
   siteMapImageUrl: z.string(),
   footerLogoUrl: z.string().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png'),
@@ -188,14 +201,18 @@ export const insertSystemConfigSchema = systemConfigSchema.omit({
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  documentNumber: text("document_number").notNull().unique(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
+  documentNumber: text("document_number").notNull(),
   name: text("name").notNull(),
   venueId: integer("venue_id").references(() => venues.id),
   completedAt: timestamp("completed_at"),
-});
+}, (table) => ({
+  usersCampaignDocumentUnique: uniqueIndex("users_campaign_document_unique").on(table.campaignId, table.documentNumber),
+}));
 
 export const mapSegments = pgTable("map_segments", {
   id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
   userId: integer("user_id").notNull(),
   segmentId: integer("segment_id").notNull(),
   unlocked: boolean("unlocked").default(false),
@@ -203,6 +220,7 @@ export const mapSegments = pgTable("map_segments", {
 
 export const prizes = pgTable("prizes", {
   id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
   userId: integer("user_id").notNull(),
   redeemed: boolean("redeemed").default(false),
   redemptionCode: text("redemption_code"),
@@ -212,7 +230,8 @@ export const prizes = pgTable("prizes", {
 // Tabla para gestionar las configuraciones de los segmentos del mapa
 export const mapSegmentAssets = pgTable("map_segment_assets", {
   id: serial("id").primaryKey(),
-  segmentId: integer("segment_id").notNull().unique(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
+  segmentId: integer("segment_id").notNull(),
   imageUrl: text("image_url").notNull(),
   redirectUrl: text("redirect_url"),
   title: text("title").notNull().default(""),
@@ -222,11 +241,14 @@ export const mapSegmentAssets = pgTable("map_segment_assets", {
   trapMessage: text("trap_message"), // Mensaje HTML personalizable para QR trampa
   modalContent: text("modal_content"), // Contenido HTML opcional para modal al desbloquear
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  mapSegmentCampaignSegmentUnique: uniqueIndex("map_segment_campaign_segment_unique").on(table.campaignId, table.segmentId),
+}));
 
 // Tabla para rastrear puntos falsos de usuarios
 export const trapPoints = pgTable("trap_points", {
   id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
   userId: integer("user_id").notNull(),
   segmentId: integer("segment_id").notNull(),
   pointsAwarded: integer("points_awarded").default(1), // Puntos falsos otorgados
@@ -236,6 +258,7 @@ export const trapPoints = pgTable("trap_points", {
 // New table for user scores tracking
 export const userScores = pgTable("user_scores", {
   id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
   userId: integer("user_id").notNull().references(() => users.id),
   segmentId: integer("segment_id").notNull(),
   points: integer("points").notNull(), // +10 for valid QR, -5 for trap QR
@@ -298,6 +321,14 @@ export const insertVenueSchema = createInsertSchema(venues).pick({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+export const insertCampaignSchema = createInsertSchema(campaigns).pick({
+  slug: true,
+  name: true,
+  isActive: true,
+});
+export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
+export type Campaign = typeof campaigns.$inferSelect;
 
 export type InsertVenue = z.infer<typeof insertVenueSchema>;
 export type Venue = typeof venues.$inferSelect;

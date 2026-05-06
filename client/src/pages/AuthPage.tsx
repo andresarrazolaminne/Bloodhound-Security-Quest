@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/context/UserContext";
 import { login } from "@/lib/api";
 import BrainLoader from "@/components/BrainLoader";
-import { withApiBase, withUiBase } from "@/lib/paths";
+import { withApiBase, withUiCampaign } from "@/lib/paths";
 
 const AuthPage = () => {
   const [, setLocation] = useLocation();
@@ -111,7 +111,7 @@ const AuthPage = () => {
         if (redirectUrl) {
           setLocation(redirectUrl);
         } else {
-          setLocation(withUiBase('/map'));
+          setLocation(withUiCampaign('/map'));
         }
         
         toast({
@@ -125,10 +125,10 @@ const AuthPage = () => {
         // Mantener la URL de redirección para después del registro
         if (redirectUrl) {
           setLocation(
-            `${withUiBase('/register')}?redirect=${encodeURIComponent(redirectUrl)}`,
+            `${withUiCampaign('/register')}?redirect=${encodeURIComponent(redirectUrl)}`,
           );
         } else {
-          setLocation(withUiBase('/register'));
+          setLocation(withUiCampaign('/register'));
         }
       }
     } catch (error: any) {
@@ -138,10 +138,10 @@ const AuthPage = () => {
         // Mantener la URL de redirección para después del registro
         if (redirectUrl) {
           setLocation(
-            `${withUiBase('/register')}?redirect=${encodeURIComponent(redirectUrl)}`,
+            `${withUiCampaign('/register')}?redirect=${encodeURIComponent(redirectUrl)}`,
           );
         } else {
-          setLocation(withUiBase('/register'));
+          setLocation(withUiCampaign('/register'));
         }
       } else if (error.status === 400) {
         // Error de validación - mostrar mensaje específico
@@ -195,7 +195,7 @@ const AuthPage = () => {
 
   const handleChangeUser = () => {
     localStorage.removeItem('lastDocument');
-    setLocation(withUiBase('/auth'));
+    setLocation(withUiCampaign('/auth'));
   };
 
   // Mostrar loader mientras se cargan las configuraciones

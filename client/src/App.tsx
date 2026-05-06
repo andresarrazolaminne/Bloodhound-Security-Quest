@@ -1,9 +1,9 @@
-import { Switch, Route, Redirect, useLocation } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { UserProvider, useUser } from "@/context/UserContext";
-import { withUiBase, UI_BASE_PATH } from "./lib/paths";
+import { getCampaignSlugFromPath, setActiveCampaignSlug, withUiBase, UI_BASE_PATH, withUiCampaign } from "./lib/paths";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/AuthPage";
 import MapPage from "@/pages/MapPage";
@@ -11,10 +11,8 @@ import RegistrationPage from "@/pages/RegistrationPage";
 import AdminPage from "@/pages/AdminPage";
 import AdminLoginPage from "@/pages/AdminLoginPage";
 
-import UnlockPage from "@/pages/UnlockPage";
 import QRUnlockHandler from "@/pages/QRUnlockHandler";
 import RankingPage from "@/pages/RankingPage";
-import { Loader2 } from "lucide-react";
 import AdminProtectedRoute from "@/components/AdminProtectedRoute";
 import { useEffect } from "react";
 import { login } from "@/lib/api";
@@ -25,7 +23,7 @@ const ProtectedLoginRoute = () => {
 
   // Si hay un usuario logueado, redirigir al mapa
   if (currentUser) {
-    return <Redirect to={withUiBase("/map")} />;
+    return <Redirect to={withUiCampaign("/map")} />;
   }
 
   // Si no hay usuario, mostrar página de login
@@ -37,15 +35,21 @@ const SessionRecovery = () => {
   const { currentUser, setCurrentUser } = useUser();
   
   useEffect(() => {
+    const slug = getCampaignSlugFromPath(window.location.pathname);
+    if (slug) setActiveCampaignSlug(slug);
+
     const recoverSession = async () => {
       // Solo intentar recuperar si no hay usuario actual
       if (!currentUser) {
         try {
           const savedUser = localStorage.getItem('currentUser');
           const lastDocument = localStorage.getItem('lastDocument');
+          const slug = getCampaignSlugFromPath(window.location.pathname);
+          const scopedUser = slug ? localStorage.getItem(`currentUser:${slug}`) : savedUser;
+          const scopedDocument = slug ? localStorage.getItem(`lastDocument:${slug}`) : lastDocument;
           
-          if (savedUser && lastDocument) {
-            const parsedUser = JSON.parse(savedUser);
+          if (scopedUser && scopedDocument) {
+            const parsedUser = JSON.parse(scopedUser);
             console.log('Recuperando sesión para:', parsedUser.documentNumber);
             
             // Intentar validar la sesión con el servidor
@@ -58,8 +62,13 @@ const SessionRecovery = () => {
             } catch (error) {
               console.log('Error al validar sesión, limpiando datos:', error);
               // Si falla, limpiar datos obsoletos
-              localStorage.removeItem('currentUser');
-              localStorage.removeItem('lastDocument');
+              if (slug) {
+                localStorage.removeItem(`currentUser:${slug}`);
+                localStorage.removeItem(`lastDocument:${slug}`);
+              } else {
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('lastDocument');
+              }
             }
           }
         } catch (error) {
@@ -77,6 +86,7 @@ const SessionRecovery = () => {
 function Router() {
   const uiRoot = withUiBase("/");
   const uiRootNoSlash = UI_BASE_PATH ? UI_BASE_PATH : "";
+  const campaignRoot = withUiBase("/:campaignSlug");
 
   return (
     <>
@@ -86,13 +96,14 @@ function Router() {
         {uiRootNoSlash && (
           <Route path={uiRootNoSlash} component={ProtectedLoginRoute} />
         )}
-        <Route path={withUiBase("/auth")} component={ProtectedLoginRoute} />
-        <Route path={withUiBase("/register")} component={RegistrationPage} />
-        <Route path={withUiBase("/map")} component={MapPage} />
-        <Route path={withUiBase("/unlock")} component={QRUnlockHandler} />
-        <Route path={withUiBase("/ranking")} component={RankingPage} />
-        <Route path={withUiBase("/admin-login")} component={AdminLoginPage} />
-        <Route path={withUiBase("/admin")}>
+        <Route path={campaignRoot} component={ProtectedLoginRoute} />
+        <Route path={withUiBase("/:campaignSlug/auth")} component={ProtectedLoginRoute} />
+        <Route path={withUiBase("/:campaignSlug/register")} component={RegistrationPage} />
+        <Route path={withUiBase("/:campaignSlug/map")} component={MapPage} />
+        <Route path={withUiBase("/:campaignSlug/unlock")} component={QRUnlockHandler} />
+        <Route path={withUiBase("/:campaignSlug/ranking")} component={RankingPage} />
+        <Route path={withUiBase("/:campaignSlug/admin-login")} component={AdminLoginPage} />
+        <Route path={withUiBase("/:campaignSlug/admin")}>
           <AdminProtectedRoute component={AdminPage} />
         </Route>
 

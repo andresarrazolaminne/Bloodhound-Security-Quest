@@ -19,7 +19,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import RichTextEditor from "@/components/RichTextEditor";
 import HtmlContent from "@/components/HtmlContent";
-import { withUiBase } from "@/lib/paths";
+import { withUiCampaign } from "@/lib/paths";
 import { 
   Tabs, 
   TabsContent, 
@@ -236,7 +236,7 @@ const AdminPage = () => {
     });
 
     // Redirigir a la página de login
-    setLocation(withUiBase("/admin-login"));
+    setLocation(withUiCampaign("/admin-login"));
   };
 
   // Función para cargar la configuración del sistema
@@ -800,7 +800,7 @@ const AdminPage = () => {
       // Recargar la lista de assets
       fetchMapAssets();
       setDialogOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
         description: `Error al guardar el segmento: ${error.message || 'Error desconocido'}`,
@@ -3755,7 +3755,7 @@ const AdminPage = () => {
             <Textarea
               id="venue-description"
               placeholder="Descripción opcional de la sede"
-              value={venueFormData.description}
+              value={venueFormData.description ?? ""}
               onChange={(e) => setVenueFormData({
                 ...venueFormData,
                 description: e.target.value
@@ -3771,7 +3771,7 @@ const AdminPage = () => {
             <Input
               id="venue-location"
               placeholder="Ej: Bogotá, Colombia"
-              value={venueFormData.location}
+              value={venueFormData.location ?? ""}
               onChange={(e) => setVenueFormData({
                 ...venueFormData,
                 location: e.target.value
@@ -3788,7 +3788,7 @@ const AdminPage = () => {
                 id="venue-max-participants"
                 type="number"
                 placeholder="100"
-                value={venueFormData.maxParticipants}
+                value={venueFormData.maxParticipants ?? ""}
                 onChange={(e) => setVenueFormData({
                   ...venueFormData,
                   maxParticipants: e.target.value ? parseInt(e.target.value) : undefined

@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { register } from "@/lib/api";
 import { useUser } from "@/context/UserContext";
 import BrainLoader from "@/components/BrainLoader";
-import { withApiBase, withUiBase } from "@/lib/paths";
+import { withApiBase, withUiCampaign } from "@/lib/paths";
 
 const RegistrationPage = () => {
   const [name, setName] = useState("");
@@ -151,7 +151,7 @@ const RegistrationPage = () => {
       if (redirectUrl) {
         setLocation(redirectUrl);
       } else {
-        setLocation(withUiBase("/map"));
+        setLocation(withUiCampaign("/map"));
       }
 
       toast({
@@ -365,7 +365,7 @@ const RegistrationPage = () => {
                 type="button"
                 variant="outline"
                 className="w-full py-6 text-base"
-                onClick={() => setLocation(withUiBase("/"))}
+                onClick={() => setLocation(withUiCampaign("/"))}
               >
                 Volver al inicio
               </Button>

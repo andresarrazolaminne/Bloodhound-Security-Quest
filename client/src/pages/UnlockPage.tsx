@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useUser } from '@/context/UserContext';
 import { unlockSegment, login } from '@/lib/api';
-import { withUiBase } from '@/lib/paths';
+import { withUiCampaign } from '@/lib/paths';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, Loader2, MapPin } from 'lucide-react';
@@ -62,7 +62,7 @@ const UnlockPage = () => {
         
         // Si no hay último documento o falló el auto-login, redirigir
         setLocation(
-          `${withUiBase('/auth')}?redirect=${encodeURIComponent(
+          `${withUiCampaign('/auth')}?redirect=${encodeURIComponent(
             window.location.pathname + window.location.search,
           )}`,
         );
@@ -87,7 +87,9 @@ const UnlockPage = () => {
 
         console.log('UnlockPage - Respuesta API:', response);
 
-        addUnlockedSegment(response.segment.segmentId);
+        if (response.segment) {
+          addUnlockedSegment(response.segment.segmentId);
+        }
         
         setResult({
           success: true,
@@ -102,7 +104,7 @@ const UnlockPage = () => {
 
         // Redirigir al mapa después de un breve delay
         setTimeout(() => {
-          setLocation(withUiBase('/map'));
+          setLocation(withUiCampaign('/map'));
         }, 2000);
 
       } catch (error: any) {
@@ -205,7 +207,7 @@ const UnlockPage = () => {
           
           <div className="flex flex-col space-y-2">
             <Button 
-              onClick={() => setLocation(withUiBase('/map'))}
+              onClick={() => setLocation(withUiCampaign('/map'))}
               className="w-full"
               variant={result.success ? "default" : "outline"}
             >
@@ -214,7 +216,7 @@ const UnlockPage = () => {
             
             {!result.success && (
               <Button 
-                onClick={() => setLocation(withUiBase('/auth'))}
+                onClick={() => setLocation(withUiCampaign('/auth'))}
                 variant="outline"
                 className="w-full"
               >

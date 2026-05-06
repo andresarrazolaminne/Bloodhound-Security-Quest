@@ -5,7 +5,7 @@ import { withApiBase } from "./lib/paths";
 
 // Initialize CSS custom properties with system config ONLY
 const initializeStyles = async () => {
-  let config = {};
+  let config: any = {};
   
   // Fetch system config and use ONLY database values
   try {
