@@ -4,7 +4,14 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { UserProvider, useUser } from "@/context/UserContext";
-import { getCampaignSlugFromPath, setActiveCampaignSlug, withUiBase, UI_BASE_PATH, withUiCampaign } from "./lib/paths";
+import {
+  getCampaignSlugFromPath,
+  playerScopedStorageKey,
+  setActiveCampaignSlug,
+  withUiBase,
+  UI_BASE_PATH,
+  withUiCampaign,
+} from "./lib/paths";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/AuthPage";
 import MapPage from "@/pages/MapPage";
@@ -47,35 +54,26 @@ const SessionRecovery = () => {
       // Solo intentar recuperar si no hay usuario actual
       if (!currentUser) {
         try {
-          const slug = getCampaignSlugFromPath(window.location.pathname);
-          const scopedUser = slug
-            ? localStorage.getItem(`currentUser:${slug}`)
-            : localStorage.getItem("currentUser");
-          const scopedDocument = slug
-            ? localStorage.getItem(`lastDocument:${slug}`)
-            : localStorage.getItem("lastDocument");
-          
+          const scopedUser = localStorage.getItem(playerScopedStorageKey("currentUser"));
+          const scopedDocument = localStorage.getItem(playerScopedStorageKey("lastDocument"));
+          const apiSlug =
+            getCampaignSlugFromPath(window.location.pathname)?.trim() || undefined;
+
           if (scopedUser && scopedDocument) {
             const parsedUser = JSON.parse(scopedUser);
             console.log('Recuperando sesión para:', parsedUser.documentNumber);
             
             // Intentar validar la sesión con el servidor
             try {
-              const response = await login(parsedUser.documentNumber);
+              const response = await login(parsedUser.documentNumber, apiSlug);
               if (response.user) {
                 setCurrentUser(response.user);
                 console.log('Sesión recuperada exitosamente');
               }
             } catch (error) {
               console.log('Error al validar sesión, limpiando datos:', error);
-              // Si falla, limpiar datos obsoletos
-              if (slug) {
-                localStorage.removeItem(`currentUser:${slug}`);
-                localStorage.removeItem(`lastDocument:${slug}`);
-              } else {
-                localStorage.removeItem('currentUser');
-                localStorage.removeItem('lastDocument');
-              }
+              localStorage.removeItem(playerScopedStorageKey("currentUser"));
+              localStorage.removeItem(playerScopedStorageKey("lastDocument"));
             }
           }
         } catch (error) {
@@ -111,7 +109,11 @@ function Router() {
         <Route path={campaignRoot} component={ProtectedLoginRoute} />
         <Route path={withUiBase("/:campaignSlug/auth")} component={ProtectedLoginRoute} />
         <Route path={withUiBase("/:campaignSlug/register")} component={RegistrationPage} />
-        <Route path={withUiBase("/:campaignSlug/map")} component={MapPage} />
+        <Route path={withUiBase("/:campaignSlug/map")}>
+          {(params: { campaignSlug?: string }) => (
+            <MapPage campaignSlug={params.campaignSlug ?? ""} />
+          )}
+        </Route>
         <Route path={withUiBase("/:campaignSlug/unlock")} component={QRUnlockHandler} />
         <Route path={withUiBase("/:campaignSlug/ranking")} component={RankingPage} />
         <Route path={withUiBase("/:campaignSlug/admin-login")}>

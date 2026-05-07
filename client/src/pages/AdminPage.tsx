@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -39,7 +39,8 @@ import {
   Pencil, 
   Trash2, 
   ExternalLink, 
-  Download, 
+  Download,
+  FileSpreadsheet,
   AlertTriangle, 
   LogOut,
   CheckCircle2,
@@ -86,6 +87,11 @@ interface MapAssetFormData {
   trapMessage: string;
   modalContent: string;
   generateNewCode?: boolean;
+  quizEnabled: boolean;
+  quizQuestionHtml: string;
+  quizOptions: string[];
+  quizCorrectIndex: number;
+  quizPoints: number;
 }
 
 type ImageFieldKey =
@@ -216,6 +222,8 @@ const AdminPage = () => {
     totalScore: number;
     correctCodes: number;
     trapCodes: number;
+    quizCorrectAnswers: number;
+    quizWrongAnswers: number;
     trapPoints: Array<{ id: number; userId: number; segmentId: number; pointsAwarded: number; scannedAt: string }>;
     venue: { id: number; name: string } | null;
   }>>([]);
@@ -234,8 +242,15 @@ const AdminPage = () => {
     isTrap: false,
     trapMessage: "",
     modalContent: "",
-    generateNewCode: false
+    generateNewCode: false,
+    quizEnabled: false,
+    quizQuestionHtml: "",
+    quizOptions: ["", ""],
+    quizCorrectIndex: 0,
+    quizPoints: 5,
   });
+  /** Último HTML del enunciado (React Quill); evita guardar estado desactualizado al pulsar Guardar. */
+  const quizQuestionHtmlRef = useRef<string>("");
   
   const [segmentFilter, setSegmentFilter] = useState<"all" | "normal" | "trap">("all");
 
@@ -250,6 +265,10 @@ const AdminPage = () => {
   const [creatingTenant, setCreatingTenant] = useState(false);
   const [togglingTenantActive, setTogglingTenantActive] = useState(false);
   const [tenantLoadError, setTenantLoadError] = useState<string | null>(null);
+  const [deleteTenantOpen, setDeleteTenantOpen] = useState(false);
+  const [deleteTenantConfirm, setDeleteTenantConfirm] = useState("");
+  const [deletingTenant, setDeletingTenant] = useState(false);
+  const [exportingRankingXlsx, setExportingRankingXlsx] = useState(false);
 
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -334,6 +353,123 @@ const AdminPage = () => {
       });
     } finally {
       setCreatingTenant(false);
+    }
+  };
+
+  const handleExportRankingXlsx = async () => {
+    if (!selectedTenantSlug) return;
+    setExportingRankingXlsx(true);
+    try {
+      const q = venueFilter ? `venueId=${encodeURIComponent(venueFilter)}` : "venueId=all";
+      const res = await apiRequest("GET", `/api/admin/export/ranking-xlsx?${q}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(typeof err.message === "string" ? err.message : "No se pudo generar el Excel");
+      }
+      const blob = await res.blob();
+      const head = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
+      if (head[0] !== 0x50 || head[1] !== 0x4b) {
+        const txt = await blob.text();
+        let msg = "La respuesta no es un archivo .xlsx válido.";
+        if (txt.startsWith("{")) {
+          try {
+            const j = JSON.parse(txt) as { message?: string };
+            if (typeof j.message === "string") msg = j.message;
+          } catch {
+            /* ignore */
+          }
+        } else if (txt.startsWith("<!") || txt.startsWith("<")) {
+          msg =
+            "El servidor devolvió HTML en lugar del Excel. Comprueba la URL de la API y reinicia el servidor de desarrollo.";
+        }
+        throw new Error(msg);
+      }
+      const cd = res.headers.get("Content-Disposition");
+      let name = `ranking-${selectedTenantSlug}.xlsx`;
+      const mStar = cd?.match(/filename\*=UTF-8''([^;]+)/i);
+      const mPlain = cd?.match(/filename="([^"]+)"/i);
+      if (mStar?.[1]) {
+        try {
+          name = decodeURIComponent(mStar[1].trim());
+        } catch {
+          /* keep default */
+        }
+      } else if (mPlain?.[1]) {
+        name = mPlain[1].trim();
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast({
+        title: "Excel generado",
+        description:
+          venueFilter === ""
+            ? "Una sola hoja: todos los jugadores y columnas por segmento. Filtra por sede y descarga de nuevo para exportar solo esa sede."
+            : "Una sola hoja con los jugadores de la sede seleccionada en el filtro.",
+      });
+    } catch (e) {
+      toast({
+        title: "Error al exportar",
+        description: e instanceof Error ? e.message : "Error desconocido",
+        variant: "destructive",
+      });
+    } finally {
+      setExportingRankingXlsx(false);
+    }
+  };
+
+  const handleDeleteTenant = async () => {
+    if (!selectedTenantSlug || selectedTenantSlug === "default") return;
+    if (deleteTenantConfirm.trim() !== selectedTenantSlug) {
+      toast({
+        title: "Confirmación incorrecta",
+        description: `Escribe exactamente el slug: ${selectedTenantSlug}`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setDeletingTenant(true);
+    try {
+      const slug = selectedTenantSlug;
+      // confirmSlug en query: algunos proxies/clientes no envían bien el cuerpo en DELETE.
+      const deletePath = `/api/admin/campaigns/${encodeURIComponent(slug)}?confirmSlug=${encodeURIComponent(slug)}`;
+      const response = await apiRequest("DELETE", deletePath);
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || "No se pudo eliminar la campaña");
+      }
+      const ct = response.headers.get("content-type") ?? "";
+      if (!ct.includes("application/json")) {
+        throw new Error(
+          "Respuesta inesperada (no JSON). La petición puede no estar llegando a la API; reinicia el servidor de desarrollo.",
+        );
+      }
+      const data = (await response.json()) as { success?: boolean; message?: string };
+      if (data.success !== true) {
+        throw new Error(data.message || "El servidor no confirmó la eliminación.");
+      }
+      toast({
+        title: "Campaña eliminada",
+        description: `Se eliminaron todos los datos de «${slug}».`,
+      });
+      setDeleteTenantOpen(false);
+      setDeleteTenantConfirm("");
+      clearAdminTenantSlug();
+      setSelectedTenantSlug(null);
+      await loadTenants();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Error al eliminar",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingTenant(false);
     }
   };
 
@@ -661,8 +797,20 @@ const AdminPage = () => {
       setLoadingAssets(true);
       const response = await apiRequest("GET", "/api/admin/map-assets");
       const data = await response.json();
-      setMapAssets(data.assets);
+      const assets = data?.assets;
+      setMapAssets(Array.isArray(assets) ? assets : []);
+      if (!response.ok) {
+        toast({
+          title: "Error",
+          description:
+            typeof data?.message === "string"
+              ? data.message
+              : "No se pudieron cargar los segmentos del mapa",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
+      setMapAssets([]);
       toast({
         title: "Error",
         description: "Error al cargar los segmentos del mapa",
@@ -868,8 +1016,14 @@ const AdminPage = () => {
       isTrap: false,
       trapMessage: "",
       modalContent: "",
-      generateNewCode: true
+      generateNewCode: true,
+      quizEnabled: false,
+      quizQuestionHtml: "",
+      quizOptions: ["", ""],
+      quizCorrectIndex: 0,
+      quizPoints: 5,
     });
+    quizQuestionHtmlRef.current = "";
     setDialogOpen(true);
   };
 
@@ -877,6 +1031,8 @@ const AdminPage = () => {
   const handleEditAsset = (asset: MapSegmentAsset) => {
     setDialogMode("edit");
     setSelectedAsset(asset);
+    const qOpts = Array.isArray(asset.quizOptions) ? [...asset.quizOptions] : ["", ""];
+    while (qOpts.length < 2) qOpts.push("");
     setFormData({
       segmentId: asset.segmentId,
       imageUrl: asset.imageUrl,
@@ -885,10 +1041,19 @@ const AdminPage = () => {
       description: asset.description || "",
       securityCode: asset.securityCode || "",
       isTrap: asset.isTrap || false,
-      trapMessage: (asset as any).trapMessage || "",
-      modalContent: (asset as any).modalContent || "",
-      generateNewCode: false
+      trapMessage: asset.trapMessage || "",
+      modalContent: asset.modalContent || "",
+      generateNewCode: false,
+      quizEnabled: Boolean(asset.quizEnabled),
+      quizQuestionHtml: asset.quizQuestionHtml || "",
+      quizOptions: qOpts,
+      quizCorrectIndex:
+        typeof asset.quizCorrectIndex === "number" && asset.quizCorrectIndex >= 0
+          ? asset.quizCorrectIndex
+          : 0,
+      quizPoints: typeof asset.quizPoints === "number" ? asset.quizPoints : 5,
     });
+    quizQuestionHtmlRef.current = asset.quizQuestionHtml || "";
     setDialogOpen(true);
   };
 
@@ -897,21 +1062,83 @@ const AdminPage = () => {
     try {
       setLoadingAssets(true);
 
+      let trimmedOpts: string[] = [];
+      let mappedCorrect = -1;
+      if (formData.quizEnabled && !formData.isTrap) {
+        for (let i = 0; i < formData.quizOptions.length; i++) {
+          const t = formData.quizOptions[i]!.trim();
+          if (!t) continue;
+          if (i === formData.quizCorrectIndex) mappedCorrect = trimmedOpts.length;
+          trimmedOpts.push(t);
+        }
+        if (trimmedOpts.length < 2) {
+          toast({
+            title: "Pregunta tipo test",
+            description: "Añade al menos 2 respuestas con texto.",
+            variant: "destructive",
+          });
+          setLoadingAssets(false);
+          return;
+        }
+        if (mappedCorrect < 0) {
+          toast({
+            title: "Pregunta tipo test",
+            description: "Marca como correcta una fila que tenga texto (radio junto a la opción).",
+            variant: "destructive",
+          });
+          setLoadingAssets(false);
+          return;
+        }
+      }
+
+      const latestQuestionHtml = (
+        quizQuestionHtmlRef.current ??
+        formData.quizQuestionHtml ??
+        ""
+      ).trim();
+
+      const quizPayload =
+        formData.quizEnabled && !formData.isTrap && trimmedOpts.length >= 2 && mappedCorrect >= 0
+          ? {
+              quizEnabled: true as const,
+              quizQuestionHtml: latestQuestionHtml || null,
+              quizOptions: trimmedOpts,
+              quizCorrectIndex: mappedCorrect,
+              quizPoints: Math.max(0, Math.min(1000, formData.quizPoints)),
+            }
+          : {
+              quizEnabled: false as const,
+              quizQuestionHtml: null,
+              quizOptions: null,
+              quizCorrectIndex: null,
+              quizPoints: 5,
+            };
+
       const payload = {
-        ...formData,
+        segmentId: formData.segmentId,
+        imageUrl: formData.imageUrl,
         redirectUrl: formData.redirectUrl || null,
+        title: formData.title,
         description: formData.description || null,
-        // Si el usuario eligió generar un nuevo código, incluimos la bandera
-        // para que el servidor genere uno nuevo
-        generateNewCode: formData.generateNewCode || false
+        securityCode: formData.securityCode ?? "",
+        isTrap: formData.isTrap,
+        trapMessage: formData.trapMessage || null,
+        modalContent: formData.modalContent || null,
+        generateNewCode: formData.generateNewCode || false,
+        ...quizPayload,
       };
 
       if (dialogMode === "create") {
-        // Crear nuevo asset
-        const createResponse = await apiRequest("POST", "/api/admin/map-assets", payload);
+        const { generateNewCode: _g, ...createBody } = payload;
+        const createResponse = await apiRequest("POST", "/api/admin/map-assets", createBody);
         if (!createResponse.ok) {
           const errorData = await createResponse.json();
-          throw new Error(errorData.message || 'Error al crear el segmento');
+          const zodFirst = Array.isArray(errorData.errors) ? errorData.errors[0] : undefined;
+          const zodHint =
+            zodFirst && typeof zodFirst.message === "string"
+              ? `${zodFirst.path?.length ? zodFirst.path.join(".") + ": " : ""}${zodFirst.message}`
+              : "";
+          throw new Error(zodHint || errorData.message || "Error al crear el segmento");
         }
         toast({
           title: "Éxito",
@@ -922,7 +1149,12 @@ const AdminPage = () => {
         const updateResponse = await apiRequest("PUT", `/api/admin/map-assets/${formData.segmentId}`, payload);
         if (!updateResponse.ok) {
           const errorData = await updateResponse.json();
-          throw new Error(errorData.message || 'Error al actualizar el segmento');
+          const zodFirst = Array.isArray(errorData.errors) ? errorData.errors[0] : undefined;
+          const zodHint =
+            zodFirst && typeof zodFirst.message === "string"
+              ? `${zodFirst.path?.length ? zodFirst.path.join(".") + ": " : ""}${zodFirst.message}`
+              : "";
+          throw new Error(zodHint || errorData.message || "Error al actualizar el segmento");
         }
         toast({
           title: "Éxito",
@@ -1106,21 +1338,91 @@ const AdminPage = () => {
                     URL ejemplo (login): {getPlayerUrl("/auth", selectedTenant.slug)}
                   </span>
                 </p>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Switch
-                    id="tenant-active"
-                    checked={selectedTenant.isActive}
-                    disabled={togglingTenantActive}
-                    onCheckedChange={handleToggleTenantActive}
-                  />
-                  <Label htmlFor="tenant-active" className="text-sm font-normal cursor-pointer">
-                    Campaña activa
-                  </Label>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="tenant-active"
+                      checked={selectedTenant.isActive}
+                      disabled={togglingTenantActive}
+                      onCheckedChange={handleToggleTenantActive}
+                    />
+                    <Label htmlFor="tenant-active" className="text-sm font-normal cursor-pointer">
+                      Campaña activa
+                    </Label>
+                  </div>
+                  {selectedTenant.slug !== "default" ? (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => {
+                        setDeleteTenantConfirm("");
+                        setDeleteTenantOpen(true);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Eliminar campaña
+                    </Button>
+                  ) : (
+                    <p className="text-xs text-muted-foreground max-w-[200px]">
+                      La campaña <span className="font-mono">default</span> no se puede eliminar.
+                    </p>
+                  )}
                 </div>
               </div>
             ) : null}
           </CardContent>
         </Card>
+
+        <Dialog
+          open={deleteTenantOpen}
+          onOpenChange={(open) => {
+            setDeleteTenantOpen(open);
+            if (!open) setDeleteTenantConfirm("");
+          }}
+        >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Eliminar campaña</DialogTitle>
+              <DialogDescription asChild>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p>
+                    Se borrará de forma <strong className="text-destructive">permanente</strong> la campaña{" "}
+                    <span className="font-mono text-foreground">{selectedTenantSlug}</span> y todo lo asociado:
+                    usuarios, segmentos, premios, sedes, puntuaciones, configuración, activos subidos y archivos en
+                    disco (si aplica).
+                  </p>
+                  <p>Para confirmar, escribe el slug exacto abajo.</p>
+                </div>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 py-2">
+              <Label htmlFor="delete-confirm-slug">Slug a eliminar</Label>
+              <Input
+                id="delete-confirm-slug"
+                value={deleteTenantConfirm}
+                onChange={(e) => setDeleteTenantConfirm(e.target.value)}
+                placeholder={selectedTenantSlug ?? ""}
+                autoComplete="off"
+                className="font-mono"
+              />
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button type="button" variant="outline" onClick={() => setDeleteTenantOpen(false)} disabled={deletingTenant}>
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={deletingTenant || deleteTenantConfirm.trim() !== selectedTenantSlug}
+                onClick={() => void handleDeleteTenant()}
+              >
+                {deletingTenant ? "Eliminando…" : "Eliminar permanentemente"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={createTenantOpen} onOpenChange={setCreateTenantOpen}>
           <DialogContent className="sm:max-w-md">
@@ -1414,6 +1716,11 @@ const AdminPage = () => {
                         {asset.isTrap && (
                           <div className="absolute top-2 left-2 bg-orange-500 text-white px-2 py-1 rounded text-xs font-semibold">
                             🎯 TRAMPA
+                          </div>
+                        )}
+                        {asset.quizEnabled && !asset.isTrap && (
+                          <div className="absolute bottom-2 left-2 bg-indigo-600 text-white px-2 py-1 rounded text-xs font-semibold">
+                            Pregunta
                           </div>
                         )}
                       </div>
@@ -2031,6 +2338,25 @@ const AdminPage = () => {
                     </option>
                   ))}
                 </select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={exportingRankingXlsx || loadingRanking}
+                  onClick={() => void handleExportRankingXlsx()}
+                  className="shrink-0"
+                >
+                  {exportingRankingXlsx ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generando…
+                    </>
+                  ) : (
+                    <>
+                      <FileSpreadsheet className="mr-2 h-4 w-4" />
+                      Descargar Excel
+                    </>
+                  )}
+                </Button>
               </div>
               
               <div className="rounded-md border">
@@ -2044,6 +2370,8 @@ const AdminPage = () => {
                       <TableHead className="w-32 text-center">Puntaje</TableHead>
                       <TableHead className="w-32 text-center">Códigos Correctos</TableHead>
                       <TableHead className="w-32 text-center">Códigos Trampa</TableHead>
+                      <TableHead className="w-28 text-center">Quiz bien</TableHead>
+                      <TableHead className="w-28 text-center">Quiz mal</TableHead>
                       <TableHead className="w-32 text-center">Progreso</TableHead>
                       <TableHead className="w-32 text-center">Estado</TableHead>
                       <TableHead className="w-24 text-center">Acciones</TableHead>
@@ -2052,13 +2380,13 @@ const AdminPage = () => {
                   <TableBody>
                     {loadingRanking ? (
                       <TableRow>
-                        <TableCell colSpan={10} className="text-center py-10">
+                        <TableCell colSpan={12} className="text-center py-10">
                           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
                         </TableCell>
                       </TableRow>
                     ) : filteredRanking.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={10} className="text-center py-6 text-gray-500">
+                        <TableCell colSpan={12} className="text-center py-6 text-gray-500">
                           No hay usuarios registrados o que coincidan con el filtro
                         </TableCell>
                       </TableRow>
@@ -2097,6 +2425,18 @@ const AdminPage = () => {
                             <Badge variant="destructive" className="gap-1">
                               <AlertCircle className="h-3.5 w-3.5" />
                               {item.trapCodes}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="success" className="gap-1">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              {item.quizCorrectAnswers ?? 0}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="destructive" className="gap-1">
+                              <AlertCircle className="h-3.5 w-3.5" />
+                              {item.quizWrongAnswers ?? 0}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-center">
@@ -4253,10 +4593,13 @@ const AdminPage = () => {
                 type="checkbox"
                 id="segment-is-trap"
                 checked={formData.isTrap}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  isTrap: e.target.checked
-                })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    isTrap: e.target.checked,
+                    ...(e.target.checked ? { quizEnabled: false } : {}),
+                  })
+                }
                 className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
               />
               <label htmlFor="segment-is-trap" className="text-sm font-medium text-gray-700">
@@ -4298,6 +4641,88 @@ const AdminPage = () => {
               rows={4}
             />
           </div>
+
+          {!formData.isTrap && (
+            <div className="space-y-3 rounded-lg border p-3 bg-slate-50/80">
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="quiz-enabled">Pregunta al escanear (una sola respuesta correcta)</Label>
+                <Switch
+                  id="quiz-enabled"
+                  checked={formData.quizEnabled}
+                  onCheckedChange={(checked) => setFormData({ ...formData, quizEnabled: checked })}
+                />
+              </div>
+              {formData.quizEnabled && (
+                <>
+                  <div className="space-y-1">
+                    <Label>Enunciado (HTML enriquecido)</Label>
+                    <RichTextEditor
+                      value={formData.quizQuestionHtml}
+                      onChange={(html) => {
+                        quizQuestionHtmlRef.current = html;
+                        setFormData({ ...formData, quizQuestionHtml: html });
+                      }}
+                      className="bg-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Opciones (marca la correcta)</Label>
+                    {formData.quizOptions.map((opt, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="quiz-correct-admin"
+                          className="h-4 w-4 shrink-0"
+                          checked={formData.quizCorrectIndex === idx}
+                          onChange={() => setFormData({ ...formData, quizCorrectIndex: idx })}
+                          aria-label={`Respuesta correcta opción ${idx + 1}`}
+                        />
+                        <Input
+                          placeholder={`Opción ${idx + 1}`}
+                          value={opt}
+                          onChange={(e) => {
+                            const next = [...formData.quizOptions];
+                            next[idx] = e.target.value;
+                            setFormData({ ...formData, quizOptions: next });
+                          }}
+                        />
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={formData.quizOptions.length >= 6}
+                      onClick={() =>
+                        setFormData({
+                          ...formData,
+                          quizOptions: [...formData.quizOptions, ""],
+                        })
+                      }
+                    >
+                      Añadir respuesta
+                    </Button>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="quiz-points">Puntos extra en ranking si acierta</Label>
+                    <Input
+                      id="quiz-points"
+                      type="number"
+                      min={0}
+                      max={1000}
+                      value={formData.quizPoints}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          quizPoints: Math.max(0, parseInt(e.target.value, 10) || 0),
+                        })
+                      }
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
         
         <DialogFooter>

@@ -6,13 +6,14 @@ import { MapSegmentAsset } from "@shared/schema";
 
 interface MapSegmentProps {
   id: number;
+  campaignSlug?: string;
   imageUrl: string;
   altText: string;
   unlocked: boolean;
   className?: string;
 }
 
-const MapSegment = ({ id, imageUrl, altText, unlocked, className }: MapSegmentProps) => {
+const MapSegment = ({ id, campaignSlug, imageUrl, altText, unlocked, className }: MapSegmentProps) => {
   // Estado para manejar errores de carga de imágenes
   const [imageError, setImageError] = useState(false);
   const [asset, setAsset] = useState<MapSegmentAsset | null>(null);
@@ -31,7 +32,7 @@ const MapSegment = ({ id, imageUrl, altText, unlocked, className }: MapSegmentPr
         setIsNewlyUnlocked(false);
       }, 1500);
     }
-  }, [id, unlocked]);
+  }, [id, unlocked, campaignSlug]);
   
   // Escuchar el evento personalizado de segmento desbloqueado
   useEffect(() => {
@@ -59,7 +60,11 @@ const MapSegment = ({ id, imageUrl, altText, unlocked, className }: MapSegmentPr
   const loadSegmentAsset = async () => {
     try {
       setLoading(true);
-      const response = await apiRequest("GET", `/api/admin/map-assets/${id}`);
+      const response = await apiRequest("GET", `/api/map-assets/${id}`, undefined, campaignSlug);
+      if (!response.ok) {
+        console.log(`HTTP ${response.status} al cargar asset del segmento ${id}`);
+        return;
+      }
       const data = await response.json();
       
       // Si el asset es null, significa que no hay configuración para este segmento

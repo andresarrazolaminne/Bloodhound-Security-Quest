@@ -1,17 +1,71 @@
 import express, { type Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage, isPgUniqueViolation } from "./storage";
 import { z } from "zod";
-import { insertUserSchema, insertMapSegmentAssetsSchema, insertSystemConfigSchema, insertVenueSchema, users } from "@shared/schema";
+import {
+  insertUserSchema,
+  insertMapSegmentAssetsSchema,
+  insertSystemConfigSchema,
+  insertVenueSchema,
+  users,
+  type MapSegmentAsset,
+} from "@shared/schema";
+import {
+  mintQuizChallengeToken,
+  verifyQuizChallengeToken,
+  quizChallengeExpiry,
+  shuffleOrder,
+} from "./quizChallenge";
 import { db, verifyMultitenantSchema } from "./db";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import multer from "multer";
 import fs from "fs";
 import path from "path";
+import * as XLSX from "xlsx";
+import { RESERVED_CAMPAIGN_ROUTE_SEGMENT_SET } from "@shared/reservedSlugs";
+import { playableSegmentIdsForCampaign } from "@shared/mapGrid";
 
 const UPLOADS_DIR = process.env.UPLOADS_DIR || "/usr/share/nginx/html/bloodhound/uploads";
+
+/** Evita caracteres de control que rompen el XML interno del .xlsx. */
+function sanitizeExcelCell(value: unknown): string | number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const raw = value == null ? "" : String(value);
+  return raw
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+    .slice(0, 32760);
+}
 const ADMIN_API_TOKEN = process.env.ADMIN_API_TOKEN || "admin123";
+
+function refineMapAssetQuiz(data: {
+  quizEnabled?: boolean | null;
+  quizOptions?: string[] | null;
+  quizCorrectIndex?: number | null;
+  isTrap?: boolean | null;
+}, ctx: z.RefinementCtx): void {
+  if (data.isTrap) return;
+  if (!data.quizEnabled) return;
+  const opts = data.quizOptions;
+  if (!Array.isArray(opts) || opts.length < 2 || !opts.every((o) => typeof o === "string" && o.trim().length > 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Con pregunta activa se requieren al menos 2 opciones no vacías",
+      path: ["quizOptions"],
+    });
+    return;
+  }
+  const ci = data.quizCorrectIndex;
+  if (typeof ci !== "number" || !Number.isInteger(ci) || ci < 0 || ci >= opts.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Índice de respuesta correcta inválido",
+      path: ["quizCorrectIndex"],
+    });
+  }
+}
+
+const insertMapSegmentAssetsWithQuizSchema = insertMapSegmentAssetsSchema.superRefine(refineMapAssetQuiz);
 
 type CampaignRequest = express.Request & {
   campaignId?: number;
@@ -74,6 +128,19 @@ function extractPostgresError(err: unknown): { code: string; message: string } |
   return best;
 }
 
+/** Respuesta 503 si falta migración de columnas/tabla de quiz (PostgreSQL 42703). */
+function tryRespondQuizSchemaMissing(res: express.Response, error: unknown): boolean {
+  const pg = extractPostgresError(error);
+  if (!pg || pg.code !== "42703") return false;
+  if (!/quiz_|user_segment_quiz/i.test(pg.message)) return false;
+  res.status(503).json({
+    message:
+      "Falta el esquema de preguntas en la base de datos. Con DATABASE_URL definida ejecuta: npm run db:apply-quiz-schema",
+    code: "SCHEMA_QUIZ_COLUMNS_MISSING",
+  });
+  return true;
+}
+
 // Función para generar un código de seguridad alfanumérico aleatorio
 function generateSecurityCode(length: number = 5): string {
   // Limitamos a caracteres alfanuméricos fáciles de leer (evitamos 0, O, 1, I, etc)
@@ -94,24 +161,98 @@ function shouldSkipCampaignTenantResolution(req: express.Request): boolean {
   return false;
 }
 
-export async function registerRoutes(app: Express): Promise<Server> {
-  // API routes (mismo router en /api y, si existe, /{VITE_BASE_PATH}/api para coincidir con el cliente)
-  const apiRouter = express.Router();
+/** Normaliza prefijo público (/bloodhound). Vacío si es root. */
+function normalizePublicBasePath(raw: string | undefined | null): string | null {
+  if (raw == null) return null;
+  let p = String(raw).trim();
+  if (!p) return null;
+  if (!p.startsWith("/")) p = `/${p}`;
+  p = p.replace(/\/+$/, "");
+  if (!p || p === "/") return null;
+  return p;
+}
+
+/**
+ * El cliente (Vite) suele llamar a `${UI_BASE_PATH}/api/...`.
+ * El servidor DEBE montar el mismo prefijo en runtime; si no, Express sirve el SPA (HTML) y el fetch falla al parsear JSON.
+ * Variables típicas: VITE_BASE_PATH (build), UI_BASE_PATH (deploy.sh); aceptamos alias por si PM2 solo define una.
+ */
+function collectApiMountPaths(): string[] {
   const mounts = new Set<string>(["/api"]);
-  const uiBase = process.env.VITE_BASE_PATH?.trim();
-  if (uiBase && uiBase !== "/" && uiBase !== "") {
-    mounts.add(`${uiBase.replace(/\/+$/, "")}/api`);
+  const candidates = [
+    process.env.VITE_BASE_PATH,
+    process.env.UI_BASE_PATH,
+    process.env.BASE_PATH,
+    process.env.CLIENT_BASE_PATH,
+  ];
+  for (const raw of candidates) {
+    const b = normalizePublicBasePath(raw);
+    if (b) mounts.add(`${b}/api`);
   }
-  Array.from(mounts).forEach((mount) => {
+  return [...mounts];
+}
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  const apiRouter = express.Router();
+  const mountPaths = collectApiMountPaths();
+  console.log("[api] Montajes del router API:", mountPaths.join(", "));
+  mountPaths.forEach((mount) => {
     app.use(mount, apiRouter);
   });
+
+  async function playableUnlockTotals(userId: number, campaignId: number) {
+    const allSegments = await storage.getSegmentsByUserId(userId, campaignId);
+    const allAssets = await storage.getAllMapSegmentAssets(campaignId);
+    const sysConfig = await storage.getSystemConfig(campaignId);
+    const playableIds = playableSegmentIdsForCampaign(allAssets, sysConfig?.mapGridSize);
+    const playableSet = new Set(playableIds);
+    const unlockedSegments = allSegments.filter(
+      (s) => s.unlocked && playableSet.has(s.segmentId),
+    ).length;
+    return { unlockedSegments, totalSegments: playableIds.length };
+  }
+
+  async function finalizeValidSegmentUnlock(
+    res: express.Response,
+    user: { id: number; completedAt: Date | null },
+    segmentId: number,
+    segmentAsset: MapSegmentAsset,
+    campaignId: number,
+  ) {
+    await storage.addUserScore(user.id, segmentId, 10, false, campaignId);
+    const segment = await storage.unlockSegment(user.id, segmentId, campaignId);
+    const { unlockedSegments, totalSegments } = await playableUnlockTotals(user.id, campaignId);
+    let redemptionCode: string | null = null;
+    if (unlockedSegments === totalSegments) {
+      redemptionCode = await storage.createRedemptionCode(user.id, campaignId);
+      if (!user.completedAt) {
+        await db.update(users).set({ completedAt: new Date() }).where(eq(users.id, user.id));
+      }
+    }
+    return res.status(200).json({
+      segment,
+      unlockedSegments,
+      totalSegments,
+      completed: unlockedSegments === totalSegments,
+      redemptionCode,
+      modalContent: segmentAsset.modalContent ?? null,
+      segmentTitle: segmentAsset.title ?? null,
+    });
+  }
 
   apiRouter.use(async (req, res, next) => {
     if (shouldSkipCampaignTenantResolution(req)) return next();
     try {
       const requestedSlug = String(req.header("x-campaign-slug") || req.query.campaignSlug || "").trim();
       const slug = requestedSlug || process.env.DEFAULT_CAMPAIGN_SLUG || "default";
-      const campaign = await storage.ensureCampaignBySlug(slug, slug === "default" ? "Default Campaign" : slug);
+      const campaign = await storage.getCampaignBySlug(slug);
+      if (!campaign) {
+        return res.status(404).json({
+          message: "Campaña no encontrada",
+          code: "CAMPAIGN_NOT_FOUND",
+          slug,
+        });
+      }
       const adminToken = req.header("x-admin-auth");
       const isAdminRequest = Boolean(adminToken) && adminToken === ADMIN_API_TOKEN;
       if (!campaign.isActive && !isAdminRequest && !req.path.startsWith("/admin")) {
@@ -133,6 +274,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       console.error("[api] campaign middleware:", err);
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  /** Lectura pública de segmentos del mapa (jugador). Sin código ni datos del quiz que revelen la respuesta. */
+  function mapAssetPublic(asset: MapSegmentAsset): MapSegmentAsset {
+    return {
+      ...asset,
+      securityCode: "",
+      quizQuestionHtml: null,
+      quizOptions: null,
+      quizCorrectIndex: null,
+    };
+  }
+
+  /** Normaliza opciones guardadas en jsonb (array, objeto indexado o string JSON). */
+  function normalizeQuizOptions(raw: unknown): string[] {
+    if (raw == null) return [];
+    if (typeof raw === "string") {
+      const t = raw.trim();
+      if (t.startsWith("[") && t.endsWith("]")) {
+        try {
+          return normalizeQuizOptions(JSON.parse(t) as unknown);
+        } catch {
+          return t ? [t] : [];
+        }
+      }
+      return t ? [t] : [];
+    }
+    if (Array.isArray(raw)) {
+      return raw
+        .map((x) => (x == null ? "" : typeof x === "string" ? x : String(x)))
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+    }
+    if (typeof raw === "object") {
+      const o = raw as Record<string, unknown>;
+      const keys = Object.keys(o).sort((a, b) => {
+        const na = Number(a);
+        const nb = Number(b);
+        if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+        return a.localeCompare(b);
+      });
+      return keys
+        .map((k) => o[k])
+        .map((x) => (x == null ? "" : typeof x === "string" ? x : String(x)))
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+    }
+    return [];
+  }
+
+  function resolveSegmentQuiz(asset: MapSegmentAsset): { active: boolean; options: string[] } {
+    const options = normalizeQuizOptions(asset.quizOptions);
+    if (!asset.quizEnabled || asset.isTrap) {
+      return { active: false, options };
+    }
+    const ci = asset.quizCorrectIndex;
+    const active =
+      options.length >= 2 &&
+      typeof ci === "number" &&
+      Number.isInteger(ci) &&
+      ci >= 0 &&
+      ci < options.length;
+    return { active, options };
+  }
+
+  apiRouter.get("/map-assets", async (req, res) => {
+    try {
+      const assets = await storage.getAllMapSegmentAssets((req as CampaignRequest).campaignId);
+      return res.status(200).json({ assets: assets.map((a) => mapAssetPublic(a)) });
+    } catch (error) {
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  apiRouter.get("/map-assets/:segmentId", async (req, res) => {
+    try {
+      const segmentId = parseInt(req.params.segmentId, 10);
+      if (Number.isNaN(segmentId) || segmentId < 1) {
+        return res.status(400).json({ message: "ID de segmento inválido" });
+      }
+      const asset = await storage.getMapSegmentAsset(segmentId, (req as CampaignRequest).campaignId);
+      if (!asset) {
+        return res.status(200).json({ asset: null });
+      }
+      return res.status(200).json({ asset: mapAssetPublic(asset) });
+    } catch (error) {
       return res.status(500).json({ message: "Error interno del servidor" });
     }
   });
@@ -182,8 +411,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   apiRouter.post("/admin/campaigns", async (req, res) => {
     try {
       const body = newCampaignBody.parse(req.body);
-      if (reservedCampaignSlug.has(body.slug)) {
-        return res.status(400).json({ message: "Slug reservado" });
+      if (RESERVED_CAMPAIGN_ROUTE_SEGMENT_SET.has(body.slug)) {
+        return res.status(400).json({
+          message:
+            "Ese slug está reservado (coincide con rutas de la app: map, auth, register, etc.). Elige otro.",
+        });
       }
       const campaign = await storage.createCampaign(body.slug, body.name);
       return res.status(201).json({ campaign });
@@ -231,6 +463,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Datos inválidos", errors: error.errors });
       }
       console.error("patch campaign:", error);
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  apiRouter.delete("/admin/campaigns/:slug", async (req, res) => {
+    try {
+      const slug = z.string().min(1).parse(req.params.slug);
+      const confirm = String(
+        req.query.confirmSlug ??
+          (req.body && typeof req.body === "object" && "confirmSlug" in req.body
+            ? (req.body as { confirmSlug?: unknown }).confirmSlug
+            : "") ??
+          "",
+      ).trim();
+      if (confirm !== slug) {
+        return res.status(400).json({
+          message: "Confirma el slug exacto de la campaña (confirmSlug en el cuerpo o query).",
+          code: "CONFIRM_SLUG_MISMATCH",
+        });
+      }
+      const result = await storage.deleteCampaignBySlug(slug);
+      if (!result.ok) {
+        if (result.reason === "reserved") {
+          return res.status(400).json({
+            message: 'La campaña "default" no se puede eliminar (reservada para el sistema).',
+            code: "CAMPAIGN_DELETE_RESERVED",
+          });
+        }
+        return res.status(404).json({ message: "Campaña no encontrada", code: "CAMPAIGN_NOT_FOUND" });
+      }
+      return res.status(200).json({ success: true, slug });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Solicitud inválida", errors: error.errors });
+      }
+      console.error("delete campaign:", error);
       return res.status(500).json({ message: "Error interno del servidor" });
     }
   });
@@ -303,9 +571,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         return res.status(404).json({ message: "Usuario no encontrado" });
       }
-      
+
+      try {
+        await storage.ensureUserPlayState(user.id, (req as CampaignRequest).campaignId);
+      } catch (ensureErr) {
+        console.error("[api] GET /user/.../segments ensureUserPlayState:", ensureErr);
+        return res.status(500).json({
+          message: "No se pudo inicializar el progreso del mapa en el servidor",
+          code: "ENSURE_PLAY_STATE_FAILED",
+        });
+      }
+
       const segments = await storage.getSegmentsByUserId(user.id, (req as CampaignRequest).campaignId);
       return res.status(200).json({ segments });
+    } catch (error) {
+      console.error("[api] GET /user/:documentNumber/segments:", error);
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  apiRouter.get("/user/:documentNumber/quiz-stats", async (req, res) => {
+    try {
+      const { documentNumber } = req.params;
+      const campaignId = (req as CampaignRequest).campaignId;
+      const user = await storage.getUserByDocumentNumber(documentNumber, campaignId);
+      if (!user) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+      const quizStats = await storage.getQuizStatsForUser(user.id, campaignId);
+      const quizBonusPoints = await storage.sumQuizPointsForUser(user.id, campaignId);
+      return res.status(200).json({
+        quizCorrectAnswers: quizStats.correctAnswers,
+        quizWrongAnswers: quizStats.wrongAnswers,
+        quizBonusPoints,
+      });
     } catch (error) {
       return res.status(500).json({ message: "Error interno del servidor" });
     }
@@ -313,147 +612,226 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   apiRouter.post("/unlock-segment", async (req, res) => {
     try {
-      const { documentNumber, segmentId, securityCode } = z.object({
-        documentNumber: z.string(),
-        segmentId: z.number(),
-        securityCode: z.string().optional()
-      }).parse(req.body);
-      
-      const user = await storage.getUserByDocumentNumber(documentNumber, (req as CampaignRequest).campaignId);
+      const body = z
+        .object({
+          documentNumber: z.string(),
+          segmentId: z.number(),
+          securityCode: z.string().optional(),
+          quizChallengeToken: z.string().optional(),
+          quizSelectedSlot: z.number().int().min(0).optional(),
+        })
+        .parse(req.body);
+      const { documentNumber, segmentId, securityCode, quizChallengeToken, quizSelectedSlot } = body;
+
+      const campaignId = (req as CampaignRequest).campaignId!;
+      const user = await storage.getUserByDocumentNumber(documentNumber, campaignId);
       if (!user) {
         return res.status(404).json({ message: "Usuario no encontrado" });
       }
-      
-      // Obtenemos los datos del segmento de la base de datos
-      const segmentAsset = await storage.getMapSegmentAsset(segmentId, (req as CampaignRequest).campaignId);
-      
-      // Verificamos si existe configuración para este segmento
+
+      const segmentAsset = await storage.getMapSegmentAsset(segmentId, campaignId);
       if (!segmentAsset) {
-        return res.status(404).json({ 
-          message: "No se encontró configuración para este segmento" 
+        return res.status(404).json({
+          message: "No se encontró configuración para este segmento",
         });
       }
-      
-      // Verificamos que se haya proporcionado un código de seguridad
+
       if (!securityCode) {
-        return res.status(403).json({ 
-          message: "Se requiere un código de seguridad para desbloquear el segmento" 
+        return res.status(403).json({
+          message: "Se requiere un código de seguridad para desbloquear el segmento",
         });
       }
-      
-      // Verificamos que el código de seguridad coincida exactamente con el almacenado
+
       if (segmentAsset.securityCode !== securityCode) {
-        return res.status(403).json({ 
-          message: "Código de seguridad inválido para este segmento" 
+        return res.status(403).json({
+          message: "Código de seguridad inválido para este segmento",
         });
       }
-      
-      // Verificar si es un QR trampa
+
       if (segmentAsset.isTrap) {
-        // Check if user has already scanned this trap QR
-        const existingScore = await storage.getUserScoreBySegment(user.id, segmentId, (req as CampaignRequest).campaignId);
-        
+        const existingScore = await storage.getUserScoreBySegment(user.id, segmentId, campaignId);
+
         if (existingScore) {
-          // User has already scanned this QR, don't add/subtract points
-          return res.status(200).json({ 
+          return res.status(200).json({
             isTrap: true,
             alreadyScanned: true,
             trapPoints: 0,
             message: "Este QR ya fue escaneado anteriormente",
             trapMessage: segmentAsset.trapMessage || null,
             segmentId,
-            timestamp: existingScore.scannedAt
+            timestamp: existingScore.scannedAt,
           });
         }
-        
-        // Add -5 points for trap QR
-        const trapScore = await storage.addUserScore(user.id, segmentId, -5, true, (req as CampaignRequest).campaignId);
-        // Also add to legacy trap points system
-        await storage.addTrapPoints(user.id, segmentId, 1, (req as CampaignRequest).campaignId);
-        
-        const totalScore = await storage.calculateTotalScore(user.id, (req as CampaignRequest).campaignId);
-        
-        return res.status(200).json({ 
+
+        const trapScore = await storage.addUserScore(user.id, segmentId, -5, true, campaignId);
+        await storage.addTrapPoints(user.id, segmentId, 1, campaignId);
+
+        const totalScore = await storage.calculateTotalScore(user.id, campaignId);
+
+        return res.status(200).json({
           isTrap: true,
-          trapPoints: 5, // Show as positive number for penalty display
+          trapPoints: 5,
           totalScore,
           message: "¡Situación de riesgo reportada! -5 puntos",
           trapMessage: segmentAsset.trapMessage || null,
           segmentId,
-          timestamp: trapScore.scannedAt
+          timestamp: trapScore.scannedAt,
         });
       }
-      
-      // Check if user has already scanned this valid QR
-      const existingScore = await storage.getUserScoreBySegment(user.id, segmentId, (req as CampaignRequest).campaignId);
-      
-      if (existingScore) {
-        // User has already scanned this QR, don't add points but ensure segment is unlocked
-        const segment = await storage.unlockSegment(user.id, segmentId, (req as CampaignRequest).campaignId);
-        
-        const allSegments = await storage.getSegmentsByUserId(user.id, (req as CampaignRequest).campaignId);
-        const allAssets = await storage.getAllMapSegmentAssets((req as CampaignRequest).campaignId);
-        const validAssets = allAssets.filter(asset => !asset.isTrap);
-        const totalSegments = validAssets.length;
-        const validSegmentIds = validAssets.map(asset => asset.segmentId);
-        const unlockedSegments = allSegments.filter(s => 
-          s.unlocked && validSegmentIds.includes(s.segmentId)
-        ).length;
-        
-        return res.status(200).json({ 
+
+      const quizAttempt = await storage.getSegmentQuizAttempt(user.id, segmentId, campaignId);
+      if (quizAttempt && !quizAttempt.isCorrect) {
+        return res.status(403).json({
+          message: "Respuesta incorrecta anteriormente. No hay más intentos para este segmento.",
+          code: "QUIZ_FAILED_FINAL",
+        });
+      }
+
+      const existingScore = await storage.getUserScoreBySegment(user.id, segmentId, campaignId);
+
+      const quizState = resolveSegmentQuiz(segmentAsset);
+      if (segmentAsset.quizEnabled && !segmentAsset.isTrap && !quizState.active) {
+        return res.status(503).json({
+          message:
+            "La pregunta de este segmento no está bien configurada (faltan opciones o la respuesta correcta). Contacta al organizador.",
+          code: "QUIZ_CONFIG_INVALID",
+        });
+      }
+
+      const quizActive = quizState.active;
+
+      if (quizActive) {
+        if (quizAttempt?.isCorrect) {
+          if (existingScore) {
+            const segment = await storage.unlockSegment(user.id, segmentId, campaignId);
+            const { unlockedSegments, totalSegments } = await playableUnlockTotals(user.id, campaignId);
+            return res.status(200).json({
+              alreadyScanned: true,
+              segment,
+              unlockedSegments,
+              totalSegments,
+              completed: unlockedSegments === totalSegments,
+              message: "Este QR ya fue escaneado anteriormente",
+              modalContent: segmentAsset.modalContent ?? null,
+              segmentTitle: segmentAsset.title ?? null,
+              timestamp: existingScore.scannedAt,
+            });
+          }
+          return finalizeValidSegmentUnlock(res, user, segmentId, segmentAsset, campaignId);
+        }
+
+        const opts = quizState.options;
+
+        if (quizChallengeToken === undefined || quizSelectedSlot === undefined) {
+          const order = shuffleOrder(opts.length);
+          const labels = order.map((i) => opts[i]);
+          const challengeToken = mintQuizChallengeToken({
+            campaignId,
+            userId: user.id,
+            segmentId,
+            order,
+            exp: quizChallengeExpiry(),
+          });
+          return res.status(200).json({
+            needsQuiz: true,
+            challengeToken,
+            quizQuestionHtml: segmentAsset.quizQuestionHtml ?? "",
+            quizOptionLabels: labels,
+            segmentId,
+          });
+        }
+
+        const payload = verifyQuizChallengeToken(quizChallengeToken);
+        if (
+          !payload ||
+          payload.userId !== user.id ||
+          payload.segmentId !== segmentId ||
+          payload.campaignId !== campaignId
+        ) {
+          return res.status(400).json({
+            message: "Sesión de pregunta inválida o expirada. Vuelve a escanear el código.",
+            code: "QUIZ_CHALLENGE_INVALID",
+          });
+        }
+
+        if (quizSelectedSlot < 0 || quizSelectedSlot >= payload.order.length) {
+          return res.status(400).json({ message: "Respuesta inválida" });
+        }
+
+        const originalIndex = payload.order[quizSelectedSlot]!;
+        const correctIdx = segmentAsset.quizCorrectIndex!;
+        const bonusPoints = segmentAsset.quizPoints ?? 5;
+
+        if (originalIndex !== correctIdx) {
+          try {
+            await storage.insertSegmentQuizAttempt({
+              userId: user.id,
+              segmentId,
+              campaignId,
+              isCorrect: false,
+              pointsAwarded: 0,
+              selectedIndex: originalIndex,
+            });
+          } catch (e) {
+            if (!isPgUniqueViolation(e)) throw e;
+          }
+          return res.status(403).json({
+            message: "Respuesta incorrecta. No hay más intentos para este segmento.",
+            code: "QUIZ_WRONG_FINAL",
+          });
+        }
+
+        try {
+          await storage.insertSegmentQuizAttempt({
+            userId: user.id,
+            segmentId,
+            campaignId,
+            isCorrect: true,
+            pointsAwarded: bonusPoints,
+            selectedIndex: originalIndex,
+          });
+        } catch (e) {
+          if (isPgUniqueViolation(e)) {
+            return res.status(409).json({
+              message: "Este intento ya fue registrado.",
+              code: "QUIZ_ALREADY_SUBMITTED",
+            });
+          }
+          throw e;
+        }
+
+        if (existingScore) {
+          const segment = await storage.unlockSegment(user.id, segmentId, campaignId);
+          const { unlockedSegments, totalSegments } = await playableUnlockTotals(user.id, campaignId);
+          return res.status(200).json({
+            alreadyScanned: true,
+            segment,
+            unlockedSegments,
+            totalSegments,
+            completed: unlockedSegments === totalSegments,
+            message: "Este QR ya fue escaneado anteriormente",
+            modalContent: segmentAsset.modalContent ?? null,
+            segmentTitle: segmentAsset.title ?? null,
+            timestamp: existingScore.scannedAt,
+          });
+        }
+      } else if (existingScore) {
+        const segment = await storage.unlockSegment(user.id, segmentId, campaignId);
+        const { unlockedSegments, totalSegments } = await playableUnlockTotals(user.id, campaignId);
+        return res.status(200).json({
           alreadyScanned: true,
           segment,
           unlockedSegments,
           totalSegments,
           completed: unlockedSegments === totalSegments,
           message: "Este QR ya fue escaneado anteriormente",
-          modalContent: segmentAsset.modalContent || null,
-          segmentTitle: segmentAsset.title || null,
-          timestamp: existingScore.scannedAt
+          modalContent: segmentAsset.modalContent ?? null,
+          segmentTitle: segmentAsset.title ?? null,
+          timestamp: existingScore.scannedAt,
         });
       }
-      
-      // Add +10 points for valid QR
-      await storage.addUserScore(user.id, segmentId, 10, false, (req as CampaignRequest).campaignId);
-      
-      const segment = await storage.unlockSegment(user.id, segmentId, (req as CampaignRequest).campaignId);
-      
-      // Check if all segments are completed
-      const allSegments = await storage.getSegmentsByUserId(user.id, (req as CampaignRequest).campaignId);
-      
-      // Get all valid (non-trap) segment assets to calculate actual progress
-      const allAssets = await storage.getAllMapSegmentAssets((req as CampaignRequest).campaignId);
-      const validAssets = allAssets.filter(asset => !asset.isTrap);
-      const totalSegments = validAssets.length;
-      
-      // Only count unlocked segments that correspond to valid (non-trap) assets
-      const validSegmentIds = validAssets.map(asset => asset.segmentId);
-      const unlockedSegments = allSegments.filter(s => 
-        s.unlocked && validSegmentIds.includes(s.segmentId)
-      ).length;
-      
-      let redemptionCode = null;
-      if (unlockedSegments === totalSegments) {
-        // Create redemption code if all segments are unlocked
-        redemptionCode = await storage.createRedemptionCode(user.id, (req as CampaignRequest).campaignId);
-        
-        // Si el usuario completó el mapa y no tiene fecha de completado, registramos la fecha
-        if (!user.completedAt) {
-          await db.update(users)
-            .set({ completedAt: new Date() })
-            .where(eq(users.id, user.id));
-        }
-      }
-      
-      return res.status(200).json({ 
-        segment, 
-        unlockedSegments,
-        totalSegments,
-        completed: unlockedSegments === totalSegments,
-        redemptionCode,
-        modalContent: segmentAsset.modalContent || null,
-        segmentTitle: segmentAsset.title || null
-      });
+
+      return finalizeValidSegmentUnlock(res, user, segmentId, segmentAsset, campaignId);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Datos inválidos" });
@@ -471,23 +849,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         return res.status(404).json({ message: "Usuario no encontrado" });
       }
-      
+
       const prize = await storage.getPrizeByUserId(user.id, (req as CampaignRequest).campaignId);
-      
-      // Check if user has unlocked all segments
-      const segments = await storage.getSegmentsByUserId(user.id, (req as CampaignRequest).campaignId);
-      
-      // Get all valid (non-trap) segment assets to calculate actual progress
-      const allAssets = await storage.getAllMapSegmentAssets((req as CampaignRequest).campaignId);
-      const validAssets = allAssets.filter(asset => !asset.isTrap);
-      const totalSegments = validAssets.length;
-      
-      // Only count unlocked segments that correspond to valid (non-trap) assets
-      const validSegmentIds = validAssets.map(asset => asset.segmentId);
-      const unlockedSegments = segments.filter(s => 
-        s.unlocked && validSegmentIds.includes(s.segmentId)
-      ).length;
-      
+
+      const { unlockedSegments, totalSegments } = await playableUnlockTotals(
+        user.id,
+        (req as CampaignRequest).campaignId,
+      );
+
       const completed = unlockedSegments === totalSegments;
       
       // Generate redemption code if completed and not already generated
@@ -502,6 +871,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         redemptionCode
       });
     } catch (error) {
+      console.error("[api] GET /user/:documentNumber/prize:", error);
       return res.status(500).json({ message: "Error interno del servidor" });
     }
   });
@@ -595,6 +965,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const assets = await storage.getAllMapSegmentAssets((req as CampaignRequest).campaignId);
       return res.status(200).json({ assets });
     } catch (error) {
+      console.error("GET /admin/map-assets:", error);
+      if (tryRespondQuizSchemaMissing(res, error)) return;
       return res.status(500).json({ message: "Error interno del servidor" });
     }
   });
@@ -628,7 +1000,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   apiRouter.post("/admin/map-assets", async (req, res) => {
     try {
-      const assetData = insertMapSegmentAssetsSchema.parse(req.body);
+      const assetData = insertMapSegmentAssetsWithQuizSchema.parse(req.body);
       
       // Verificar si ya existe un asset para este segmento
       const existingAsset = await storage.getMapSegmentAsset(assetData.segmentId, (req as CampaignRequest).campaignId);
@@ -668,16 +1040,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Validar los datos para actualizar
-      const updatedData = z.object({
-        imageUrl: z.string().optional(),
-        redirectUrl: z.string().nullable().optional(),
-        title: z.string().optional(),
-        description: z.string().nullable().optional(),
-        securityCode: z.string().optional(),
-        isTrap: z.boolean().optional(),
-        trapMessage: z.string().nullable().optional(),
-        modalContent: z.string().nullable().optional()
-      }).parse(req.body);
+      const updatedData = z
+        .object({
+          imageUrl: z.string().optional(),
+          redirectUrl: z.string().nullable().optional(),
+          title: z.string().optional(),
+          description: z.string().nullable().optional(),
+          securityCode: z.string().optional(),
+          isTrap: z.boolean().optional(),
+          trapMessage: z.string().nullable().optional(),
+          modalContent: z.string().nullable().optional(),
+          quizEnabled: z.boolean().optional(),
+          quizQuestionHtml: z.string().nullable().optional(),
+          quizOptions: z.array(z.string()).nullable().optional(),
+          quizCorrectIndex: z.number().int().min(0).nullable().optional(),
+          quizPoints: z.number().int().min(0).max(1000).optional(),
+        })
+        .superRefine((data, ctx) => refineMapAssetQuiz(data, ctx))
+        .parse(req.body);
       
       // Generar un código de seguridad aleatorio si se solicita explícitamente
       if (req.body.generateNewCode === true) {
@@ -1057,8 +1437,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const unlockedSegments = userProgress.segments.filter(s => s.unlocked);
           const correctCodes = unlockedSegments.length;
           
-          // Calcular puntaje total (10 puntos por código correcto - 5 puntos por trampa)
-          const totalScore = (correctCodes * 10) - (totalTrapPoints * 5);
+          // Calcular puntaje total real (QR + bonus quiz)
+          const totalScore = await storage.calculateTotalScore(
+            userProgress.user.id,
+            (_req as CampaignRequest).campaignId,
+          );
+          const quizStats = await storage.getQuizStatsForUser(
+            userProgress.user.id,
+            (_req as CampaignRequest).campaignId,
+          );
           
           // Obtener información de la sede
           const venue = userProgress.user.venueId ? 
@@ -1069,6 +1456,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalScore,
             correctCodes,
             trapCodes: totalTrapPoints,
+            quizCorrectAnswers: quizStats.correctAnswers,
+            quizWrongAnswers: quizStats.wrongAnswers,
             trapPoints,
             venue: venue ? {
               id: venue.id,
@@ -1105,7 +1494,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ users: enhancedUsers });
     } catch (error) {
       console.error("Error getting user stats:", error);
+      if (tryRespondQuizSchemaMissing(res, error)) return;
       res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  apiRouter.get("/admin/export/ranking-xlsx", async (req, res) => {
+    try {
+      const raw = req.query.venueId;
+      let venueId: number | null = null;
+      if (raw !== undefined && raw !== null && String(raw).trim() !== "" && String(raw) !== "all") {
+        const n = parseInt(String(raw), 10);
+        if (Number.isNaN(n) || n < 1) {
+          return res.status(400).json({ message: "Parámetro venueId inválido" });
+        }
+        const venue = await storage.getVenueById(n, (req as CampaignRequest).campaignId);
+        if (!venue) {
+          return res.status(404).json({ message: "Sede no encontrada" });
+        }
+        venueId = n;
+      }
+
+      const data = await storage.getRankingExportData(venueId, (req as CampaignRequest).campaignId);
+      const slug = (req as CampaignRequest).campaignSlug ?? "campaign";
+      const safeSlug = String(slug).replace(/[^a-zA-Z0-9-_]/g, "_").slice(0, 48) || "campaign";
+      const venueSuffix = venueId == null ? "todas-sedes" : `sede-${venueId}`;
+
+      const aoa: (string | number)[][] = [
+        data.headers.map((h) => sanitizeExcelCell(h) as string),
+        ...data.rows.map((row) => row.map(sanitizeExcelCell)),
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Ranking");
+
+      const rawBuf = XLSX.write(wb, { bookType: "xlsx", type: "buffer" }) as Buffer | Uint8Array;
+      const out = Buffer.isBuffer(rawBuf) ? rawBuf : Buffer.from(rawBuf);
+      if (out.length < 4 || out[0] !== 0x50 || out[1] !== 0x4b) {
+        throw new Error("Salida XLSX inválida (cabecera ZIP)");
+      }
+
+      const fileBase = `ranking-${safeSlug}-${venueSuffix}`;
+      res.status(200);
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+      res.setHeader("Content-Disposition", `attachment; filename="${fileBase}.xlsx"`);
+      res.setHeader("Content-Length", String(out.length));
+      res.end(out);
+    } catch (error) {
+      console.error("Error export ranking xlsx:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Error al generar el archivo" });
+      }
     }
   });
 

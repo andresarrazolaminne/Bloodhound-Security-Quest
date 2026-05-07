@@ -1,6 +1,8 @@
 // Centraliza el prefijo del deployment (por ejemplo: /bloodhound)
 // para que el frontend funcione en sub-rutas y no "apunte" al root (/).
 
+import { RESERVED_CAMPAIGN_ROUTE_SEGMENT_SET } from "@shared/reservedSlugs";
+
 function normalizeBasePath(input: string | undefined): string {
   const raw = (input ?? "").trim();
   if (!raw) return "";
@@ -14,15 +16,43 @@ function normalizeBasePath(input: string | undefined): string {
   return p;
 }
 
+/**
+ * Debe coincidir con el `base` de Vite en build (import.meta.env.BASE_URL).
+ * Así no dependemos solo de VITE_BASE_PATH duplicado en otro nombre.
+ */
+const viteBaseUrl =
+  typeof import.meta.env.BASE_URL === "string" ? import.meta.env.BASE_URL : "/";
 export const UI_BASE_PATH = normalizeBasePath(
-  import.meta.env.VITE_BASE_PATH as string | undefined,
+  viteBaseUrl !== "/" ? viteBaseUrl : (import.meta.env.VITE_BASE_PATH as string | undefined),
 );
 
 const CAMPAIGN_STORAGE_KEY = "activeCampaignSlug";
 const ADMIN_TENANT_KEY = "adminTenantSlug";
 
-/** Primer segmento de ruta reservado (no es slug de campaña para jugadores). */
-export const RESERVED_ROUTE_SEGMENTS = new Set(["admin", "admin-login"]);
+/**
+ * Segmentos de ruta de la app (no son slug de campaña).
+ * Evita que /bloodhound/map se interprete como campaña "map".
+ */
+export const RESERVED_ROUTE_SEGMENTS = RESERVED_CAMPAIGN_ROUTE_SEGMENT_SET;
+
+/** Migra claves locales sin sufijo (pre-multitenant) a `*:default`. Idempotente. */
+export function migrateLegacyUnscopedPlayerStorage(): void {
+  if (typeof window === "undefined") return;
+  if (isGlobalAdminPath()) return;
+  const target = "default";
+  const mappings: [string, string][] = [
+    ["currentUser", `currentUser:${target}`],
+    ["lastDocument", `lastDocument:${target}`],
+    ["unlockedSegments", `unlockedSegments:${target}`],
+  ];
+  for (const [legacy, scoped] of mappings) {
+    const v = localStorage.getItem(legacy);
+    if (v && !localStorage.getItem(scoped)) {
+      localStorage.setItem(scoped, v);
+      localStorage.removeItem(legacy);
+    }
+  }
+}
 
 export function getAdminTenantSlug(): string | null {
   if (typeof window === "undefined") return null;
@@ -47,6 +77,7 @@ export function isGlobalAdminPath(pathname: string = typeof window !== "undefine
 /**
  * Slug efectivo de campaña: en jugador la URL manda (evita pedir datos de otro tenant si localStorage
  * aún no se sincronizó); en admin, la selección del panel.
+ * En jugador, si no hay slug en la URL ni en storage, se usa default (alineado con el servidor).
  */
 export function getResolvedCampaignSlug(): string | null {
   if (typeof window === "undefined") return null;
@@ -57,7 +88,20 @@ export function getResolvedCampaignSlug(): string | null {
   if (fromPath) {
     return fromPath;
   }
-  return getActiveCampaignSlug();
+  const stored = getActiveCampaignSlug()?.trim();
+  if (stored) return stored;
+  const envDefault =
+    typeof import.meta.env.VITE_DEFAULT_CAMPAIGN_SLUG === "string"
+      ? import.meta.env.VITE_DEFAULT_CAMPAIGN_SLUG.trim()
+      : "";
+  if (envDefault) return envDefault;
+  return "default";
+}
+
+/** Clave localStorage del jugador coherente con el slug resuelto. */
+export function playerScopedStorageKey(baseKey: string): string {
+  const slug = getResolvedCampaignSlug();
+  return slug ? `${baseKey}:${slug}` : baseKey;
 }
 
 /** Slug enviado a la API (query + header). */
@@ -121,8 +165,13 @@ export function withUiCampaign(path: string, campaignSlug?: string | null): stri
   return `${base}${slug}${p}`;
 }
 
-export function withApiBase(apiPath: string): string {
-  const slug = getApiCampaignSlug();
+export function withApiBase(apiPath: string, campaignSlugOverride?: string | null): string {
+  const slug =
+    campaignSlugOverride !== undefined &&
+    campaignSlugOverride !== null &&
+    String(campaignSlugOverride).trim() !== ""
+      ? String(campaignSlugOverride).trim()
+      : getApiCampaignSlug();
   const addCampaignQuery = (value: string) => {
     if (!slug || (!value.startsWith("/api") && !value.includes("/api"))) return value;
     const separator = value.includes("?") ? "&" : "?";

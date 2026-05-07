@@ -1,7 +1,8 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
-import { withApiBase } from "./lib/paths";
+import { apiRequest } from "./lib/queryClient";
+import { readOkJson } from "./lib/api";
 
 // Initialize CSS custom properties with system config ONLY
 const initializeStyles = async () => {
@@ -9,12 +10,12 @@ const initializeStyles = async () => {
   
   // Fetch system config and use ONLY database values
   try {
-    const response = await fetch(withApiBase('/api/system-config?t=' + Date.now()));
+    const response = await apiRequest("GET", "/api/system-config?t=" + Date.now());
     if (response.ok) {
-      const data = await response.json();
+      const data = await readOkJson<{ config?: Record<string, unknown> }>(response);
       config = data.config || {};
     } else {
-      console.error('Failed to load system config - response not ok');
+      console.error("Failed to load system config - response not ok", response.status);
       return;
     }
   } catch (error) {

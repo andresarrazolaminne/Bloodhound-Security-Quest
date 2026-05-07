@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -96,21 +97,21 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = Number(process.env.PORT ?? 5000);
-  const listenOptions: {
-    port: number;
-    host: string;
-    reusePort?: boolean;
-  } = {
+  const host =
+    process.env.HOST?.trim() ||
+    (process.platform === "win32" ? "127.0.0.1" : "0.0.0.0");
+
+  const listenOptions: { port: number; host: string; reusePort?: boolean } = {
     port,
-    host: "0.0.0.0",
+    host,
   };
 
-  // Windows does not support reusePort for this server mode.
+  // reusePort no está soportado en Windows; además 0.0.0.0 puede dar ENOTSUP en algunos entornos Win.
   if (process.platform !== "win32") {
     listenOptions.reusePort = true;
   }
 
   server.listen(listenOptions, () => {
-    log(`serving on port ${port}`);
+    log(`serving on ${host}:${port}`);
   });
 })();

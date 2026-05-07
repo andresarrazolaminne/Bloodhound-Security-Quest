@@ -7,7 +7,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/context/UserContext";
 import { login } from "@/lib/api";
 import BrainLoader from "@/components/BrainLoader";
-import { withApiBase, withUiCampaign } from "@/lib/paths";
+import { withUiCampaign, playerScopedStorageKey } from "@/lib/paths";
+import { apiRequest } from "@/lib/queryClient";
+import { readOkJson } from "@/lib/api";
 
 const AuthPage = () => {
   const [, setLocation] = useLocation();
@@ -47,14 +49,14 @@ const AuthPage = () => {
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [hasAttemptedLogin, setHasAttemptedLogin] = useState(false);
   
-  const lastDocument = localStorage.getItem('lastDocument');
+  const lastDocument = localStorage.getItem(playerScopedStorageKey("lastDocument"));
 
   useEffect(() => {
     const loadSystemConfig = async () => {
       try {
-        const response = await fetch(withApiBase('/api/system-config'));
-        if (!response.ok) throw new Error('Failed to load config');
-        const data = await response.json();
+        const response = await apiRequest("GET", "/api/system-config");
+        if (!response.ok) throw new Error("Failed to load config");
+        const data = await readOkJson<{ config?: Record<string, unknown> }>(response);
         const config = data.config || {};
         
         // Set configuration directly without image preloading
@@ -105,7 +107,6 @@ const AuthPage = () => {
       
       if (response.user) {
         setCurrentUser(response.user);
-        localStorage.setItem('lastDocument', docNumber);
         
         // Verificar si hay una URL de redirección (para QR codes)
         if (redirectUrl) {
@@ -194,7 +195,7 @@ const AuthPage = () => {
   };
 
   const handleChangeUser = () => {
-    localStorage.removeItem('lastDocument');
+    localStorage.removeItem(playerScopedStorageKey("lastDocument"));
     setLocation(withUiCampaign('/auth'));
   };
 

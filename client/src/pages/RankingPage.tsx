@@ -17,6 +17,9 @@ interface RankingUser {
   validQRsScanned: number;
   trapQRsScanned: number;
   totalScore: number;
+  quizBonusPoints?: number;
+  quizCorrectAnswers?: number;
+  quizWrongAnswers?: number;
   position: number;
 }
 
@@ -311,7 +314,7 @@ const RankingPage = () => {
                           <p className="text-sm text-gray-600">
                             QR Válidos: {participant.validQRsScanned} | QR Trampas: {participant.trapQRsScanned}
                           </p>
-                          <div className="flex items-center space-x-2 text-xs text-gray-500">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
                             <span>Puntaje Total: {participant.totalScore} puntos</span>
                             <span className="text-green-600">
                               (+{participant.validQRsScanned * 10} válidos)
@@ -321,6 +324,14 @@ const RankingPage = () => {
                                 (-{participant.trapQRsScanned * 5} trampas)
                               </span>
                             )}
+                            {(participant.quizBonusPoints ?? 0) > 0 && (
+                              <span className="text-indigo-600">
+                                (+{participant.quizBonusPoints} pregunta)
+                              </span>
+                            )}
+                            <span className="text-slate-600">
+                              Quiz: {participant.quizCorrectAnswers ?? 0} bien / {participant.quizWrongAnswers ?? 0} mal
+                            </span>
                           </div>
                         </div>
                       </div>

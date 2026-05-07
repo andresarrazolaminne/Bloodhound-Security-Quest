@@ -1,11 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useLocation } from "wouter";
 import { HelpCircle, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OutlineBoxButton, BoxButton } from "@/components/ui/custom-button";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/context/UserContext";
-import { getUserSegments, unlockSegment as apiUnlockSegment, getUserPrize, getAllMapAssets } from "@/lib/api";
+import {
+  getUserSegments,
+  unlockSegment as apiUnlockSegment,
+  getUserPrize,
+  getAllMapAssets,
+  getUserQuizStats,
+  describeApiFailure,
+  type UnlockSegmentResponse,
+} from "@/lib/api";
 import MapGrid from "@/components/MapGrid";
 import ProgressBar from "@/components/ProgressBar";
 import QRScanner from "@/components/QRScanner";
@@ -13,11 +21,18 @@ import HtmlContent from "@/components/HtmlContent";
 import { playQRSuccessSound, playQRErrorSound, playCompletionSound } from '@/lib/sounds';
 import BrainLoader from "@/components/BrainLoader";
 import SegmentContentModal from '@/components/SegmentContentModal';
-import { withApiBase, withUiCampaign } from "@/lib/paths";
+import { withApiBase, withUiCampaign, getCampaignSlugFromPath, getResolvedCampaignSlug } from "@/lib/paths";
+import { playableSegmentIdsForCampaign } from "@shared/mapGrid";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-const MapPage = () => {
+export type MapPageProps = {
+  campaignSlug?: string;
+};
+
+const MapPage = ({ campaignSlug: campaignSlugFromRoute }: MapPageProps) => {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { 
@@ -31,7 +46,13 @@ const MapPage = () => {
     setRedemptionCode,
     logout 
   } = useUser();
-  
+
+  const routeSlug = (campaignSlugFromRoute ?? "").trim();
+  const pathSlug = (getCampaignSlugFromPath(window.location.pathname) ?? "").trim();
+  /** Siempre un slug concreto en mapa jugador (evita undefined y desajuste con la API). */
+  const playerCampaignSlug =
+    routeSlug || pathSlug || (getResolvedCampaignSlug() ?? "").trim() || "default";
+
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
@@ -44,7 +65,27 @@ const MapPage = () => {
     modalContent?: string;
     title?: string;
   } | null>(null);
+  const [pendingQuiz, setPendingQuiz] = useState<{
+    challengeToken: string;
+    quizQuestionHtml: string;
+    quizOptionLabels: string[];
+    segmentId: number;
+    securityCode?: string;
+  } | null>(null);
+  const [quizSelectedSlot, setQuizSelectedSlot] = useState<string>("");
+  /** Tras enviar el quiz: mensaje breve antes de volver al mapa. */
+  const [quizFeedback, setQuizFeedback] = useState<"bien" | "mal" | null>(null);
+  const quizFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [quizTransparency, setQuizTransparency] = useState<{
+    quizCorrectAnswers: number;
+    quizWrongAnswers: number;
+    quizBonusPoints: number;
+  }>({
+    quizCorrectAnswers: 0,
+    quizWrongAnswers: 0,
+    quizBonusPoints: 0,
+  });
   const [systemConfig, setSystemConfig] = useState<{
     instructionsText: string;
     siteMapImageUrl: string;
@@ -137,8 +178,191 @@ const MapPage = () => {
     trapDetectedMessage: '',
   });
   
-  const [totalValidSegments, setTotalValidSegments] = useState(0);
+  /** Assets del mapa (para total jugable = grid ∪ assets; coincide con el servidor). */
+  const [mapAssetsForProgress, setMapAssetsForProgress] = useState<
+    Array<{ segmentId: number; isTrap: boolean }>
+  >([]);
   const [footerImageLoaded, setFooterImageLoaded] = useState(false);
+
+  const playableSegmentIds = useMemo(
+    () => playableSegmentIdsForCampaign(mapAssetsForProgress, systemConfig.mapGridSize),
+    [mapAssetsForProgress, systemConfig.mapGridSize],
+  );
+  const playableSegmentIdSet = useMemo(() => new Set(playableSegmentIds), [playableSegmentIds]);
+  const progressTotalSegments = playableSegmentIds.length;
+  const progressUnlockedCount = useMemo(
+    () => unlockedSegments.filter((id) => playableSegmentIdSet.has(id)).length,
+    [unlockedSegments, playableSegmentIdSet],
+  );
+
+  const loadUserData = useCallback(async () => {
+    if (!currentUser) return;
+    const doc = String(currentUser.documentNumber ?? "").trim();
+    if (!doc) {
+      toast({
+        title: "Error",
+        description: "Usuario sin número de documento. Cierra sesión y vuelve a entrar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      const segmentsResponse = await getUserSegments(doc, playerCampaignSlug);
+      const unlockedSegmentIds = segmentsResponse.segments
+        .filter((segment) => segment.unlocked)
+        .map((segment) => segment.segmentId);
+
+      const assetsResponse = await getAllMapAssets(playerCampaignSlug);
+      setMapAssetsForProgress(
+        assetsResponse.assets.map((a) => ({
+          segmentId: a.segmentId,
+          isTrap: Boolean(a.isTrap),
+        })),
+      );
+
+      const totalValidCount = playableSegmentIdsForCampaign(
+        assetsResponse.assets,
+        systemConfig.mapGridSize,
+      ).length;
+
+      setUnlockedSegments(unlockedSegmentIds, totalValidCount);
+
+      try {
+        const prizeResponse = await getUserPrize(doc, playerCampaignSlug);
+
+        if (prizeResponse.completed) {
+          setIsMapCompleted(true);
+          setRedemptionCode(prizeResponse.redemptionCode);
+        }
+      } catch (prizeErr) {
+        console.error("[MapPage] getUserPrize (mapa ya cargado):", prizeErr);
+      }
+
+      try {
+        const quizStats = await getUserQuizStats(doc, playerCampaignSlug);
+        setQuizTransparency({
+          quizCorrectAnswers: quizStats.quizCorrectAnswers ?? 0,
+          quizWrongAnswers: quizStats.quizWrongAnswers ?? 0,
+          quizBonusPoints: quizStats.quizBonusPoints ?? 0,
+        });
+      } catch (quizErr) {
+        setQuizTransparency({
+          quizCorrectAnswers: 0,
+          quizWrongAnswers: 0,
+          quizBonusPoints: 0,
+        });
+        console.error("[MapPage] getUserQuizStats:", quizErr);
+      }
+    } catch (error) {
+      const description = await describeApiFailure(error);
+      toast({
+        title: "No se pudo cargar el progreso",
+        description,
+        variant: "destructive",
+      });
+      console.error("[MapPage] loadUserData:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [
+    currentUser,
+    playerCampaignSlug,
+    systemConfig.mapGridSize,
+    toast,
+    setUnlockedSegments,
+    setIsMapCompleted,
+    setRedemptionCode,
+  ]);
+
+  const processUnlockResponse = useCallback(
+    async (response: UnlockSegmentResponse, segmentId: number) => {
+      if (response.alreadyScanned) {
+        if (!unlockedSegments.includes(segmentId)) {
+          addUnlockedSegment(segmentId, progressTotalSegments);
+        }
+        await loadUserData();
+        if (response.modalContent) {
+          playQRSuccessSound();
+          setSegmentModalData({
+            segmentId,
+            modalContent: response.modalContent,
+            title: response.segmentTitle,
+          });
+          setShowSegmentModal(true);
+        } else {
+          playQRSuccessSound();
+          setSuccessMessage(`¡Ya has desbloqueado este segmento (${segmentId})!`);
+          setShowSuccessModal(true);
+        }
+        return;
+      }
+
+      addUnlockedSegment(segmentId, progressTotalSegments);
+      await loadUserData();
+
+      if (response.isTrap) {
+        const trapTitle = systemConfig.trapDetectedTitle || "¡Situación de Riesgo Detectada!";
+        const trapMessage =
+          systemConfig.trapDetectedMessage ||
+          "¡Has identificado una situación de riesgo! +{trapPoints} punto(s) de penalización.";
+        const formattedMessage = trapMessage
+          .replace("{trapPoints}", String(response.trapPoints || 1))
+          .replace("{segmentId}", String(segmentId));
+        playQRErrorSound();
+        setSuccessMessage(formattedMessage);
+        setShowSuccessModal(true);
+        toast({
+          title: trapTitle,
+          description: `+${response.trapPoints || 1} punto(s) de penalización`,
+          variant: "destructive",
+        });
+      } else if (response.modalContent) {
+        playQRSuccessSound();
+        setSegmentModalData({
+          segmentId,
+          modalContent: response.modalContent,
+          title: response.segmentTitle,
+        });
+        setShowSegmentModal(true);
+      } else {
+        const achievementTitle =
+          systemConfig.achievementUnlockedTitle || "¡Logro Desbloqueado!";
+        const achievementMessage =
+          systemConfig.achievementUnlockedMessage ||
+          "¡Segmento {segmentId} desbloqueado exitosamente!";
+        const formattedMessage = achievementMessage.replace("{segmentId}", String(segmentId));
+        playQRSuccessSound();
+        setSuccessMessage(formattedMessage);
+        setShowSuccessModal(true);
+        toast({
+          title: achievementTitle,
+          description: formattedMessage,
+        });
+      }
+
+      if (response.completed) {
+        playCompletionSound();
+        setIsMapCompleted(true);
+        setRedemptionCode(response.redemptionCode);
+        setTimeout(() => {
+          setShowCompletionModal(true);
+        }, 1500);
+      }
+    },
+    [
+      unlockedSegments,
+      progressTotalSegments,
+      loadUserData,
+      addUnlockedSegment,
+      toast,
+      systemConfig,
+      setIsMapCompleted,
+      setRedemptionCode,
+    ],
+  );
 
   // Redirect if not logged in
   useEffect(() => {
@@ -147,24 +371,69 @@ const MapPage = () => {
       return;
     }
 
-    // Load user segments and system config
     loadUserData();
-    
-    // Check if first time visit
+
     const hasVisitedKey = `has_visited_${currentUser.documentNumber}`;
     const hasVisited = localStorage.getItem(hasVisitedKey);
-    
+
     if (!hasVisited) {
       setShowInstructionsModal(true);
-      localStorage.setItem(hasVisitedKey, 'true');
+      localStorage.setItem(hasVisitedKey, "true");
     }
-  }, [currentUser]);
+  }, [currentUser, playerCampaignSlug, loadUserData, setLocation]);
+
+  /** Desbloqueo por URL externa: QRUnlockHandler guarda el reto aquí y redirige al mapa. */
+  useEffect(() => {
+    const key = `pendingSegmentQuiz:${playerCampaignSlug}`;
+    const raw = sessionStorage.getItem(key);
+    if (!raw || !currentUser) return;
+    try {
+      const data = JSON.parse(raw) as {
+        challengeToken: string;
+        quizQuestionHtml?: string;
+        quizOptionLabels: string[];
+        segmentId: number;
+        securityCode?: string;
+      };
+      sessionStorage.removeItem(key);
+      if (
+        data?.challengeToken &&
+        Array.isArray(data.quizOptionLabels) &&
+        data.quizOptionLabels.length > 0
+      ) {
+        setPendingQuiz({
+          challengeToken: data.challengeToken,
+          quizQuestionHtml: data.quizQuestionHtml ?? "",
+          quizOptionLabels: data.quizOptionLabels,
+          segmentId: Number(data.segmentId),
+          securityCode: data.securityCode,
+        });
+        setQuizSelectedSlot("");
+      }
+    } catch {
+      sessionStorage.removeItem(key);
+    }
+  }, [currentUser, playerCampaignSlug]);
+
+  const clearQuizFeedbackTimer = useCallback(() => {
+    if (quizFeedbackTimerRef.current !== null) {
+      clearTimeout(quizFeedbackTimerRef.current);
+      quizFeedbackTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => clearQuizFeedbackTimer(), [clearQuizFeedbackTimer]);
 
   useEffect(() => {
     // Cargar configuración del sistema
     const loadSystemConfig = async () => {
       try {
-        const response = await fetch(withApiBase('/api/system-config?t=' + Date.now()));
+        const cfgHeaders: Record<string, string> = {};
+        if (playerCampaignSlug) cfgHeaders["x-campaign-slug"] = playerCampaignSlug;
+        const response = await fetch(
+          withApiBase("/api/system-config?t=" + Date.now(), playerCampaignSlug ?? null),
+          { credentials: "include", headers: cfgHeaders },
+        );
         if (response.ok) {
           const data = await response.json();
           const config = data.config || {};
@@ -259,47 +528,7 @@ const MapPage = () => {
     return () => {
       window.removeEventListener('systemConfigUpdated', handleConfigUpdate);
     };
-  }, []);
-
-  const loadUserData = async () => {
-    if (!currentUser) return;
-
-    try {
-      setIsLoading(true);
-      
-      // Load segments
-      const segmentsResponse = await getUserSegments(currentUser.documentNumber);
-      const unlockedSegmentIds = segmentsResponse.segments
-        .filter(segment => segment.unlocked)
-        .map(segment => segment.segmentId);
-      
-      // Load map assets to calculate total valid segments (excluding traps)
-      const assetsResponse = await getAllMapAssets();
-      const validSegments = assetsResponse.assets.filter(asset => !asset.isTrap);
-      const totalValidCount = validSegments.length;
-      setTotalValidSegments(totalValidCount);
-      
-      // Set unlocked segments with total valid segments count
-      setUnlockedSegments(unlockedSegmentIds, totalValidCount);
-      
-      // Load prize status
-      const prizeResponse = await getUserPrize(currentUser.documentNumber);
-      
-      if (prizeResponse.completed) {
-        setIsMapCompleted(true);
-        setRedemptionCode(prizeResponse.redemptionCode);
-      }
-      
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No pudimos cargar tu progreso. Inténtalo de nuevo.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [playerCampaignSlug]);
 
   const handleQRScan = async (segmentId: number, securityCode?: string) => {
     if (!currentUser) return;
@@ -307,142 +536,176 @@ const MapPage = () => {
     try {
       setShowQRScanner(false);
       setIsLoading(true);
-      
-      // Pasar el código de seguridad (si existe) a la API para verificación
-      const response = await apiUnlockSegment(currentUser.documentNumber, segmentId, securityCode);
-      
-      // Handle alreadyScanned case
-      if (response.alreadyScanned) {
-        // Make sure the segment is in local state (sync issue fix)
-        if (!unlockedSegments.includes(segmentId)) {
-          addUnlockedSegment(segmentId, totalValidSegments);
-        }
-        
-        // Recargar los datos para asegurar que todo esté sincronizado
-        await loadUserData();
-        
-        // Check if already scanned segment has modal content
-        if (response.modalContent) {
-          console.log('MapPage - Mostrando modal para segmento ya escaneado:', {
+
+      const response = await apiUnlockSegment(
+        currentUser.documentNumber,
+        segmentId,
+        securityCode,
+        playerCampaignSlug,
+      );
+
+      if (response.needsQuiz) {
+        if (
+          response.challengeToken &&
+          Array.isArray(response.quizOptionLabels) &&
+          response.quizOptionLabels.length > 0
+        ) {
+          setPendingQuiz({
+            challengeToken: response.challengeToken,
+            quizQuestionHtml: response.quizQuestionHtml ?? "",
+            quizOptionLabels: response.quizOptionLabels,
             segmentId,
-            modalContent: response.modalContent.substring(0, 100) + '...',
-            modalLength: response.modalContent.length
+            securityCode,
           });
-          playQRSuccessSound(); // Reproducir sonido de éxito
-          setSegmentModalData({
-            segmentId,
-            modalContent: response.modalContent,
-            title: response.segmentTitle
-          });
-          setShowSegmentModal(true);
+          setQuizSelectedSlot("");
         } else {
-          playQRSuccessSound(); // Reproducir sonido de éxito
-          setSuccessMessage(`¡Ya has desbloqueado este segmento (${segmentId})!`);
-          setShowSuccessModal(true);
+          toast({
+            title: "Pregunta del segmento",
+            description:
+              "No se pudieron cargar las respuestas. Revisa la configuración del segmento (opciones y respuesta correcta) o inténtalo más tarde.",
+            variant: "destructive",
+          });
         }
         return;
       }
-      
-      // Update unlocked segments for new unlocks
-      addUnlockedSegment(segmentId, totalValidSegments);
-      
-      // Recargar los datos para asegurar que todo esté sincronizado
-      await loadUserData();
-      
-      // Check if it's a trap QR
-      if (response.isTrap) {
-        // For trap QRs, use custom trap messages
-        const trapTitle = systemConfig.trapDetectedTitle || '¡Situación de Riesgo Detectada!';
-        const trapMessage = systemConfig.trapDetectedMessage || '¡Has identificado una situación de riesgo! +{trapPoints} punto(s) de penalización.';
-        const formattedMessage = trapMessage
-          .replace('{trapPoints}', String(response.trapPoints || 1))
-          .replace('{segmentId}', String(segmentId));
-        
-        playQRErrorSound(); // Reproducir sonido de error para trampas
-        setSuccessMessage(formattedMessage);
-        setShowSuccessModal(true);
-        
-        toast({
-          title: trapTitle,
-          description: `+${response.trapPoints || 1} punto(s) de penalización`,
-          variant: "destructive",
-        });
-      } else {
-        // Check if segment has custom modal content
-        if (response.modalContent) {
-          playQRSuccessSound(); // Reproducir sonido de éxito
-          setSegmentModalData({
-            segmentId,
-            modalContent: response.modalContent,
-            title: response.segmentTitle
-          });
-          setShowSegmentModal(true);
-        } else {
-          // For regular segments, use custom achievement messages
-          const achievementTitle = systemConfig.achievementUnlockedTitle || '¡Logro Desbloqueado!';
-          const achievementMessage = systemConfig.achievementUnlockedMessage || '¡Segmento {segmentId} desbloqueado exitosamente!';
-          const formattedMessage = achievementMessage.replace('{segmentId}', String(segmentId));
-          
-          playQRSuccessSound(); // Reproducir sonido de éxito
-          setSuccessMessage(formattedMessage);
-          setShowSuccessModal(true);
-          
-          toast({
-            title: achievementTitle,
-            description: formattedMessage,
-          });
-        }
-      }
-      
-      // Check if map is now completed
-      if (response.completed) {
-        playCompletionSound(); // Reproducir sonido de finalización
-        setIsMapCompleted(true);
-        setRedemptionCode(response.redemptionCode);
-        // Show completion modal after success modal is closed
-        setTimeout(() => {
-          setShowCompletionModal(true);
-        }, 1500);
-      }
+
+      await processUnlockResponse(response, segmentId);
     } catch (error) {
       console.error("Error unlocking segment:", error);
-      
-      // Verificar si el error es por código de seguridad inválido
+
       if (error instanceof Response) {
         try {
-          const errorData = await error.json();
-          
+          const errorData = await error.clone().json();
+          const code = errorData?.code as string | undefined;
+
           if (error.status === 403) {
-            toast({
-              title: "Código de seguridad inválido",
-              description: errorData.message || "El código de seguridad no es correcto para este segmento.",
-              variant: "destructive"
-            });
+            if (code === "QUIZ_WRONG_FINAL" || code === "QUIZ_FAILED_FINAL") {
+              setPendingQuiz(null);
+              toast({
+                title: "Pregunta del segmento",
+                description:
+                  errorData.message ||
+                  "No se pudo completar el desbloqueo con esta respuesta.",
+                variant: "destructive",
+              });
+            } else {
+              toast({
+                title: "Código de seguridad inválido",
+                description:
+                  errorData.message ||
+                  "El código de seguridad no es correcto para este segmento.",
+                variant: "destructive",
+              });
+            }
           } else if (error.status === 404) {
             toast({
               title: "Segmento no encontrado",
-              description: errorData.message || "No se encontró configuración para este segmento.",
-              variant: "destructive"
+              description:
+                errorData.message || "No se encontró configuración para este segmento.",
+              variant: "destructive",
             });
           } else {
             toast({
               title: "Error",
-              description: errorData.message || "No pudimos desbloquear el segmento. Inténtalo de nuevo.",
-              variant: "destructive"
+              description:
+                errorData.message ||
+                "No pudimos desbloquear el segmento. Inténtalo de nuevo.",
+              variant: "destructive",
             });
           }
-        } catch (e) {
+        } catch {
           toast({
             title: "Error",
             description: "Error de conexión. Verifica tu conexión a internet.",
-            variant: "destructive"
+            variant: "destructive",
           });
         }
       } else {
         toast({
           title: "Error",
-          description: "No pudimos desbloquear el segmento. Inténtalo de nuevo.",
-          variant: "destructive"
+          description: await describeApiFailure(error),
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleQuizSubmit = async () => {
+    if (!currentUser || !pendingQuiz) return;
+    if (quizSelectedSlot === "") {
+      toast({
+        title: "Elige una respuesta",
+        description: "Selecciona una de las opciones antes de enviar.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const slot = Number.parseInt(quizSelectedSlot, 10);
+    if (!Number.isFinite(slot) || slot < 0) return;
+
+    try {
+      setIsLoading(true);
+      const segmentIdDone = pendingQuiz.segmentId;
+      const response = await apiUnlockSegment(
+        currentUser.documentNumber,
+        segmentIdDone,
+        pendingQuiz.securityCode,
+        playerCampaignSlug,
+        {
+          challengeToken: pendingQuiz.challengeToken,
+          selectedSlot: slot,
+        },
+      );
+      setPendingQuiz(null);
+      setQuizSelectedSlot("");
+      setIsLoading(false);
+      clearQuizFeedbackTimer();
+      setQuizFeedback("bien");
+      quizFeedbackTimerRef.current = setTimeout(() => {
+        quizFeedbackTimerRef.current = null;
+        setQuizFeedback(null);
+        void processUnlockResponse(response, segmentIdDone);
+      }, 3000);
+    } catch (error) {
+      console.error("Error enviando respuesta del quiz:", error);
+      if (error instanceof Response) {
+        let code: string | undefined;
+        try {
+          const errData = (await error.clone().json()) as { code?: string };
+          code = errData?.code;
+        } catch {
+          /* ignore */
+        }
+        const description = await describeApiFailure(error);
+        setPendingQuiz(null);
+        setQuizSelectedSlot("");
+        setIsLoading(false);
+        if (
+          error.status === 403 &&
+          (code === "QUIZ_WRONG_FINAL" || code === "QUIZ_FAILED_FINAL")
+        ) {
+          clearQuizFeedbackTimer();
+          playQRErrorSound();
+          setQuizFeedback("mal");
+          quizFeedbackTimerRef.current = setTimeout(() => {
+            quizFeedbackTimerRef.current = null;
+            setQuizFeedback(null);
+            void loadUserData();
+          }, 3000);
+        } else {
+          toast({
+            title: "Pregunta del segmento",
+            description,
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: await describeApiFailure(error),
+          variant: "destructive",
         });
       }
     } finally {
@@ -469,6 +732,23 @@ const MapPage = () => {
   
   return (
     <div className="flex flex-col min-h-screen" style={Object.keys(backgroundStyle).length > 0 ? backgroundStyle : { backgroundColor: '#f3f4f6' }}>
+      {quizFeedback && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/45 backdrop-blur-[2px]"
+          role="status"
+          aria-live="polite"
+        >
+          <p
+            className={
+              quizFeedback === "bien"
+                ? "text-5xl sm:text-6xl font-bold tracking-tight text-green-500 drop-shadow-sm"
+                : "text-5xl sm:text-6xl font-bold tracking-tight text-red-500 drop-shadow-sm"
+            }
+          >
+            {quizFeedback === "bien" ? "Bien!" : "Mal!"}
+          </p>
+        </div>
+      )}
       {/* Header */}
       <header 
         className="shadow-md"
@@ -555,14 +835,29 @@ const MapPage = () => {
             )}
 
             <ProgressBar 
-              progress={unlockedSegments.length} 
-              total={totalValidSegments || 1}
+              progress={progressUnlockedCount} 
+              total={Math.max(progressTotalSegments, 1)}
               progressTextColor={systemConfig.progressTextColor}
             />
+            <div className="mb-4 rounded-lg border bg-white/90 px-4 py-3 shadow-sm">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600">
+                <span className="text-green-700">
+                  Quiz bien: <strong>{quizTransparency.quizCorrectAnswers}</strong>
+                </span>
+                <span className="text-red-700">
+                  Quiz mal: <strong>{quizTransparency.quizWrongAnswers}</strong>
+                </span>
+                <span className="text-indigo-700">
+                  Bonus quiz: <strong>+{quizTransparency.quizBonusPoints}</strong>
+                </span>
+              </div>
+            </div>
             
             <div className="flex justify-between items-center mb-4">
               <div>
-                {isMapCompleted && unlockedSegments.length === totalValidSegments && totalValidSegments > 0 && (
+                {isMapCompleted &&
+                  progressUnlockedCount === progressTotalSegments &&
+                  progressTotalSegments > 0 && (
                   <BoxButton 
                     className="flex items-center gap-2 font-medium"
                     onClick={() => setShowCompletionModal(true)}
@@ -603,7 +898,8 @@ const MapPage = () => {
             </div>
             
             <MapGrid 
-              unlockedSegments={unlockedSegments} 
+              unlockedSegments={unlockedSegments}
+              campaignSlug={playerCampaignSlug}
               gapSize={systemConfig.mapGapSize} // Usar el tamaño de separación configurado en el sistema
               gridSize={systemConfig.mapGridSize} // Usar el tamaño de cuadrícula configurado
             />
@@ -779,6 +1075,65 @@ const MapPage = () => {
                 {systemConfig.completionSaveButtonText}
               </BoxButton>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={pendingQuiz !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingQuiz(null);
+            setQuizSelectedSlot("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Pregunta del segmento</DialogTitle>
+            <DialogDescription>
+              Solo tienes un intento. Elige la respuesta correcta para desbloquear.
+            </DialogDescription>
+          </DialogHeader>
+          {pendingQuiz && (
+            <div className="space-y-4">
+              <div className="prose prose-sm max-w-none dark:prose-invert">
+                <HtmlContent
+                  html={pendingQuiz.quizQuestionHtml?.trim() ? pendingQuiz.quizQuestionHtml : "<p></p>"}
+                />
+              </div>
+              <RadioGroup value={quizSelectedSlot} onValueChange={setQuizSelectedSlot}>
+                {pendingQuiz.quizOptionLabels.map((label, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center space-x-3 rounded-md border p-3 bg-white/90"
+                  >
+                    <RadioGroupItem value={String(idx)} id={`map-quiz-opt-${idx}`} />
+                    <Label htmlFor={`map-quiz-opt-${idx}`} className="cursor-pointer flex-1 font-normal">
+                      {label}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <OutlineBoxButton
+              type="button"
+              onClick={() => {
+                setPendingQuiz(null);
+                setQuizSelectedSlot("");
+              }}
+            >
+              Cancelar
+            </OutlineBoxButton>
+            <BoxButton
+              type="button"
+              onClick={handleQuizSubmit}
+              disabled={quizSelectedSlot === "" || isLoading}
+            >
+              Enviar respuesta
+            </BoxButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

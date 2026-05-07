@@ -2,35 +2,37 @@ import React, { useState, useEffect, useRef } from "react";
 import MapSegment from "./MapSegment";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { readOkJson } from "@/lib/api";
+import { playableSegmentIdsForCampaign } from "@shared/mapGrid";
 
 interface MapGridProps {
   unlockedSegments: number[];
+  /** Slug de campaña desde la ruta; evita pedir assets de otro tenant si el contexto aún no coincide. */
+  campaignSlug?: string;
   gapSize?: 'none' | 'x-small' | 'small' | 'medium' | 'large'; // Tamaño de la separación entre imágenes
   gridSize?: '3x3' | '3x2' | '2x3' | '4x2' | '2x4'; // Tamaño de la cuadrícula (columnas x filas)
 }
 
-const MapGrid = ({ unlockedSegments, gapSize = 'medium', gridSize = '3x3' }: MapGridProps) => {
+const MapGrid = ({
+  unlockedSegments,
+  campaignSlug,
+  gapSize = 'medium',
+  gridSize = '3x3',
+}: MapGridProps) => {
   // Fetch all map assets to filter out trap segments
   const { data: assetsData } = useQuery({
-    queryKey: ['/api/admin/map-assets'],
+    queryKey: ["/api/map-assets", campaignSlug ?? ""],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/admin/map-assets");
-      return response.json();
-    }
+      const response = await apiRequest("GET", "/api/map-assets", undefined, campaignSlug);
+      if (!response.ok) {
+        const text = (await response.text()) || response.statusText;
+        throw new Error(`${response.status}: ${text}`);
+      }
+      return readOkJson<{ assets: Array<{ isTrap: boolean; segmentId: number }> }>(response);
+    },
   });
 
-  // Get only valid (non-trap) segment IDs
-  const getValidSegmentIds = () => {
-    if (!assetsData?.assets) {
-      return [];
-    }
-    
-    // Filter out trap segments and return only valid segment IDs
-    const validAssets = assetsData.assets.filter((asset: any) => !asset.isTrap);
-    return validAssets.map((asset: any) => asset.segmentId).sort((a: number, b: number) => a - b);
-  };
-  
-  const segmentIds = getValidSegmentIds();
+  const segmentIds = playableSegmentIdsForCampaign(assetsData?.assets ?? [], gridSize);
   
   // Mantener una referencia de los segmentos actuales para comparar con los nuevos
   const previousUnlockedRef = useRef<number[]>([]);
@@ -95,20 +97,22 @@ const MapGrid = ({ unlockedSegments, gapSize = 'medium', gridSize = '3x3' }: Map
     }
   };
   
-  // Determinar la clase de columnas según el tamaño de la cuadrícula
-  const getColumnsClass = () => {
-    // Extraer el número de columnas del formato "AxB"
-    const columns = parseInt(gridSize.split('x')[0]);
-    return `grid-cols-${columns}`;
-  };
+  // Columnas con CSS inline: Tailwind no incluye `grid-cols-${n}` construido por string en el bundle de producción.
+  const columnCount = Math.max(1, parseInt(gridSize.split("x")[0], 10) || 3);
 
   return (
     <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-md p-4 mb-6">
-      <div className={`grid ${getColumnsClass()} ${getGapClass()} ${updatingSegments ? 'opacity-50 transition-opacity' : ''}`}>
+      <div
+        className={`grid ${getGapClass()} ${updatingSegments ? "opacity-50 transition-opacity" : ""}`}
+        style={{
+          gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
+        }}
+      >
         {segmentIds.map((id: number) => (
           <MapSegment
             key={id}
             id={id}
+            campaignSlug={campaignSlug}
             imageUrl=""
             altText={`Segmento del mapa ${id}`}
             unlocked={unlockedSegments.includes(id)}

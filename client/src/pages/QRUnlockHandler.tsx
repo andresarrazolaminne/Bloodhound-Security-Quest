@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { login, unlockSegment } from '@/lib/api';
+import { useUser } from '@/context/UserContext';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, Loader2, MapPin } from 'lucide-react';
@@ -9,12 +10,13 @@ import TrapMessageModal from '@/components/TrapMessageModal';
 import SegmentContentModal from '@/components/SegmentContentModal';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { playQRSuccessSound, playQRErrorSound } from '@/lib/sounds';
-import { withUiCampaign } from '@/lib/paths';
+import { withUiCampaign, playerScopedStorageKey, getCampaignSlugFromPath } from '@/lib/paths';
 
 // Handler específico para códigos QR que vienen desde URLs externas
 const QRUnlockHandler = () => {
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
+  const { setCurrentUser, addUnlockedSegment } = useUser();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(true);
   const [result, setResult] = useState<{
@@ -65,9 +67,14 @@ const QRUnlockHandler = () => {
           return;
         }
 
-        // Intentar obtener el último usuario logueado
-        const lastDocument = localStorage.getItem("lastDocument");
-        
+        const qrSlug =
+          getCampaignSlugFromPath(window.location.pathname)?.trim() || undefined;
+
+        // Intentar obtener el último usuario logueado (clave por campaña)
+        const lastDocument =
+          localStorage.getItem(playerScopedStorageKey("lastDocument")) ??
+          localStorage.getItem("lastDocument");
+
         if (!lastDocument) {
           // Si no hay usuario guardado, redirigir al login con los parámetros
           console.log('QRUnlockHandler - Sin usuario guardado, redirigiendo al login');
@@ -82,7 +89,7 @@ const QRUnlockHandler = () => {
         console.log('QRUnlockHandler - Intentando auto-login con:', lastDocument);
         
         // Auto-login
-        const loginResponse = await login(lastDocument);
+        const loginResponse = await login(lastDocument, qrSlug);
         console.log('QRUnlockHandler - Login exitoso:', loginResponse.user);
 
         // Procesar desbloqueo del segmento
@@ -90,19 +97,38 @@ const QRUnlockHandler = () => {
         const unlockResponse = await unlockSegment(
           loginResponse.user.documentNumber,
           parseInt(segmentId),
-          securityCode
+          securityCode,
+          qrSlug,
         );
 
         console.log('QRUnlockHandler - Desbloqueo exitoso:', unlockResponse);
 
-        // Guardar el usuario en localStorage para persistencia
-        localStorage.setItem('currentUser', JSON.stringify(loginResponse.user));
-        
-        // Actualizar segmentos desbloqueados en localStorage
-        const existingSegments = JSON.parse(localStorage.getItem('unlockedSegments') || '[]');
-        const uniqueSegments = Array.from(new Set([...existingSegments, parseInt(segmentId)]));
-        localStorage.setItem('unlockedSegments', JSON.stringify(uniqueSegments));
-        
+        if (
+          unlockResponse.needsQuiz &&
+          unlockResponse.challengeToken &&
+          Array.isArray(unlockResponse.quizOptionLabels) &&
+          unlockResponse.quizOptionLabels.length > 0
+        ) {
+          setCurrentUser(loginResponse.user);
+          const pendingKey = `pendingSegmentQuiz:${qrSlug ?? "default"}`;
+          sessionStorage.setItem(
+            pendingKey,
+            JSON.stringify({
+              challengeToken: unlockResponse.challengeToken,
+              quizQuestionHtml: unlockResponse.quizQuestionHtml ?? "",
+              quizOptionLabels: unlockResponse.quizOptionLabels,
+              segmentId: parseInt(segmentId, 10),
+              securityCode: securityCode ?? undefined,
+            }),
+          );
+          setLocation(withUiCampaign("/map"));
+          setIsProcessing(false);
+          return;
+        }
+
+        setCurrentUser(loginResponse.user);
+        addUnlockedSegment(parseInt(segmentId));
+
         // Manejar caso de segmento ya escaneado
         if (unlockResponse.alreadyScanned) {
           const achievementTitle = (systemConfig as any)?.config?.achievementUnlockedTitle || '¡Logro Desbloqueado!';

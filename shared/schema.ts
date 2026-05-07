@@ -1,4 +1,14 @@
-import { pgTable, text, serial, integer, boolean, json, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  serial,
+  integer,
+  boolean,
+  json,
+  jsonb,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -307,10 +317,41 @@ export const mapSegmentAssets = pgTable("map_segment_assets", {
   isTrap: boolean("is_trap").default(false), // Campo para indicar si es un QR trampa
   trapMessage: text("trap_message"), // Mensaje HTML personalizable para QR trampa
   modalContent: text("modal_content"), // Contenido HTML opcional para modal al desbloquear
+  quizEnabled: boolean("quiz_enabled").notNull().default(false),
+  quizQuestionHtml: text("quiz_question_html"),
+  quizOptions: jsonb("quiz_options").$type<string[] | null>(),
+  quizCorrectIndex: integer("quiz_correct_index"),
+  quizPoints: integer("quiz_points").notNull().default(5),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
   mapSegmentCampaignSegmentUnique: uniqueIndex("map_segment_campaign_segment_unique").on(table.campaignId, table.segmentId),
 }));
+
+/** Un intento por usuario/segmento/campaña (acierto o fallo definitivo). */
+export const userSegmentQuizAttempts = pgTable(
+  "user_segment_quiz_attempts",
+  {
+    id: serial("id").primaryKey(),
+    campaignId: integer("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    segmentId: integer("segment_id").notNull(),
+    isCorrect: boolean("is_correct").notNull(),
+    pointsAwarded: integer("points_awarded").notNull().default(0),
+    selectedIndex: integer("selected_index"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    userSegmentQuizUnique: uniqueIndex("user_segment_quiz_campaign_user_segment_unique").on(
+      table.campaignId,
+      table.userId,
+      table.segmentId,
+    ),
+  }),
+);
 
 // Tabla para rastrear puntos falsos de usuarios
 export const trapPoints = pgTable("trap_points", {
@@ -363,6 +404,11 @@ export const insertMapSegmentAssetsSchema = createInsertSchema(mapSegmentAssets)
   isTrap: true,
   trapMessage: true,
   modalContent: true,
+  quizEnabled: true,
+  quizQuestionHtml: true,
+  quizOptions: true,
+  quizCorrectIndex: true,
+  quizPoints: true,
 });
 
 export const insertTrapPointsSchema = createInsertSchema(trapPoints).pick({
@@ -414,3 +460,5 @@ export type TrapPoints = typeof trapPoints.$inferSelect;
 
 export type InsertUserScores = z.infer<typeof insertUserScoresSchema>;
 export type UserScores = typeof userScores.$inferSelect;
+
+export type UserSegmentQuizAttempt = typeof userSegmentQuizAttempts.$inferSelect;
