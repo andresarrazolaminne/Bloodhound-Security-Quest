@@ -37,6 +37,7 @@ echo "==> Building frontend/backend"
 VITE_BASE_PATH="$UI_BASE_PATH" npm run build
 
 echo "==> Restarting PM2 app"
+echo "    (El proceso Node debe tener PORT=${API_PORT} en el ecosystem PM2; coincide con este health check.)"
 pm2 restart "$APP_NAME" --update-env
 
 echo "==> Waiting 2s before health check"

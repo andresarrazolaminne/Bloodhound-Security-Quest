@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { getActiveCampaignSlug, withUiCampaign } from "@/lib/paths";
+import { withUiBase } from "@/lib/paths";
 
-// Este código se guardará de forma segura en el backend posteriormente
-const ADMIN_ACCESS_CODE = "admin123";
+// Debe coincidir con ADMIN_API_TOKEN en el servidor. En .env del front: VITE_ADMIN_API_TOKEN=...
+const ADMIN_ACCESS_CODE =
+  (import.meta.env.VITE_ADMIN_API_TOKEN as string | undefined)?.trim() || "admin123";
 
 const AdminLoginPage = () => {
   const [, setLocation] = useLocation();
@@ -44,7 +45,7 @@ const AdminLoginPage = () => {
         });
         
         // Redirigir al panel de administración
-        setLocation(withUiCampaign("/admin", getActiveCampaignSlug()));
+        setLocation(withUiBase("/admin"));
       } else {
         toast({
           title: "Código incorrecto",

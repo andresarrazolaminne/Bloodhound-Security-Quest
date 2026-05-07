@@ -1,6 +1,6 @@
 import { createContext, useState, useContext, ReactNode } from "react";
 import type { User, MapSegment } from "@shared/schema";
-import { getActiveCampaignSlug } from "@/lib/paths";
+import { getResolvedCampaignSlug } from "@/lib/paths";
 
 interface UserContextType {
   currentUser: User | null;
@@ -23,7 +23,7 @@ interface UserContextType {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 const keyForCampaign = (baseKey: string) => {
-  const slug = getActiveCampaignSlug();
+  const slug = getResolvedCampaignSlug();
   return slug ? `${baseKey}:${slug}` : baseKey;
 };
 

@@ -1,4 +1,5 @@
 import { Switch, Route, Redirect } from "wouter";
+import { LegacyAdminTenantRedirect } from "@/components/LegacyAdminTenantRedirect";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -14,7 +15,8 @@ import AdminLoginPage from "@/pages/AdminLoginPage";
 import QRUnlockHandler from "@/pages/QRUnlockHandler";
 import RankingPage from "@/pages/RankingPage";
 import AdminProtectedRoute from "@/components/AdminProtectedRoute";
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
+import { useLocation } from "wouter";
 import { login } from "@/lib/api";
 
 // Componente para redirigir usuarios ya logueados
@@ -33,20 +35,25 @@ const ProtectedLoginRoute = () => {
 // Componente para recuperar sesión automáticamente
 const SessionRecovery = () => {
   const { currentUser, setCurrentUser } = useUser();
-  
-  useEffect(() => {
+  const [routerPath] = useLocation();
+
+  useLayoutEffect(() => {
     const slug = getCampaignSlugFromPath(window.location.pathname);
     if (slug) setActiveCampaignSlug(slug);
+  }, [routerPath]);
 
+  useEffect(() => {
     const recoverSession = async () => {
       // Solo intentar recuperar si no hay usuario actual
       if (!currentUser) {
         try {
-          const savedUser = localStorage.getItem('currentUser');
-          const lastDocument = localStorage.getItem('lastDocument');
           const slug = getCampaignSlugFromPath(window.location.pathname);
-          const scopedUser = slug ? localStorage.getItem(`currentUser:${slug}`) : savedUser;
-          const scopedDocument = slug ? localStorage.getItem(`lastDocument:${slug}`) : lastDocument;
+          const scopedUser = slug
+            ? localStorage.getItem(`currentUser:${slug}`)
+            : localStorage.getItem("currentUser");
+          const scopedDocument = slug
+            ? localStorage.getItem(`lastDocument:${slug}`)
+            : localStorage.getItem("lastDocument");
           
           if (scopedUser && scopedDocument) {
             const parsedUser = JSON.parse(scopedUser);
@@ -78,7 +85,7 @@ const SessionRecovery = () => {
     };
     
     recoverSession();
-  }, [currentUser, setCurrentUser]);
+  }, [currentUser, setCurrentUser, routerPath]);
   
   return null; // No renderiza nada
 };
@@ -96,15 +103,24 @@ function Router() {
         {uiRootNoSlash && (
           <Route path={uiRootNoSlash} component={ProtectedLoginRoute} />
         )}
+        <Route path={withUiBase("/admin-login")} component={AdminLoginPage} />
+        <Route path={withUiBase("/admin")}>
+          <AdminProtectedRoute component={AdminPage} />
+        </Route>
+
         <Route path={campaignRoot} component={ProtectedLoginRoute} />
         <Route path={withUiBase("/:campaignSlug/auth")} component={ProtectedLoginRoute} />
         <Route path={withUiBase("/:campaignSlug/register")} component={RegistrationPage} />
         <Route path={withUiBase("/:campaignSlug/map")} component={MapPage} />
         <Route path={withUiBase("/:campaignSlug/unlock")} component={QRUnlockHandler} />
         <Route path={withUiBase("/:campaignSlug/ranking")} component={RankingPage} />
-        <Route path={withUiBase("/:campaignSlug/admin-login")} component={AdminLoginPage} />
+        <Route path={withUiBase("/:campaignSlug/admin-login")}>
+          <Redirect to={withUiBase("/admin-login")} />
+        </Route>
         <Route path={withUiBase("/:campaignSlug/admin")}>
-          <AdminProtectedRoute component={AdminPage} />
+          {(params: { campaignSlug: string }) => (
+            <LegacyAdminTenantRedirect campaignSlug={params.campaignSlug} />
+          )}
         </Route>
 
         <Route component={NotFound} />

@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { tryAutoApplyMultitenantMigration, verifyMultitenantSchema } from "./db";
 
 const app = express();
 app.use(express.json());
@@ -10,6 +11,7 @@ app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
+  const logBodies = process.env.NODE_ENV !== "production";
 
   const originalResJson = res.json;
   res.json = function (bodyJson, ...args) {
@@ -21,7 +23,7 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
+      if (logBodies && capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
 
@@ -37,14 +39,48 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  if (process.env.NODE_ENV === "production") {
+    if (!process.env.DATABASE_URL?.trim()) {
+      log("FATAL: En producción debe definirse DATABASE_URL.");
+      process.exit(1);
+    }
+    const adminTok = process.env.ADMIN_API_TOKEN?.trim();
+    if (!adminTok || adminTok === "admin123") {
+      log(
+        "FATAL: En producción define ADMIN_API_TOKEN con un secreto fuerte (nunca el valor por defecto admin123).",
+      );
+      process.exit(1);
+    }
+  }
+
+  // Antes de aceptar tráfico: migrar en desarrollo (NODE_ENV !== "production").
+  // app.get("env") puede ser "production" con NODE_ENV mal puesto; usamos process.env.
+  if (process.env.NODE_ENV !== "production") {
+    const migrated = await tryAutoApplyMultitenantMigration(true);
+    if (migrated) {
+      log("Migración multitenant aplicada al arrancar (modo no producción).");
+    }
+  }
+
   const server = await registerRoutes(app);
+
+  const schema = await verifyMultitenantSchema();
+  if (!schema.ok) {
+    log(`ADVERTENCIA: ${schema.detail ?? "esquema multitenant incompleto"}`);
+    log("La API devolverá 503 en rutas con tenant. Revisa DATABASE_URL o ejecuta npm run db:apply-multitenant.");
+  }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
+    if (process.env.NODE_ENV !== "production") {
+      console.error(err);
+    } else {
+      console.error("[express]", status, message);
+    }
+    if (res.headersSent) return;
     res.status(status).json({ message });
-    throw err;
   });
 
   // importantly only setup vite in development and after

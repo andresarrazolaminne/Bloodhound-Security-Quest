@@ -43,6 +43,8 @@ export interface IStorage {
   ensureCampaignBySlug(slug: string, name?: string): Promise<Campaign>;
   getCampaignBySlug(slug: string): Promise<Campaign | undefined>;
   listCampaigns(): Promise<Campaign[]>;
+  createCampaign(slug: string, name: string): Promise<Campaign>;
+  updateCampaign(slug: string, data: { name?: string; isActive?: boolean }): Promise<Campaign | undefined>;
 
   // User operations
   getUserByDocumentNumber(documentNumber: string, campaignId?: number): Promise<User | undefined>;
@@ -161,6 +163,37 @@ export class DatabaseStorage implements IStorage {
 
   async listCampaigns(): Promise<Campaign[]> {
     return db.select().from(campaigns).orderBy(asc(campaigns.name));
+  }
+
+  async createCampaign(slug: string, name: string): Promise<Campaign> {
+    const existing = await this.getCampaignBySlug(slug);
+    if (existing) {
+      throw new Error("Ya existe una campaña con ese slug");
+    }
+    const [created] = await db
+      .insert(campaigns)
+      .values({
+        slug,
+        name,
+        isActive: true,
+      })
+      .returning();
+    return created;
+  }
+
+  async updateCampaign(slug: string, data: { name?: string; isActive?: boolean }): Promise<Campaign | undefined> {
+    const existing = await this.getCampaignBySlug(slug);
+    if (!existing) return undefined;
+    const [updated] = await db
+      .update(campaigns)
+      .set({
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(campaigns.id, existing.id))
+      .returning();
+    return updated;
   }
 
   async getUserByDocumentNumber(documentNumber: string, campaignId?: number): Promise<User | undefined> {
@@ -522,7 +555,8 @@ export class DatabaseStorage implements IStorage {
   }, campaignId?: number): Promise<SystemConfig> {
     const scopedCampaignId = await this.resolveCampaignId(campaignId);
     try {
-      const validatedData = insertSystemConfigSchema.parse({ ...configData, campaignId: scopedCampaignId });
+      const bodyValidated = insertSystemConfigSchema.parse(configData);
+      const validatedData = { ...bodyValidated, campaignId: scopedCampaignId };
       
       const existingConfig = await this.getSystemConfig(scopedCampaignId);
       
@@ -701,6 +735,14 @@ export class DatabaseStorage implements IStorage {
     trapPenalties: number;
   }>> {
     const scopedCampaignId = await this.resolveCampaignId(campaignId);
+    const [venueRow] = await db
+      .select({ id: venues.id })
+      .from(venues)
+      .where(and(eq(venues.id, venueId), eq(venues.campaignId, scopedCampaignId)))
+      .limit(1);
+    if (!venueRow) {
+      return [];
+    }
     const result = [];
     
     const config = await this.getSystemConfig(scopedCampaignId);
@@ -827,6 +869,14 @@ export class DatabaseStorage implements IStorage {
     position: number;
   }>> {
     const scopedCampaignId = await this.resolveCampaignId(campaignId);
+    const [venueRow] = await db
+      .select({ id: venues.id })
+      .from(venues)
+      .where(and(eq(venues.id, venueId), eq(venues.campaignId, scopedCampaignId)))
+      .limit(1);
+    if (!venueRow) {
+      return [];
+    }
     const result = [];
     
     // Get users from specific venue

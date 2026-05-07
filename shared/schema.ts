@@ -124,8 +124,8 @@ export const venues = pgTable("venues", {
 export const systemConfigSchema = z.object({
   id: z.number(),
   campaignId: z.number(),
-  instructionsText: z.string(),
-  siteMapImageUrl: z.string(),
+  instructionsText: z.string().default(""),
+  siteMapImageUrl: z.string().default(""),
   footerLogoUrl: z.string().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png'),
   cobrandingImageUrl: z.string().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png'),
   mapGapSize: z.enum(['none', 'x-small', 'small', 'medium', 'large']).default('medium'),
@@ -133,12 +133,16 @@ export const systemConfigSchema = z.object({
   // Frontend customization fields
   appTitle: z.string().default('Lanzamiento 2025'),
   backgroundImageUrl: z.string().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png'),
-  backgroundSize: z.enum(['auto', 'cover', 'contain', '100%', '50%']).default('auto'),
+  // Incluye "100% 100%" usado en Admin (Estirar); es CSS válido para background-size.
+  backgroundSize: z
+    .enum(['auto', 'cover', 'contain', '100%', '50%', '100% 100%'])
+    .default('auto'),
   backgroundRepeat: z.enum(['repeat', 'no-repeat', 'repeat-x', 'repeat-y']).default('repeat'),
   backgroundPosition: z.enum(['center', 'top', 'bottom', 'left', 'right', 'top left', 'top right', 'bottom left', 'bottom right']).default('center'),
   gradientStartColor: z.string().default('#bb2558'),
   gradientEndColor: z.string().default('#e8cf00'),
-  gradientMidColor: z.string().optional(),
+  /** null desde JSON/BD se normaliza antes del parse; aquí aceptamos ausencia. */
+  gradientMidColor: z.string().nullish(),
   gradientDirection: z.string().default('175deg'),
   gradientType: z.enum(['linear', 'radial']).default('linear'),
   // Text colors configuration
@@ -164,7 +168,12 @@ export const systemConfigSchema = z.object({
   loginLogoImageUrl: z.string().default(''),
   registrationImageUrl: z.string().default(''),
   headerLogoImageUrl: z.string().default(''),
-  headerLogoSize: z.number().default(32),
+  headerLogoSize: z.preprocess((val) => {
+    if (val === null || val === undefined || val === "") return 32;
+    const n = typeof val === "number" ? val : Number(val);
+    if (!Number.isFinite(n)) return 32;
+    return Math.min(128, Math.max(16, Math.round(n)));
+  }, z.number()),
   preloadImageUrl: z.string().default(''),
   scanButtonEnabled: z.boolean().default(true),
   scanButtonText: z.string().default('¡Escanea aquí!'),
@@ -194,10 +203,68 @@ export const systemConfigSchema = z.object({
 
 export type SystemConfig = z.infer<typeof systemConfigSchema>;
 
-export const insertSystemConfigSchema = systemConfigSchema.omit({ 
+const MAP_GAP_ALLOWED = new Set(["none", "x-small", "small", "medium", "large"]);
+const MAP_GRID_ALLOWED = new Set(["3x3", "3x2", "2x3", "4x2", "2x4"]);
+const BG_SIZE_ALLOWED = new Set(["auto", "cover", "contain", "100%", "50%", "100% 100%"]);
+const BG_REPEAT_ALLOWED = new Set(["repeat", "no-repeat", "repeat-x", "repeat-y"]);
+const BG_POSITION_ALLOWED = new Set([
+  "center",
+  "top",
+  "bottom",
+  "left",
+  "right",
+  "top left",
+  "top right",
+  "bottom left",
+  "bottom right",
+]);
+const GRADIENT_TYPE_ALLOWED = new Set(["linear", "radial"]);
+
+/**
+ * Normaliza el JSON del panel admin antes de Zod: quita `null` (Zod no aplica .default() con null),
+ * y corrige enums desfasados respecto a la BD o a versiones viejas del UI.
+ */
+export function sanitizeAdminSystemConfigBody(input: unknown): unknown {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) return {};
+  const o = { ...(input as Record<string, unknown>) };
+
+  for (const key of Object.keys(o)) {
+    if (o[key] === null) delete o[key];
+  }
+
+  if (typeof o.mapGapSize === "string" && !MAP_GAP_ALLOWED.has(o.mapGapSize)) {
+    o.mapGapSize = "medium";
+  }
+  if (typeof o.mapGridSize === "string" && !MAP_GRID_ALLOWED.has(o.mapGridSize)) {
+    o.mapGridSize = "3x3";
+  }
+  if (typeof o.backgroundSize === "string" && !BG_SIZE_ALLOWED.has(o.backgroundSize)) {
+    o.backgroundSize = "auto";
+  }
+  if (typeof o.backgroundRepeat === "string" && !BG_REPEAT_ALLOWED.has(o.backgroundRepeat)) {
+    o.backgroundRepeat = "repeat";
+  }
+  if (typeof o.backgroundPosition === "string" && !BG_POSITION_ALLOWED.has(o.backgroundPosition)) {
+    o.backgroundPosition = "center";
+  }
+  if (typeof o.gradientType === "string" && !GRADIENT_TYPE_ALLOWED.has(o.gradientType)) {
+    o.gradientType = "linear";
+  }
+
+  return o;
+}
+
+const insertSystemConfigSchemaInner = systemConfigSchema.omit({
   id: true,
-  updatedAt: true 
+  updatedAt: true,
+  campaignId: true,
 });
+
+/** Payload de API / insert: sin id, updatedAt ni campaignId (campaignId lo fija el scope del request). */
+export const insertSystemConfigSchema = z.preprocess(
+  sanitizeAdminSystemConfigBody,
+  insertSystemConfigSchemaInner,
+);
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),

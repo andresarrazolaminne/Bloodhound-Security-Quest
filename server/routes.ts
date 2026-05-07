@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
 import { insertUserSchema, insertMapSegmentAssetsSchema, insertSystemConfigSchema, insertVenueSchema, users } from "@shared/schema";
-import { db } from "./db";
+import { db, verifyMultitenantSchema } from "./db";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import multer from "multer";
@@ -18,6 +18,61 @@ type CampaignRequest = express.Request & {
   campaignSlug?: string;
 };
 
+/** Recorre err y err.cause (Drizzle/pg envuelven el error de Postgres). */
+function forEachErrorCause(err: unknown, visitor: (e: unknown) => void): void {
+  const seen = new Set<unknown>();
+  let current: unknown = err;
+  while (current !== undefined && current !== null) {
+    if (typeof current === "object" || typeof current === "function") {
+      if (seen.has(current)) break;
+      seen.add(current);
+    }
+    visitor(current);
+    const next =
+      current && typeof current === "object" && "cause" in current
+        ? (current as { cause?: unknown }).cause
+        : undefined;
+    if (next === undefined) break;
+    current = next;
+  }
+}
+
+function isMissingCampaignsTableError(err: unknown): boolean {
+  let missing = false;
+  forEachErrorCause(err, (e) => {
+    const code =
+      e && typeof e === "object" && "code" in e ? String((e as { code: unknown }).code) : "";
+    const msg =
+      e instanceof Error
+        ? e.message
+        : e && typeof e === "object" && "message" in e
+          ? String((e as { message: unknown }).message)
+          : String(e);
+    const m = msg.toLowerCase();
+    if (code === "42P01") missing = true;
+    if (m.includes("does not exist") && m.includes("campaign")) missing = true;
+  });
+  return missing;
+}
+
+/** Primer error con código PostgreSQL de 5 caracteres (p. ej. 42P01, 42703). */
+function extractPostgresError(err: unknown): { code: string; message: string } | null {
+  let best: { code: string; message: string } | null = null;
+  forEachErrorCause(err, (e) => {
+    if (!e || typeof e !== "object") return;
+    const code = "code" in e ? String((e as { code: unknown }).code) : "";
+    const msg =
+      e instanceof Error
+        ? e.message
+        : "message" in e
+          ? String((e as { message: unknown }).message)
+          : "";
+    if (/^[0-9A-Z]{5}$/.test(code) && msg.length > 0) {
+      best = { code, message: msg };
+    }
+  });
+  return best;
+}
 
 // Función para generar un código de seguridad alfanumérico aleatorio
 function generateSecurityCode(length: number = 5): string {
@@ -30,20 +85,56 @@ function generateSecurityCode(length: number = 5): string {
   return result;
 }
 
+/** Sin prefijo de campaña: health y CRUD de listado/creación de campañas (antes del tenant). */
+function shouldSkipCampaignTenantResolution(req: express.Request): boolean {
+  const p = req.path ?? "";
+  if (p === "/health" || p.startsWith("/admin/campaigns")) return true;
+  const noQuery = (req.originalUrl ?? req.url ?? "").split("?")[0];
+  if (noQuery.endsWith("/api/health") || noQuery.includes("/api/admin/campaigns")) return true;
+  return false;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
-  // API routes
+  // API routes (mismo router en /api y, si existe, /{VITE_BASE_PATH}/api para coincidir con el cliente)
   const apiRouter = express.Router();
-  app.use("/api", apiRouter);
+  const mounts = new Set<string>(["/api"]);
+  const uiBase = process.env.VITE_BASE_PATH?.trim();
+  if (uiBase && uiBase !== "/" && uiBase !== "") {
+    mounts.add(`${uiBase.replace(/\/+$/, "")}/api`);
+  }
+  Array.from(mounts).forEach((mount) => {
+    app.use(mount, apiRouter);
+  });
 
   apiRouter.use(async (req, res, next) => {
-    if (req.path === "/health" || req.path === "/admin/campaigns") return next();
-    const requestedSlug = String(req.header("x-campaign-slug") || req.query.campaignSlug || "").trim();
-    const slug = requestedSlug || process.env.DEFAULT_CAMPAIGN_SLUG || "default";
-    const campaign = await storage.ensureCampaignBySlug(slug, slug === "default" ? "Default Campaign" : slug);
-    if (!campaign.isActive) return res.status(404).json({ message: "Campaña no encontrada" });
-    (req as CampaignRequest).campaignId = campaign.id;
-    (req as CampaignRequest).campaignSlug = campaign.slug;
-    next();
+    if (shouldSkipCampaignTenantResolution(req)) return next();
+    try {
+      const requestedSlug = String(req.header("x-campaign-slug") || req.query.campaignSlug || "").trim();
+      const slug = requestedSlug || process.env.DEFAULT_CAMPAIGN_SLUG || "default";
+      const campaign = await storage.ensureCampaignBySlug(slug, slug === "default" ? "Default Campaign" : slug);
+      const adminToken = req.header("x-admin-auth");
+      const isAdminRequest = Boolean(adminToken) && adminToken === ADMIN_API_TOKEN;
+      if (!campaign.isActive && !isAdminRequest && !req.path.startsWith("/admin")) {
+        return res.status(404).json({ message: "Campaña no encontrada" });
+      }
+      (req as CampaignRequest).campaignId = campaign.id;
+      (req as CampaignRequest).campaignSlug = campaign.slug;
+      next();
+    } catch (err: unknown) {
+      const missingCampaigns = isMissingCampaignsTableError(err);
+      if (missingCampaigns) {
+        console.error(
+          "[api] Falta tabla campaigns. Ejecuta: npm run db:apply-multitenant (con DATABASE_URL)",
+        );
+        return res.status(503).json({
+          message: "Base de datos sin migración multitenant (falta tabla campaigns)",
+          code: "SCHEMA_CAMPAIGNS_MISSING",
+          hint: 'npm run db:apply-multitenant   o   psql "$DATABASE_URL" -f scripts/multitenant-bigbang.sql',
+        });
+      }
+      console.error("[api] campaign middleware:", err);
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
   });
 
   apiRouter.use("/admin", (req, res, next) => {
@@ -59,6 +150,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaigns = await storage.listCampaigns();
       return res.status(200).json({ campaigns });
     } catch (error) {
+      if (isMissingCampaignsTableError(error)) {
+        console.error("[api] GET /admin/campaigns: falta tabla campaigns");
+        return res.status(503).json({
+          message: "Base de datos sin migración multitenant (falta tabla campaigns)",
+          code: "SCHEMA_CAMPAIGNS_MISSING",
+          hint: 'Con DATABASE_URL definida: npm run db:apply-multitenant   (o psql "$DATABASE_URL" -f scripts/multitenant-bigbang.sql)',
+        });
+      }
+      const pg = extractPostgresError(error);
+      const fallbackMsg = error instanceof Error ? error.message : String(error);
+      console.error("[api] GET /admin/campaigns:", error);
+      return res.status(500).json({
+        message: pg ? pg.message : fallbackMsg || "Error interno del servidor",
+        pgCode: pg?.code,
+        code: "LIST_CAMPAIGNS_FAILED",
+      });
+    }
+  });
+
+  const reservedCampaignSlug = new Set(["admin", "admin-login"]);
+  const newCampaignBody = z.object({
+    slug: z
+      .string()
+      .min(1)
+      .max(64)
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+    name: z.string().min(1).max(200),
+  });
+
+  apiRouter.post("/admin/campaigns", async (req, res) => {
+    try {
+      const body = newCampaignBody.parse(req.body);
+      if (reservedCampaignSlug.has(body.slug)) {
+        return res.status(400).json({ message: "Slug reservado" });
+      }
+      const campaign = await storage.createCampaign(body.slug, body.name);
+      return res.status(201).json({ campaign });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Datos inválidos", errors: error.errors });
+      }
+      if (error instanceof Error && error.message.includes("Ya existe")) {
+        return res.status(409).json({ message: error.message });
+      }
+      if (isMissingCampaignsTableError(error)) {
+        return res.status(503).json({
+          message: "Base de datos sin migración multitenant (falta tabla campaigns)",
+          code: "SCHEMA_CAMPAIGNS_MISSING",
+          hint: 'npm run db:apply-multitenant (con DATABASE_URL)',
+        });
+      }
+      const pg = extractPostgresError(error);
+      const fallbackMsg = error instanceof Error ? error.message : String(error);
+      console.error("create campaign:", error);
+      return res.status(500).json({
+        message: pg ? pg.message : fallbackMsg || "Error interno del servidor",
+        pgCode: pg?.code,
+        code: "CREATE_CAMPAIGN_FAILED",
+      });
+    }
+  });
+
+  apiRouter.patch("/admin/campaigns/:slug", async (req, res) => {
+    try {
+      const slug = z.string().min(1).parse(req.params.slug);
+      const body = z
+        .object({
+          name: z.string().min(1).max(200).optional(),
+          isActive: z.boolean().optional(),
+        })
+        .parse(req.body);
+      const campaign = await storage.updateCampaign(slug, body);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaña no encontrada" });
+      }
+      return res.status(200).json({ campaign });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Datos inválidos", errors: error.errors });
+      }
+      console.error("patch campaign:", error);
       return res.status(500).json({ message: "Error interno del servidor" });
     }
   });
@@ -631,9 +803,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(200).json({ config });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          message: "Datos inválidos", 
-          errors: error.errors 
+        console.error("[POST /api/admin/system-config] Validación Zod:", error.flatten());
+        return res.status(400).json({
+          message: "Datos inválidos",
+          errors: error.errors,
         });
       }
       return res.status(500).json({ message: "Error interno del servidor" });
@@ -731,8 +904,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  apiRouter.get("/health", (req, res) => {
-    res.status(200).json({ status: "ok" });
+  apiRouter.get("/health", async (_req, res) => {
+    const schema = await verifyMultitenantSchema();
+    res.status(200).json({
+      status: schema.ok ? "ok" : "degraded",
+      multitenantSchemaOk: schema.ok,
+      ...(schema.detail ? { schemaHint: schema.detail } : {}),
+    });
   });
   
   // Endpoint especial para sembrar datos de prueba (9 segmentos)

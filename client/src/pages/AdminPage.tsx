@@ -19,7 +19,14 @@ import {
 import { Progress } from "@/components/ui/progress";
 import RichTextEditor from "@/components/RichTextEditor";
 import HtmlContent from "@/components/HtmlContent";
-import { withUiCampaign } from "@/lib/paths";
+import {
+  clearAdminTenantSlug,
+  getAdminTenantSlug,
+  getPlayerUrl,
+  setAdminTenantSlug,
+  withUiBase,
+  withUiCampaign,
+} from "@/lib/paths";
 import { 
   Tabs, 
   TabsContent, 
@@ -44,7 +51,7 @@ import {
 
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import { MapSegmentAsset, Venue, InsertVenue } from "@shared/schema";
+import { MapSegmentAsset, Venue, InsertVenue, type Campaign } from "@shared/schema";
 import { deleteUploadedAsset, listUploadedAssets, uploadAsset, type UploadedAssetDTO } from "@/lib/uploadAssets";
 import QRGenerator from '@/tools/QRGenerator';
 
@@ -57,6 +64,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 
 interface MapAssetFormData {
   segmentId: number;
@@ -115,7 +132,7 @@ const AdminPage = () => {
     // Frontend customization fields
     appTitle: "",
     backgroundImageUrl: "",
-    backgroundSize: "auto" as 'auto' | 'cover' | 'contain' | '100%' | '50%',
+    backgroundSize: "auto" as 'auto' | 'cover' | 'contain' | '100%' | '50%' | '100% 100%',
     backgroundRepeat: "repeat" as 'repeat' | 'no-repeat' | 'repeat-x' | 'repeat-y',
     backgroundPosition: "center" as 'center' | 'top' | 'bottom' | 'left' | 'right' | 'top left' | 'top right' | 'bottom left' | 'bottom right',
     gradientStartColor: "#bb2558",
@@ -222,21 +239,129 @@ const AdminPage = () => {
   
   const [segmentFilter, setSegmentFilter] = useState<"all" | "normal" | "trap">("all");
 
+  const [tenants, setTenants] = useState<Campaign[]>([]);
+  const [loadingTenants, setLoadingTenants] = useState(false);
+  const [selectedTenantSlug, setSelectedTenantSlug] = useState<string | null>(() =>
+    typeof window !== "undefined" ? getAdminTenantSlug() : null,
+  );
+  const [createTenantOpen, setCreateTenantOpen] = useState(false);
+  const [newTenantSlug, setNewTenantSlug] = useState("");
+  const [newTenantName, setNewTenantName] = useState("");
+  const [creatingTenant, setCreatingTenant] = useState(false);
+  const [togglingTenantActive, setTogglingTenantActive] = useState(false);
+  const [tenantLoadError, setTenantLoadError] = useState<string | null>(null);
+
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
   // Función para cerrar sesión
   const handleLogout = () => {
-    // Eliminar la autenticación de la sesión
     sessionStorage.removeItem("adminAuthenticated");
+    sessionStorage.removeItem("adminApiToken");
+    clearAdminTenantSlug();
 
     toast({
       title: "Sesión cerrada",
       description: "Has salido del panel de administración",
     });
 
-    // Redirigir a la página de login
-    setLocation(withUiCampaign("/admin-login"));
+    setLocation(withUiBase("/admin-login"));
+  };
+
+  const loadTenants = async () => {
+    setLoadingTenants(true);
+    setTenantLoadError(null);
+    try {
+      const response = await apiRequest("GET", "/api/admin/campaigns");
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        const msg =
+          "No autorizado: el código de admin no coincide con ADMIN_API_TOKEN del servidor. Revisa .env (VITE_ADMIN_API_TOKEN) o el token en el login.";
+        setTenantLoadError(msg);
+        toast({ title: "Sesión de administrador", description: msg, variant: "destructive" });
+        return;
+      }
+      if (!response.ok) {
+        const hint = typeof data.hint === "string" ? data.hint : "";
+        const message = typeof data.message === "string" ? data.message : "No se pudo cargar la lista de campañas";
+        const full = hint ? `${message} ${hint}` : message;
+        setTenantLoadError(full);
+        toast({
+          title: "No se pueden mostrar las campañas",
+          description: full.slice(0, 500),
+          variant: "destructive",
+        });
+        return;
+      }
+      setTenants(data.campaigns || []);
+    } catch {
+      const msg = "Error de red o respuesta inválida al cargar campañas.";
+      setTenantLoadError(msg);
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally {
+      setLoadingTenants(false);
+    }
+  };
+
+  const handleCreateTenant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const slug = newTenantSlug.trim().toLowerCase();
+    const name = newTenantName.trim();
+    if (!slug || !name) {
+      toast({ title: "Completa slug y nombre", variant: "destructive" });
+      return;
+    }
+    setCreatingTenant(true);
+    try {
+      const response = await apiRequest("POST", "/api/admin/campaigns", { slug, name });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || "No se pudo crear la campaña");
+      }
+      const data = await response.json();
+      toast({ title: "Campaña creada", description: data.campaign?.name || slug });
+      setCreateTenantOpen(false);
+      setNewTenantSlug("");
+      setNewTenantName("");
+      await loadTenants();
+      setSelectedTenantSlug(data.campaign.slug);
+      setAdminTenantSlug(data.campaign.slug);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "No se pudo crear",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingTenant(false);
+    }
+  };
+
+  const handleToggleTenantActive = async (active: boolean) => {
+    if (!selectedTenantSlug) return;
+    setTogglingTenantActive(true);
+    try {
+      const response = await apiRequest("PATCH", `/api/admin/campaigns/${encodeURIComponent(selectedTenantSlug)}`, {
+        isActive: active,
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || "No se pudo actualizar");
+      }
+      await loadTenants();
+      toast({
+        title: active ? "Campaña activada" : "Campaña desactivada",
+        description: "Los jugadores solo acceden a campañas activas.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Error al actualizar",
+        variant: "destructive",
+      });
+    } finally {
+      setTogglingTenantActive(false);
+    }
   };
 
   // Función para cargar la configuración del sistema
@@ -491,14 +616,22 @@ const AdminPage = () => {
     }
   };
 
-  // Cargar assets de segmentos del mapa y configuración del sistema al iniciar
   useEffect(() => {
+    loadTenants();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedTenantSlug) {
+      clearAdminTenantSlug();
+      return;
+    }
+    setAdminTenantSlug(selectedTenantSlug);
     fetchMapAssets();
     fetchSystemConfig();
     fetchUserRanking();
     fetchVenues();
     fetchUploadedAssets();
-  }, []);
+  }, [selectedTenantSlug]);
   
   // Filtrar los usuarios cuando cambia el filtro o los datos
   useEffect(() => {
@@ -896,21 +1029,154 @@ const AdminPage = () => {
     }
   };
 
+  const selectedTenant = tenants.find((t) => t.slug === selectedTenantSlug);
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="flex justify-between items-center mb-6 max-w-5xl mx-auto">
-        <h1 className="text-3xl font-bold">Panel de Administración</h1>
-        <Button 
-          variant="outline" 
-          onClick={handleLogout}
-          className="flex items-center gap-2"
-        >
-          <LogOut className="h-4 w-4" />
-          Cerrar Sesión
-        </Button>
+      <div className="max-w-5xl mx-auto space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-3xl font-bold">Panel de Administración</h1>
+          <Button variant="outline" onClick={handleLogout} className="flex items-center gap-2 shrink-0">
+            <LogOut className="h-4 w-4" />
+            Cerrar Sesión
+          </Button>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Campañas (tenants)</CardTitle>
+            <CardDescription>
+              Crea campañas y elige una para configurar mapa, sedes, diseño y ranking. Los datos están aislados por
+              campaña.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {tenantLoadError ? (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Problema al cargar campañas</AlertTitle>
+                <AlertDescription className="text-sm whitespace-pre-wrap">{tenantLoadError}</AlertDescription>
+              </Alert>
+            ) : null}
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+              <div className="flex-1 space-y-2 min-w-0">
+                <Label htmlFor="tenant-select">Campaña activa en el panel</Label>
+                <Select
+                  value={selectedTenantSlug ?? undefined}
+                  onValueChange={(v) => setSelectedTenantSlug(v || null)}
+                  disabled={loadingTenants}
+                >
+                  <SelectTrigger id="tenant-select" className="w-full">
+                    <SelectValue placeholder={loadingTenants ? "Cargando…" : "Selecciona una campaña…"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tenants.map((t) => (
+                      <SelectItem key={t.id} value={t.slug}>
+                        {t.name} ({t.slug})
+                        {!t.isActive ? " — inactiva" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="secondary" onClick={() => setCreateTenantOpen(true)}>
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  Nueva campaña
+                </Button>
+                {selectedTenantSlug ? (
+                  <Button type="button" variant="outline" asChild>
+                    <a
+                      href={withUiCampaign("/map", selectedTenantSlug)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Abrir app (jugador)
+                    </a>
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+            {selectedTenant ? (
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-md border bg-muted/40 px-4 py-3">
+                <p className="text-sm text-muted-foreground">
+                  Slug público: <span className="font-mono text-foreground">{selectedTenant.slug}</span>
+                  <span className="block mt-1 text-xs break-all">
+                    URL ejemplo (login): {getPlayerUrl("/auth", selectedTenant.slug)}
+                  </span>
+                </p>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Switch
+                    id="tenant-active"
+                    checked={selectedTenant.isActive}
+                    disabled={togglingTenantActive}
+                    onCheckedChange={handleToggleTenantActive}
+                  />
+                  <Label htmlFor="tenant-active" className="text-sm font-normal cursor-pointer">
+                    Campaña activa
+                  </Label>
+                </div>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        <Dialog open={createTenantOpen} onOpenChange={setCreateTenantOpen}>
+          <DialogContent className="sm:max-w-md">
+            <form onSubmit={handleCreateTenant}>
+              <DialogHeader>
+                <DialogTitle>Nueva campaña</DialogTitle>
+                <DialogDescription>
+                  El slug define la URL (solo minúsculas, números y guiones). Ejemplo:{" "}
+                  <span className="font-mono">evento-2026</span>.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 py-2">
+                <div className="space-y-2">
+                  <Label htmlFor="new-slug">Slug</Label>
+                  <Input
+                    id="new-slug"
+                    value={newTenantSlug}
+                    onChange={(e) => setNewTenantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                    placeholder="mi-evento"
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-name">Nombre visible</Label>
+                  <Input
+                    id="new-name"
+                    value={newTenantName}
+                    onChange={(e) => setNewTenantName(e.target.value)}
+                    placeholder="Lanzamiento 2026"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button type="button" variant="outline" onClick={() => setCreateTenantOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={creatingTenant}>
+                  {creatingTenant ? "Creando…" : "Crear"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      <Tabs defaultValue="prizes" className="max-w-5xl mx-auto">
+      {!selectedTenantSlug ? (
+        <div className="max-w-5xl mx-auto mt-8">
+          <Card>
+            <CardContent className="py-12 text-center text-muted-foreground">
+              Selecciona una campaña arriba para usar premios, segmentos, sedes, QR, ranking y configuración.
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+      <Tabs defaultValue="prizes" className="max-w-5xl mx-auto mt-8">
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-7 mb-6">
           <TabsTrigger value="prizes" className="text-xs md:text-sm px-2 py-2">
             <div className="flex flex-col items-center gap-1">
@@ -1351,7 +1617,7 @@ const AdminPage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
-              <QRGenerator />
+              <QRGenerator campaignSlug={selectedTenantSlug ?? undefined} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -2664,7 +2930,10 @@ const AdminPage = () => {
                               value={systemConfig.headerLogoSize}
                               onChange={(e) => setSystemConfig({
                                 ...systemConfig,
-                                headerLogoSize: parseInt(e.target.value)
+                                headerLogoSize: (() => {
+                                  const n = parseInt(e.target.value, 10);
+                                  return Number.isFinite(n) ? n : 32;
+                                })(),
                               })}
                               placeholder="32"
                             />
@@ -3716,6 +3985,7 @@ const AdminPage = () => {
           </Card>
         </TabsContent>
     </Tabs>
+      )}
     
     {/* Dialog para crear/editar sedes */}
     <Dialog open={venueDialogOpen} onOpenChange={setVenueDialogOpen}>
