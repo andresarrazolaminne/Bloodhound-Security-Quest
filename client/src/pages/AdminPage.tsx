@@ -52,7 +52,7 @@ import {
 
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import { MapSegmentAsset, Venue, InsertVenue, type Campaign } from "@shared/schema";
+import { MapSegmentAsset, Venue, InsertVenue, type Campaign, normalizeMapSegmentAspectRatioInput } from "@shared/schema";
 import { deleteUploadedAsset, listUploadedAssets, uploadAsset, type UploadedAssetDTO } from "@/lib/uploadAssets";
 import QRGenerator from '@/tools/QRGenerator';
 
@@ -135,6 +135,8 @@ const AdminPage = () => {
     cobrandingImageUrl: "",
     mapGapSize: "medium" as 'none' | 'x-small' | 'small' | 'medium' | 'large',
     mapGridSize: "3x3" as '3x3' | '3x2' | '2x3' | '4x2' | '2x4',
+    mapSegmentAspectRatio: "1/1",
+    mapSegmentImageFit: "cover" as "cover" | "contain",
     // Frontend customization fields
     appTitle: "",
     backgroundImageUrl: "",
@@ -188,6 +190,9 @@ const AdminPage = () => {
     completionShowQr: true,
     completionShowCode: true,
     completionShowSaveButton: true,
+    completionCtaEnabled: false,
+    completionCtaButtonText: "Ir al premio",
+    completionCtaUrl: "",
     loadingText: "",
     // Mensajes de logros y trampas
     achievementUnlockedTitle: "¡Logro Desbloqueado!",
@@ -517,6 +522,8 @@ const AdminPage = () => {
         cobrandingImageUrl: config.cobrandingImageUrl || "",
         mapGapSize: config.mapGapSize || "medium",
         mapGridSize: config.mapGridSize || "3x3",
+        mapSegmentAspectRatio: normalizeMapSegmentAspectRatioInput(config.mapSegmentAspectRatio ?? "1/1"),
+        mapSegmentImageFit: config.mapSegmentImageFit === "contain" ? "contain" : "cover",
         // Frontend customization fields
         appTitle: config.appTitle || "Lanzamiento 2025",
         backgroundImageUrl: config.backgroundImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png",
@@ -558,6 +565,9 @@ const AdminPage = () => {
         completionShowQr: config.completionShowQr ?? true,
         completionShowCode: config.completionShowCode ?? true,
         completionShowSaveButton: config.completionShowSaveButton ?? true,
+        completionCtaEnabled: config.completionCtaEnabled ?? false,
+        completionCtaButtonText: config.completionCtaButtonText || "Ir al premio",
+        completionCtaUrl: config.completionCtaUrl ?? "",
         loadingText: config.loadingText || "Cargando tu mapa...",
         loginTitle: config.loginTitle || "Lanzamiento",
         loginSubtitle: config.loginSubtitle || "2025",
@@ -676,6 +686,8 @@ const AdminPage = () => {
             cobrandingImageUrl: data.config.cobrandingImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png",
             mapGapSize: data.config.mapGapSize || "medium",
             mapGridSize: data.config.mapGridSize || "3x3",
+            mapSegmentAspectRatio: normalizeMapSegmentAspectRatioInput(data.config.mapSegmentAspectRatio ?? "1/1"),
+            mapSegmentImageFit: data.config.mapSegmentImageFit === "contain" ? "contain" : "cover",
             appTitle: data.config.appTitle || "Lanzamiento 2025",
             backgroundImageUrl: data.config.backgroundImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png",
             backgroundSize: data.config.backgroundSize || "auto",
@@ -703,6 +715,9 @@ const AdminPage = () => {
             completionShowQr: data.config.completionShowQr ?? true,
             completionShowCode: data.config.completionShowCode ?? true,
             completionShowSaveButton: data.config.completionShowSaveButton ?? true,
+            completionCtaEnabled: data.config.completionCtaEnabled ?? false,
+            completionCtaButtonText: data.config.completionCtaButtonText || "Ir al premio",
+            completionCtaUrl: data.config.completionCtaUrl ?? "",
             loadingText: data.config.loadingText || "Cargando tu mapa...",
             // Mensajes de logros y trampas
             achievementUnlockedTitle: data.config.achievementUnlockedTitle || "¡Logro Desbloqueado!",
@@ -1701,11 +1716,22 @@ const AdminPage = () => {
                     })
                     .map((asset) => (
                     <Card key={asset.id} className="overflow-hidden">
-                      <div className="relative aspect-square">
+                      <div
+                        className="relative w-full bg-gray-100"
+                        style={{
+                          aspectRatio: normalizeMapSegmentAspectRatioInput(
+                            systemConfig.mapSegmentAspectRatio,
+                          ).replace("/", " / "),
+                        }}
+                      >
                         <img 
                           src={asset.imageUrl} 
                           alt={`Segmento ${asset.segmentId}`}
-                          className="w-full h-full object-cover"
+                          className={
+                            systemConfig.mapSegmentImageFit === "contain"
+                              ? "w-full h-full object-contain"
+                              : "w-full h-full object-cover"
+                          }
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = "https://placehold.co/400x400/e2e8f0/64748b?text=Imagen+no+disponible";
                           }}
@@ -1948,7 +1974,9 @@ const AdminPage = () => {
                     footerLogoUrl: systemConfig.footerLogoUrl,
                     cobrandingImageUrl: systemConfig.cobrandingImageUrl,
                     mapGapSize: systemConfig.mapGapSize,
-                    mapGridSize: systemConfig.mapGridSize
+                    mapGridSize: systemConfig.mapGridSize,
+                    mapSegmentAspectRatio: systemConfig.mapSegmentAspectRatio,
+                    mapSegmentImageFit: systemConfig.mapSegmentImageFit,
                   });
                   
                   toast({
@@ -2251,6 +2279,85 @@ const AdminPage = () => {
                   </div>
                   <p className="text-sm text-gray-500">
                     Selecciona el tamaño de la cuadrícula para el mapa (número de filas y columnas)
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Proporción de cada ficha del mapa
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {(
+                      [
+                        { label: "1:1", value: "1/1" },
+                        { label: "4:3", value: "4/3" },
+                        { label: "3:2", value: "3/2" },
+                        { label: "16:9", value: "16/9" },
+                        { label: "3:4", value: "3/4" },
+                        { label: "2:3", value: "2/3" },
+                      ] as const
+                    ).map((preset) => (
+                      <Button
+                        key={preset.value}
+                        type="button"
+                        size="sm"
+                        variant={
+                          systemConfig.mapSegmentAspectRatio === preset.value ? "default" : "outline"
+                        }
+                        onClick={() =>
+                          setSystemConfig({
+                            ...systemConfig,
+                            mapSegmentAspectRatio: preset.value,
+                          })
+                        }
+                      >
+                        {preset.label}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+                    <div className="flex-1 space-y-1">
+                      <label htmlFor="map-segment-aspect-custom" className="text-xs text-gray-500">
+                        Personalizado (ancho/alto, p. ej. 5/4)
+                      </label>
+                      <Input
+                        id="map-segment-aspect-custom"
+                        value={systemConfig.mapSegmentAspectRatio}
+                        onChange={(e) =>
+                          setSystemConfig({
+                            ...systemConfig,
+                            mapSegmentAspectRatio: e.target.value,
+                          })
+                        }
+                        placeholder="4/3"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={systemConfig.mapSegmentImageFit === "cover" ? "default" : "outline"}
+                        onClick={() =>
+                          setSystemConfig({ ...systemConfig, mapSegmentImageFit: "cover" })
+                        }
+                      >
+                        Recortar (cover)
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={systemConfig.mapSegmentImageFit === "contain" ? "default" : "outline"}
+                        onClick={() =>
+                          setSystemConfig({ ...systemConfig, mapSegmentImageFit: "contain" })
+                        }
+                      >
+                        Encajar (contain)
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Usa la misma proporción que tus imágenes de segmento; &quot;Encajar&quot; evita recortes
+                    si no coinciden del todo.
                   </p>
                 </div>
 
@@ -2790,6 +2897,65 @@ const AdminPage = () => {
                               placeholder="Guardar Premio"
                             />
                           </div>
+                        </div>
+
+                        <div className="space-y-3 border-t border-amber-200 pt-4 mt-2">
+                          <p className="text-sm font-medium text-gray-800">
+                            Botón con enlace (se abre en una pestaña nueva)
+                          </p>
+                          <label className="flex items-center gap-2 text-sm text-gray-700">
+                            <input
+                              type="checkbox"
+                              checked={systemConfig.completionCtaEnabled}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionCtaEnabled: e.target.checked
+                              })}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            Mostrar botón con enlace
+                          </label>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label htmlFor="completion-cta-button-text" className="block text-sm font-medium text-gray-700">
+                                Texto del botón
+                              </label>
+                              <Input
+                                id="completion-cta-button-text"
+                                value={systemConfig.completionCtaButtonText}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  completionCtaButtonText: e.target.value
+                                })}
+                                placeholder="Ir al premio"
+                                disabled={!systemConfig.completionCtaEnabled}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label htmlFor="completion-cta-url" className="block text-sm font-medium text-gray-700">
+                                URL de destino
+                              </label>
+                              <Input
+                                id="completion-cta-url"
+                                type="url"
+                                value={systemConfig.completionCtaUrl}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  completionCtaUrl: e.target.value
+                                })}
+                                placeholder="https://ejemplo.com/premio"
+                                disabled={!systemConfig.completionCtaEnabled}
+                              />
+                              <p className="text-xs text-gray-500">
+                                Solo http o https. El botón no se muestra al jugador si la URL está vacía.
+                              </p>
+                            </div>
+                          </div>
+                          {systemConfig.completionCtaEnabled && systemConfig.completionCtaUrl.trim() === "" && (
+                            <p className="text-xs text-amber-800 bg-amber-100/80 rounded px-2 py-1.5">
+                              Activa el enlace pero indica una URL válida para que el botón aparezca en el mapa.
+                            </p>
+                          )}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">

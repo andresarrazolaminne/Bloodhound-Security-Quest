@@ -248,17 +248,41 @@ const QRUnlockHandler = () => {
           });
         }
 
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('QRUnlockHandler - Error:', error);
-        
+
         let errorMessage = 'Error al procesar el código QR';
-        
-        if (error.message?.includes('Segment already unlocked')) {
-          errorMessage = 'Este segmento ya fue desbloqueado anteriormente';
-        } else if (error.message?.includes('Invalid security code')) {
-          errorMessage = 'Código de seguridad inválido';
-        } else if (error.message?.includes('User not found')) {
-          errorMessage = 'Usuario no encontrado';
+
+        if (error instanceof Response) {
+          try {
+            const data = (await error.clone().json()) as { message?: string; code?: string };
+            if (data?.code === "QUIZ_WRONG_FINAL" || data?.code === "QUIZ_FAILED_FINAL") {
+              errorMessage =
+                data.message ||
+                "Respuesta incorrecta (versión antigua del servidor). Actualiza el backend o vuelve a intentar.";
+            } else if (data?.message) {
+              errorMessage = data.message;
+            } else if (error.status === 403) {
+              errorMessage =
+                "No se pudo desbloquear este segmento. Revisa el código o vuelve a intentarlo.";
+            } else if (error.status === 404) {
+              errorMessage = "Usuario o segmento no encontrado.";
+            }
+          } catch {
+            if (error.status === 403) {
+              errorMessage =
+                "No se pudo desbloquear este segmento. Si fallaste una pregunta, vuelve a escanear el QR.";
+            }
+          }
+        } else if (error && typeof error === 'object' && 'message' in error) {
+          const msg = String((error as { message: unknown }).message);
+          if (msg.includes('Segment already unlocked')) {
+            errorMessage = 'Este segmento ya fue desbloqueado anteriormente';
+          } else if (msg.includes('Invalid security code')) {
+            errorMessage = 'Código de seguridad inválido';
+          } else if (msg.includes('User not found')) {
+            errorMessage = 'Usuario no encontrado';
+          }
         }
 
         setResult({
@@ -266,7 +290,7 @@ const QRUnlockHandler = () => {
           message: errorMessage
         });
 
-        playQRErrorSound(); // Reproducir sonido de error
+        playQRErrorSound();
         toast({
           title: "Error",
           description: errorMessage,

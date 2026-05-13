@@ -1,6 +1,6 @@
 import express, { type Express } from "express";
 import { createServer, type Server } from "http";
-import { storage, isPgUniqueViolation } from "./storage";
+import { storage } from "./storage";
 import { z } from "zod";
 import {
   insertUserSchema,
@@ -25,6 +25,12 @@ import path from "path";
 import * as XLSX from "xlsx";
 import { RESERVED_CAMPAIGN_ROUTE_SEGMENT_SET } from "@shared/reservedSlugs";
 import { playableSegmentIdsForCampaign } from "@shared/mapGrid";
+import {
+  useS3Uploads,
+  s3ObjectKeyForUpload,
+  publicUrlForS3ObjectKey,
+  s3PutUploadObject,
+} from "./s3Uploads";
 
 const UPLOADS_DIR = process.env.UPLOADS_DIR || "/usr/share/nginx/html/bloodhound/uploads";
 
@@ -192,7 +198,55 @@ function collectApiMountPaths(): string[] {
   return [...mounts];
 }
 
+/** Prefijo de URL público para archivos subidos (alineado al deploy root vs subruta). */
+function resolveNormalizedPublicBase(): string | null {
+  const candidates = [
+    process.env.UI_BASE_PATH,
+    process.env.VITE_BASE_PATH,
+    process.env.BASE_PATH,
+    process.env.CLIENT_BASE_PATH,
+  ];
+  for (const raw of candidates) {
+    const b = normalizePublicBasePath(raw);
+    if (b) return b;
+  }
+  return null;
+}
+
+/** Path URL completo del directorio de uploads (sin trailing slash), p. ej. `/uploads` o `/bloodhound/uploads`. */
+function publicUploadsUrlDirectory(): string {
+  const base = resolveNormalizedPublicBase();
+  return base ? `${base}/uploads` : "/uploads";
+}
+
+function publicUrlForUploadedFile(filename: string): string {
+  return `${publicUploadsUrlDirectory()}/${filename}`;
+}
+
+function adminUploadBasename(originalname: string): string {
+  const ext = path.extname(originalname).toLowerCase();
+  const allowedExt = [".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"];
+  const safeExt = allowedExt.includes(ext) ? ext : "";
+  return `${nanoid(16)}${safeExt}`;
+}
+
+/** Sirve UPLOADS_DIR en rutas compatibles con el prefijo de deploy y alias legado. */
+function mountUploadsStatic(app: Express): void {
+  const staticMw = express.static(UPLOADS_DIR);
+  const mountSet = new Set<string>();
+  mountSet.add("/uploads");
+  mountSet.add("/bloodhound/uploads");
+  const base = resolveNormalizedPublicBase();
+  if (base) mountSet.add(`${base}/uploads`);
+  for (const mount of mountSet) {
+    app.use(mount, staticMw);
+  }
+  console.log("[uploads] Montajes estáticos:", [...mountSet].join(", "));
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  mountUploadsStatic(app);
+
   const apiRouter = express.Router();
   const mountPaths = collectApiMountPaths();
   console.log("[api] Montajes del router API:", mountPaths.join(", "));
@@ -218,6 +272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     segmentId: number,
     segmentAsset: MapSegmentAsset,
     campaignId: number,
+    quizOutcome?: { quizAnswerCorrect: boolean; quizBonusPoints: number },
   ) {
     await storage.addUserScore(user.id, segmentId, 10, false, campaignId);
     const segment = await storage.unlockSegment(user.id, segmentId, campaignId);
@@ -237,6 +292,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       redemptionCode,
       modalContent: segmentAsset.modalContent ?? null,
       segmentTitle: segmentAsset.title ?? null,
+      ...(quizOutcome
+        ? {
+            quizAnswerCorrect: quizOutcome.quizAnswerCorrect,
+            quizBonusPoints: quizOutcome.quizBonusPoints,
+          }
+        : {}),
     });
   }
 
@@ -680,12 +741,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const quizAttempt = await storage.getSegmentQuizAttempt(user.id, segmentId, campaignId);
-      if (quizAttempt && !quizAttempt.isCorrect) {
-        return res.status(403).json({
-          message: "Respuesta incorrecta anteriormente. No hay más intentos para este segmento.",
-          code: "QUIZ_FAILED_FINAL",
-        });
-      }
 
       const existingScore = await storage.getUserScoreBySegment(user.id, segmentId, campaignId);
 
@@ -701,7 +756,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const quizActive = quizState.active;
 
       if (quizActive) {
-        if (quizAttempt?.isCorrect) {
+        // Un intento de trivia por segmento/usuario; si ya hay fila, no volver a mostrar la pregunta.
+        if (quizAttempt) {
           if (existingScore) {
             const segment = await storage.unlockSegment(user.id, segmentId, campaignId);
             const { unlockedSegments, totalSegments } = await playableUnlockTotals(user.id, campaignId);
@@ -715,9 +771,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
               modalContent: segmentAsset.modalContent ?? null,
               segmentTitle: segmentAsset.title ?? null,
               timestamp: existingScore.scannedAt,
+              quizAnswerCorrect: quizAttempt.isCorrect,
+              quizBonusPoints: quizAttempt.pointsAwarded,
             });
           }
-          return finalizeValidSegmentUnlock(res, user, segmentId, segmentAsset, campaignId);
+          // Recuperación: intento guardado pero sin puntuación (p. ej. error tras upsert).
+          return finalizeValidSegmentUnlock(res, user, segmentId, segmentAsset, campaignId, {
+            quizAnswerCorrect: quizAttempt.isCorrect,
+            quizBonusPoints: quizAttempt.pointsAwarded,
+          });
         }
 
         const opts = quizState.options;
@@ -763,42 +825,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const bonusPoints = segmentAsset.quizPoints ?? 5;
 
         if (originalIndex !== correctIdx) {
-          try {
-            await storage.insertSegmentQuizAttempt({
-              userId: user.id,
-              segmentId,
-              campaignId,
-              isCorrect: false,
-              pointsAwarded: 0,
-              selectedIndex: originalIndex,
-            });
-          } catch (e) {
-            if (!isPgUniqueViolation(e)) throw e;
-          }
-          return res.status(403).json({
-            message: "Respuesta incorrecta. No hay más intentos para este segmento.",
-            code: "QUIZ_WRONG_FINAL",
-          });
-        }
-
-        try {
-          await storage.insertSegmentQuizAttempt({
+          await storage.upsertSegmentQuizAttempt({
             userId: user.id,
             segmentId,
             campaignId,
-            isCorrect: true,
-            pointsAwarded: bonusPoints,
+            isCorrect: false,
+            pointsAwarded: 0,
             selectedIndex: originalIndex,
           });
-        } catch (e) {
-          if (isPgUniqueViolation(e)) {
-            return res.status(409).json({
-              message: "Este intento ya fue registrado.",
-              code: "QUIZ_ALREADY_SUBMITTED",
+          if (existingScore) {
+            const segment = await storage.unlockSegment(user.id, segmentId, campaignId);
+            const { unlockedSegments, totalSegments } = await playableUnlockTotals(user.id, campaignId);
+            return res.status(200).json({
+              alreadyScanned: true,
+              segment,
+              unlockedSegments,
+              totalSegments,
+              completed: unlockedSegments === totalSegments,
+              message: "Este QR ya fue escaneado anteriormente",
+              modalContent: segmentAsset.modalContent ?? null,
+              segmentTitle: segmentAsset.title ?? null,
+              timestamp: existingScore.scannedAt,
+              quizAnswerCorrect: false,
+              quizBonusPoints: 0,
             });
           }
-          throw e;
+          return finalizeValidSegmentUnlock(res, user, segmentId, segmentAsset, campaignId, {
+            quizAnswerCorrect: false,
+            quizBonusPoints: 0,
+          });
         }
+
+        await storage.upsertSegmentQuizAttempt({
+          userId: user.id,
+          segmentId,
+          campaignId,
+          isCorrect: true,
+          pointsAwarded: bonusPoints,
+          selectedIndex: originalIndex,
+        });
 
         if (existingScore) {
           const segment = await storage.unlockSegment(user.id, segmentId, campaignId);
@@ -813,8 +878,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             modalContent: segmentAsset.modalContent ?? null,
             segmentTitle: segmentAsset.title ?? null,
             timestamp: existingScore.scannedAt,
+            quizAnswerCorrect: true,
+            quizBonusPoints: bonusPoints,
           });
         }
+
+        return finalizeValidSegmentUnlock(res, user, segmentId, segmentAsset, campaignId, {
+          quizAnswerCorrect: true,
+          quizBonusPoints: bonusPoints,
+        });
       } else if (existingScore) {
         const segment = await storage.unlockSegment(user.id, segmentId, campaignId);
         const { unlockedSegments, totalSegments } = await playableUnlockTotals(user.id, campaignId);
@@ -1149,6 +1221,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           cobrandingImageUrl: "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png",
           mapGapSize: "medium",
           mapGridSize: "3x3",
+          mapSegmentAspectRatio: "1/1",
+          mapSegmentImageFit: "cover",
           appTitle: 'Lanzamiento 2025',
           backgroundImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
           gradientStartColor: '#bb2558',
@@ -1170,6 +1244,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           completionShowQr: true,
           completionShowCode: true,
           completionShowSaveButton: true,
+          completionCtaEnabled: false,
+          completionCtaButtonText: 'Ir al premio',
+          completionCtaUrl: '',
           loadingText: 'Cargando tu mapa...'
         }
       });
@@ -1198,42 +1275,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // Admin uploads (logos, support images, etc.)
-  const upload = multer({
-    storage: multer.diskStorage({
-      destination: (_req, _file, cb) => {
-        try {
-          fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-          cb(null, UPLOADS_DIR);
-        } catch (err) {
-          cb(err as Error, UPLOADS_DIR);
-        }
-      },
-      filename: (_req, file, cb) => {
-        const ext = path.extname(file.originalname).toLowerCase();
-        const allowedExt = [".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"];
-        const safeExt = allowedExt.includes(ext) ? ext : "";
-        const filename = `${nanoid(16)}${safeExt}`;
-        cb(null, filename);
-      },
-    }),
-    limits: {
-      fileSize: Number(process.env.UPLOAD_MAX_BYTES ?? 10 * 1024 * 1024), // 10MB
-    },
-    fileFilter: (_req, file, cb) => {
-      const allowedMimes = new Set([
-        "image/png",
-        "image/jpeg",
-        "image/webp",
-        "image/gif",
-        "image/svg+xml",
-      ]);
+  const uploadLimits = {
+    fileSize: Number(process.env.UPLOAD_MAX_BYTES ?? 10 * 1024 * 1024), // 10MB
+  };
+  const uploadFileFilter: multer.Options["fileFilter"] = (_req, file, cb) => {
+    const allowedMimes = new Set([
+      "image/png",
+      "image/jpeg",
+      "image/webp",
+      "image/gif",
+      "image/svg+xml",
+    ]);
 
-      if (!allowedMimes.has(file.mimetype)) {
-        return cb(new Error("Tipo de archivo no permitido"));
-      }
-      cb(null, true);
-    },
-  });
+    if (!allowedMimes.has(file.mimetype)) {
+      return cb(new Error("Tipo de archivo no permitido"));
+    }
+    cb(null, true);
+  };
+
+  const upload = useS3Uploads()
+    ? multer({
+        storage: multer.memoryStorage(),
+        limits: uploadLimits,
+        fileFilter: uploadFileFilter,
+      })
+    : multer({
+        storage: multer.diskStorage({
+          destination: (_req, _file, cb) => {
+            try {
+              fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+              cb(null, UPLOADS_DIR);
+            } catch (err) {
+              cb(err as Error, UPLOADS_DIR);
+            }
+          },
+          filename: (_req, file, cb) => cb(null, adminUploadBasename(file.originalname)),
+        }),
+        limits: uploadLimits,
+        fileFilter: uploadFileFilter,
+      });
 
   apiRouter.get("/admin/uploads", async (_req, res) => {
     try {
@@ -1250,15 +1330,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const file = req.file;
       if (!file) return res.status(400).json({ message: "No se recibió ningún archivo" });
 
-      const publicUrl = `/bloodhound/uploads/${file.filename}`;
+      const campaignId = (req as CampaignRequest).campaignId;
+      if (campaignId == null) {
+        return res.status(500).json({ message: "Campaña no resuelta para el upload" });
+      }
 
-      const asset = await storage.createUploadedAsset({
-        filename: file.filename,
-        originalName: file.originalname,
-        mime: file.mimetype,
-        size: file.size ?? 0,
-        publicUrl,
-      }, (req as CampaignRequest).campaignId);
+      let publicUrl: string;
+      let filenameForDb: string;
+
+      if (useS3Uploads()) {
+        const buf = "buffer" in file && Buffer.isBuffer((file as { buffer?: Buffer }).buffer)
+          ? (file as { buffer: Buffer }).buffer
+          : undefined;
+        if (!buf) {
+          return res.status(500).json({ message: "Buffer de archivo no disponible" });
+        }
+        const basename = adminUploadBasename(file.originalname);
+        const objectKey = s3ObjectKeyForUpload(campaignId, basename);
+        await s3PutUploadObject(objectKey, buf, file.mimetype);
+        publicUrl = publicUrlForS3ObjectKey(objectKey);
+        filenameForDb = objectKey;
+      } else {
+        publicUrl = publicUrlForUploadedFile(file.filename);
+        filenameForDb = file.filename;
+      }
+
+      const asset = await storage.createUploadedAsset(
+        {
+          filename: filenameForDb,
+          originalName: file.originalname,
+          mime: file.mimetype,
+          size: file.size ?? 0,
+          publicUrl,
+        },
+        campaignId,
+      );
 
       return res.status(201).json({ asset });
     } catch (error) {

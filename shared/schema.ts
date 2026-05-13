@@ -31,6 +31,10 @@ export const systemConfig = pgTable("system_config", {
   cobrandingImageUrl: text("cobranding_image_url").notNull().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png'),
   mapGapSize: text("map_gap_size").notNull().default('medium'),
   mapGridSize: text("map_grid_size").notNull().default('3x3'),
+  /** Proporción CSS de cada ficha del mapa (p. ej. 1/1, 4/3, 3/2). */
+  mapSegmentAspectRatio: text("map_segment_aspect_ratio").notNull().default('1/1'),
+  /** object-fit de la imagen en la ficha: cover (recortar) o contain (encajar). */
+  mapSegmentImageFit: text("map_segment_image_fit").notNull().default('cover'),
   // Frontend customization fields
   appTitle: text("app_title").notNull().default('Lanzamiento 2025'),
   backgroundImageUrl: text("background_image_url").notNull().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png'),
@@ -85,6 +89,9 @@ export const systemConfig = pgTable("system_config", {
   completionShowQr: boolean("completion_show_qr").notNull().default(true),
   completionShowCode: boolean("completion_show_code").notNull().default(true),
   completionShowSaveButton: boolean("completion_show_save_button").notNull().default(true),
+  completionCtaEnabled: boolean("completion_cta_enabled").notNull().default(false),
+  completionCtaButtonText: text("completion_cta_button_text").notNull().default('Ir al premio'),
+  completionCtaUrl: text("completion_cta_url").notNull().default(''),
   loadingText: text("loading_text").notNull().default('Cargando tu mapa...'),
   // Mensajes de logros y trampas
   achievementUnlockedTitle: text("achievement_unlocked_title").notNull().default('¡Logro Desbloqueado!'),
@@ -130,6 +137,24 @@ export const venues = pgTable("venues", {
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 });
 
+const MAP_GAP_ALLOWED = new Set(["none", "x-small", "small", "medium", "large"]);
+const MAP_GRID_ALLOWED = new Set(["3x3", "3x2", "2x3", "4x2", "2x4"]);
+const MAP_SEGMENT_IMAGE_FIT_ALLOWED = new Set(["cover", "contain"]);
+
+/**
+ * Normaliza "w/h" para CSS aspect-ratio: enteros 1–100; inválido → 1/1.
+ */
+export function normalizeMapSegmentAspectRatioInput(raw: unknown): string {
+  if (typeof raw !== "string") return "1/1";
+  const compact = raw.trim().replace(/\s*\/\s*/, "/");
+  const m = /^(\d{1,3})\/(\d{1,3})$/.exec(compact);
+  if (!m) return "1/1";
+  const w = Number(m[1]);
+  const h = Number(m[2]);
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w < 1 || h < 1 || w > 100 || h > 100) return "1/1";
+  return `${w}/${h}`;
+}
+
 // Schema for system configuration
 export const systemConfigSchema = z.object({
   id: z.number(),
@@ -140,6 +165,11 @@ export const systemConfigSchema = z.object({
   cobrandingImageUrl: z.string().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png'),
   mapGapSize: z.enum(['none', 'x-small', 'small', 'medium', 'large']).default('medium'),
   mapGridSize: z.enum(['3x3', '3x2', '2x3', '4x2', '2x4']).default('3x3'),
+  mapSegmentAspectRatio: z
+    .string()
+    .default('1/1')
+    .transform((s) => normalizeMapSegmentAspectRatioInput(s)),
+  mapSegmentImageFit: z.enum(['cover', 'contain']).default('cover'),
   // Frontend customization fields
   appTitle: z.string().default('Lanzamiento 2025'),
   backgroundImageUrl: z.string().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png'),
@@ -202,6 +232,24 @@ export const systemConfigSchema = z.object({
   completionShowQr: z.boolean().default(true),
   completionShowCode: z.boolean().default(true),
   completionShowSaveButton: z.boolean().default(true),
+  completionCtaEnabled: z.boolean().default(false),
+  completionCtaButtonText: z.string().default('Ir al premio'),
+  completionCtaUrl: z
+    .string()
+    .default('')
+    .transform((s) => s.trim())
+    .refine(
+      (s) => {
+        if (s === '') return true;
+        try {
+          const u = new URL(s);
+          return u.protocol === 'http:' || u.protocol === 'https:';
+        } catch {
+          return false;
+        }
+      },
+      { message: 'completionCtaUrl debe estar vacía o ser una URL http(s) válida' },
+    ),
   loadingText: z.string().default('Cargando tu mapa...'),
   // Mensajes de logros y trampas
   achievementUnlockedTitle: z.string().default('¡Logro Desbloqueado!'),
@@ -213,8 +261,6 @@ export const systemConfigSchema = z.object({
 
 export type SystemConfig = z.infer<typeof systemConfigSchema>;
 
-const MAP_GAP_ALLOWED = new Set(["none", "x-small", "small", "medium", "large"]);
-const MAP_GRID_ALLOWED = new Set(["3x3", "3x2", "2x3", "4x2", "2x4"]);
 const BG_SIZE_ALLOWED = new Set(["auto", "cover", "contain", "100%", "50%", "100% 100%"]);
 const BG_REPEAT_ALLOWED = new Set(["repeat", "no-repeat", "repeat-x", "repeat-y"]);
 const BG_POSITION_ALLOWED = new Set([
@@ -247,6 +293,12 @@ export function sanitizeAdminSystemConfigBody(input: unknown): unknown {
   }
   if (typeof o.mapGridSize === "string" && !MAP_GRID_ALLOWED.has(o.mapGridSize)) {
     o.mapGridSize = "3x3";
+  }
+  if ("mapSegmentAspectRatio" in o) {
+    o.mapSegmentAspectRatio = normalizeMapSegmentAspectRatioInput(o.mapSegmentAspectRatio);
+  }
+  if (typeof o.mapSegmentImageFit === "string" && !MAP_SEGMENT_IMAGE_FIT_ALLOWED.has(o.mapSegmentImageFit)) {
+    o.mapSegmentImageFit = "cover";
   }
   if (typeof o.backgroundSize === "string" && !BG_SIZE_ALLOWED.has(o.backgroundSize)) {
     o.backgroundSize = "auto";
@@ -327,7 +379,7 @@ export const mapSegmentAssets = pgTable("map_segment_assets", {
   mapSegmentCampaignSegmentUnique: uniqueIndex("map_segment_campaign_segment_unique").on(table.campaignId, table.segmentId),
 }));
 
-/** Un intento por usuario/segmento/campaña (acierto o fallo definitivo). */
+/** Un intento por usuario/segmento/campaña; la fila se actualiza en reintentos (fallo → acierto). */
 export const userSegmentQuizAttempts = pgTable(
   "user_segment_quiz_attempts",
   {

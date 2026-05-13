@@ -37,9 +37,27 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { s3DeleteObjectKey } from "./s3Uploads";
 
 const UPLOADS_DIR =
   process.env.UPLOADS_DIR ?? "/usr/share/nginx/html/bloodhound/uploads";
+
+async function deleteStoredUploadFile(asset: { filename: string }): Promise<void> {
+  if (asset.filename.includes("/")) {
+    try {
+      await s3DeleteObjectKey(asset.filename);
+    } catch (err) {
+      console.error("Error deleting S3 object:", err);
+    }
+    return;
+  }
+  try {
+    const filePath = path.join(UPLOADS_DIR, asset.filename);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  } catch (err) {
+    console.error("Error deleting uploaded asset file:", err);
+  }
+}
 
 /** Postgres unique_violation — no depender del idioma del mensaje (es/en). */
 export function isPgUniqueViolation(error: unknown): boolean {
@@ -160,6 +178,15 @@ export interface IStorage {
     campaignId?: number,
   ): Promise<UserSegmentQuizAttempt | undefined>;
   insertSegmentQuizAttempt(row: {
+    userId: number;
+    segmentId: number;
+    campaignId?: number;
+    isCorrect: boolean;
+    pointsAwarded: number;
+    selectedIndex: number | null;
+  }): Promise<UserSegmentQuizAttempt>;
+  /** Un intento por (campaña, usuario, segmento): actualiza si ya existía (reintentos tras fallo). */
+  upsertSegmentQuizAttempt(row: {
     userId: number;
     segmentId: number;
     campaignId?: number;
@@ -294,12 +321,7 @@ export class DatabaseStorage implements IStorage {
     });
 
     for (const asset of uploadRows) {
-      try {
-        const filePath = path.join(UPLOADS_DIR, asset.filename);
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      } catch (err) {
-        console.error("deleteCampaignBySlug: error borrando archivo de upload:", err);
-      }
+      await deleteStoredUploadFile(asset);
     }
 
     return { ok: true };
@@ -660,6 +682,8 @@ export class DatabaseStorage implements IStorage {
         cobrandingImageUrl: "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png",
         mapGapSize: "medium",
         mapGridSize: "3x3",
+        mapSegmentAspectRatio: "1/1",
+        mapSegmentImageFit: "cover",
         appTitle: 'Lanzamiento 2025',
         backgroundImageUrl: 'https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png',
         gradientStartColor: '#bb2558',
@@ -690,6 +714,9 @@ export class DatabaseStorage implements IStorage {
         completionShowQr: true,
         completionShowCode: true,
         completionShowSaveButton: true,
+        completionCtaEnabled: false,
+        completionCtaButtonText: 'Ir al premio',
+        completionCtaUrl: '',
         loadingText: 'Cargando tu mapa...',
         updatedAt: new Date()
       };
@@ -703,6 +730,8 @@ export class DatabaseStorage implements IStorage {
     cobrandingImageUrl?: string;
     mapGapSize?: 'none' | 'x-small' | 'small' | 'medium' | 'large';
     mapGridSize?: '3x3' | '3x2' | '2x3' | '4x2' | '2x4';
+    mapSegmentAspectRatio?: string;
+    mapSegmentImageFit?: 'cover' | 'contain';
     appTitle?: string;
     backgroundImageUrl?: string;
     gradientStartColor?: string;
@@ -727,6 +756,9 @@ export class DatabaseStorage implements IStorage {
     completionShowQr?: boolean;
     completionShowCode?: boolean;
     completionShowSaveButton?: boolean;
+    completionCtaEnabled?: boolean;
+    completionCtaButtonText?: string;
+    completionCtaUrl?: string;
     loadingText?: string;
   }, campaignId?: number): Promise<SystemConfig> {
     const scopedCampaignId = await this.resolveCampaignId(campaignId);
@@ -795,13 +827,7 @@ export class DatabaseStorage implements IStorage {
 
     await db.delete(uploadedAssets).where(and(eq(uploadedAssets.id, id), eq(uploadedAssets.campaignId, scopedCampaignId)));
 
-    // Try to delete the physical file too (best-effort; DB delete shouldn't fail).
-    try {
-      const filePath = path.join(UPLOADS_DIR, asset.filename);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    } catch (err) {
-      console.error("Error deleting uploaded asset file:", err);
-    }
+    await deleteStoredUploadFile(asset);
   }
   
   async getAllUsersWithProgress(campaignId?: number): Promise<Array<{
@@ -1105,6 +1131,52 @@ export class DatabaseStorage implements IStorage {
     selectedIndex: number | null;
   }): Promise<UserSegmentQuizAttempt> {
     const scopedCampaignId = await this.resolveCampaignId(row.campaignId);
+    const [created] = await db
+      .insert(userSegmentQuizAttempts)
+      .values({
+        campaignId: scopedCampaignId,
+        userId: row.userId,
+        segmentId: row.segmentId,
+        isCorrect: row.isCorrect,
+        pointsAwarded: row.pointsAwarded,
+        selectedIndex: row.selectedIndex,
+      })
+      .returning();
+    return created;
+  }
+
+  async upsertSegmentQuizAttempt(row: {
+    userId: number;
+    segmentId: number;
+    campaignId?: number;
+    isCorrect: boolean;
+    pointsAwarded: number;
+    selectedIndex: number | null;
+  }): Promise<UserSegmentQuizAttempt> {
+    const scopedCampaignId = await this.resolveCampaignId(row.campaignId);
+    const existing = await this.getSegmentQuizAttempt(row.userId, row.segmentId, scopedCampaignId);
+    if (existing) {
+      const [updated] = await db
+        .update(userSegmentQuizAttempts)
+        .set({
+          isCorrect: row.isCorrect,
+          pointsAwarded: row.pointsAwarded,
+          selectedIndex: row.selectedIndex,
+        })
+        .where(
+          and(
+            eq(userSegmentQuizAttempts.campaignId, scopedCampaignId),
+            eq(userSegmentQuizAttempts.userId, row.userId),
+            eq(userSegmentQuizAttempts.segmentId, row.segmentId),
+          ),
+        )
+        .returning();
+      if (!updated) {
+        throw new Error("No se pudo actualizar el intento de quiz");
+      }
+      return updated;
+    }
+
     const [created] = await db
       .insert(userSegmentQuizAttempts)
       .values({

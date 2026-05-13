@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+/mnt/c/Program\ Files/Amazon/AWSCLIV2/aws.exe "$@"

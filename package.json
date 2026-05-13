@@ -10,9 +10,21 @@
     "check": "tsc",
     "db:push": "drizzle-kit push",
     "db:apply-multitenant": "tsx scripts/apply-multitenant-migration.ts",
-    "db:apply-quiz-schema": "tsx scripts/apply-quiz-schema.ts"
+    "db:apply-quiz-schema": "tsx scripts/apply-quiz-schema.ts",
+    "db:apply-map-segment-tile-config": "tsx scripts/apply-map-segment-tile-config.ts",
+    "db:apply-migrations": "tsx scripts/apply-migrations.ts",
+    "test:s3-credentials": "tsx scripts/test-s3-credentials.ts",
+    "test:s3-upload-sample": "tsx scripts/s3-upload-sample.ts",
+    "docker:build:prod": "docker build -t bloodhound:prod .",
+    "lightsail:checklist": "bash scripts/lightsail/00-prep-checklist.sh",
+    "lightsail:build": "bash scripts/lightsail/10-build-image.sh",
+    "lightsail:create-service": "bash scripts/lightsail/20-create-service.sh",
+    "lightsail:push": "bash scripts/lightsail/30-push-image.sh",
+    "lightsail:deploy": "bash scripts/lightsail/40-deploy-staging.sh",
+    "lightsail:smoke": "bash scripts/lightsail/50-smoke-tests.sh"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1045.0",
     "@hookform/resolvers": "^3.9.1",
     "@jridgewell/trace-mapping": "^0.3.25",
     "@neondatabase/serverless": "^0.10.4",

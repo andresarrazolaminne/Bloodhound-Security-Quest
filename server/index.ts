@@ -1,8 +1,13 @@
-import "dotenv/config";
+import "./env-bootstrap";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { tryAutoApplyMultitenantMigration, verifyMultitenantSchema } from "./db";
+
+/** `npm run dev` debe seguir usando Vite middleware aunque `.env` de deploy traiga NODE_ENV=production. */
+if (process.env.npm_lifecycle_event === "dev") {
+  process.env.NODE_ENV = "development";
+}
 
 const app = express();
 app.use(express.json());
@@ -51,6 +56,16 @@ app.use((req, res, next) => {
         "FATAL: En producción define ADMIN_API_TOKEN con un secreto fuerte (nunca el valor por defecto admin123).",
       );
       process.exit(1);
+    }
+    if (process.env.UPLOADS_BACKEND?.trim().toLowerCase() === "s3") {
+      if (!process.env.S3_BUCKET?.trim()) {
+        log("FATAL: UPLOADS_BACKEND=s3 requiere S3_BUCKET.");
+        process.exit(1);
+      }
+      if (!(process.env.S3_REGION || process.env.AWS_REGION)?.trim()) {
+        log("FATAL: UPLOADS_BACKEND=s3 requiere S3_REGION o AWS_REGION.");
+        process.exit(1);
+      }
     }
   }
 

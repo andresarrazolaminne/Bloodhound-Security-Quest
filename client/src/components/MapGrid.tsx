@@ -11,6 +11,8 @@ interface MapGridProps {
   campaignSlug?: string;
   gapSize?: 'none' | 'x-small' | 'small' | 'medium' | 'large'; // Tamaño de la separación entre imágenes
   gridSize?: '3x3' | '3x2' | '2x3' | '4x2' | '2x4'; // Tamaño de la cuadrícula (columnas x filas)
+  tileAspectRatio?: string;
+  tileObjectFit?: 'cover' | 'contain';
 }
 
 const MapGrid = ({
@@ -18,6 +20,8 @@ const MapGrid = ({
   campaignSlug,
   gapSize = 'medium',
   gridSize = '3x3',
+  tileAspectRatio,
+  tileObjectFit = 'cover',
 }: MapGridProps) => {
   // Fetch all map assets to filter out trap segments
   const { data: assetsData } = useQuery({
@@ -116,6 +120,8 @@ const MapGrid = ({
             imageUrl=""
             altText={`Segmento del mapa ${id}`}
             unlocked={unlockedSegments.includes(id)}
+            tileAspectRatio={tileAspectRatio}
+            tileObjectFit={tileObjectFit}
           />
         ))}
       </div>

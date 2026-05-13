@@ -22,8 +22,9 @@ import { playQRSuccessSound, playQRErrorSound, playCompletionSound } from '@/lib
 import BrainLoader from "@/components/BrainLoader";
 import SegmentContentModal from '@/components/SegmentContentModal';
 import { withApiBase, withUiCampaign, getCampaignSlugFromPath, getResolvedCampaignSlug } from "@/lib/paths";
+import { cn } from "@/lib/utils";
 import { playableSegmentIdsForCampaign } from "@shared/mapGrid";
-
+import { normalizeMapSegmentAspectRatioInput } from "@shared/schema";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -99,6 +100,8 @@ const MapPage = ({ campaignSlug: campaignSlugFromRoute }: MapPageProps) => {
     gradientType: string;
     mapGapSize: 'none' | 'x-small' | 'small' | 'medium' | 'large';
     mapGridSize: '3x3' | '3x2' | '2x3' | '4x2' | '2x4';
+    mapSegmentAspectRatio: string;
+    mapSegmentImageFit: 'cover' | 'contain';
     appTitle: string;
     backgroundImageUrl: string;
     gradientStartColor: string;
@@ -120,6 +123,9 @@ const MapPage = ({ campaignSlug: campaignSlugFromRoute }: MapPageProps) => {
     completionShowQr: boolean;
     completionShowCode: boolean;
     completionShowSaveButton: boolean;
+    completionCtaEnabled: boolean;
+    completionCtaButtonText: string;
+    completionCtaUrl: string;
     loadingText: string;
     headerLogoImageUrl: string;
     headerLogoSize: number;
@@ -144,6 +150,8 @@ const MapPage = ({ campaignSlug: campaignSlugFromRoute }: MapPageProps) => {
     gradientType: 'linear',
     mapGapSize: 'medium',
     mapGridSize: '3x3',
+    mapSegmentAspectRatio: '1/1',
+    mapSegmentImageFit: 'cover',
     appTitle: '',
     backgroundImageUrl: '',
     gradientStartColor: '',
@@ -165,6 +173,9 @@ const MapPage = ({ campaignSlug: campaignSlugFromRoute }: MapPageProps) => {
     completionShowQr: true,
     completionShowCode: true,
     completionShowSaveButton: true,
+    completionCtaEnabled: false,
+    completionCtaButtonText: 'Ir al premio',
+    completionCtaUrl: '',
     loadingText: '',
     headerLogoImageUrl: '',
     headerLogoSize: 32,
@@ -327,13 +338,24 @@ const MapPage = ({ campaignSlug: campaignSlugFromRoute }: MapPageProps) => {
           title: response.segmentTitle,
         });
         setShowSegmentModal(true);
+        if (response.quizAnswerCorrect === false) {
+          toast({
+            title: "Segmento desbloqueado",
+            description:
+              "La respuesta no fue correcta: no sumas puntos extra de la pregunta.",
+          });
+        }
       } else {
         const achievementTitle =
           systemConfig.achievementUnlockedTitle || "¡Logro Desbloqueado!";
         const achievementMessage =
           systemConfig.achievementUnlockedMessage ||
           "¡Segmento {segmentId} desbloqueado exitosamente!";
-        const formattedMessage = achievementMessage.replace("{segmentId}", String(segmentId));
+        let formattedMessage = achievementMessage.replace("{segmentId}", String(segmentId));
+        if (response.quizAnswerCorrect === false) {
+          formattedMessage +=
+            " La respuesta no fue correcta: no sumas puntos extra de la pregunta.";
+        }
         playQRSuccessSound();
         setSuccessMessage(formattedMessage);
         setShowSuccessModal(true);
@@ -446,6 +468,8 @@ const MapPage = ({ campaignSlug: campaignSlugFromRoute }: MapPageProps) => {
             cobrandingImageUrl: config.cobrandingImageUrl,
             mapGapSize: config.mapGapSize,
             mapGridSize: config.mapGridSize,
+            mapSegmentAspectRatio: normalizeMapSegmentAspectRatioInput(config.mapSegmentAspectRatio),
+            mapSegmentImageFit: config.mapSegmentImageFit === "contain" ? "contain" : "cover",
             appTitle: config.appTitle,
             backgroundImageUrl: config.backgroundImageUrl,
             backgroundSize: config.backgroundSize,
@@ -473,6 +497,9 @@ const MapPage = ({ campaignSlug: campaignSlugFromRoute }: MapPageProps) => {
             completionShowQr: config.completionShowQr ?? true,
             completionShowCode: config.completionShowCode ?? true,
             completionShowSaveButton: config.completionShowSaveButton ?? true,
+            completionCtaEnabled: config.completionCtaEnabled ?? false,
+            completionCtaButtonText: config.completionCtaButtonText ?? 'Ir al premio',
+            completionCtaUrl: config.completionCtaUrl ?? '',
             loadingText: config.loadingText,
             headerLogoImageUrl: config.headerLogoImageUrl,
             headerLogoSize: config.headerLogoSize,
@@ -662,7 +689,10 @@ const MapPage = ({ campaignSlug: campaignSlugFromRoute }: MapPageProps) => {
       setQuizSelectedSlot("");
       setIsLoading(false);
       clearQuizFeedbackTimer();
-      setQuizFeedback("bien");
+      // Solo respuesta explícita true cuenta como acierto; si falta el campo (edge API), mostrar Mal para no engañar.
+      const wrongQuiz = response.quizAnswerCorrect !== true;
+      if (wrongQuiz) playQRErrorSound();
+      setQuizFeedback(wrongQuiz ? "mal" : "bien");
       quizFeedbackTimerRef.current = setTimeout(() => {
         quizFeedbackTimerRef.current = null;
         setQuizFeedback(null);
@@ -771,8 +801,50 @@ const MapPage = ({ campaignSlug: campaignSlugFromRoute }: MapPageProps) => {
               {systemConfig.appTitle}
             </div>
           )}
-          <div className="flex items-center">
-            <div className="mr-3">
+          <div className="flex items-center gap-0.5 sm:gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowInstructionsModal(true)}
+              className="rounded-full shrink-0"
+              style={{
+                backgroundColor: `${systemConfig.headerTextColor}10`,
+                color: systemConfig.headerTextColor,
+              }}
+              title={systemConfig.helpButtonText}
+              aria-label={systemConfig.helpButtonText}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = `${systemConfig.headerTextColor}20`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = `${systemConfig.headerTextColor}10`;
+              }}
+            >
+              <HelpCircle className="h-5 w-5" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowSiteMapModal(true)}
+              className="rounded-full shrink-0"
+              style={{
+                backgroundColor: `${systemConfig.headerTextColor}10`,
+                color: systemConfig.headerTextColor,
+              }}
+              title={systemConfig.siteMapButtonText}
+              aria-label={systemConfig.siteMapButtonText}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = `${systemConfig.headerTextColor}20`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = `${systemConfig.headerTextColor}10`;
+              }}
+            >
+              <Map className="h-5 w-5" />
+            </Button>
+            <div className="mr-2 sm:mr-3 text-right">
               <p className="text-sm font-medium" style={{ color: systemConfig.headerTextColor }}>
                 {currentUser.name}
               </p>
@@ -816,7 +888,7 @@ const MapPage = ({ campaignSlug: campaignSlugFromRoute }: MapPageProps) => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-grow container mx-auto px-4 py-6">
+      <main className="flex-grow container mx-auto px-4 py-4 sm:py-5">
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
             <BrainLoader size="large" text={systemConfig.loadingText} />
@@ -834,74 +906,48 @@ const MapPage = ({ campaignSlug: campaignSlugFromRoute }: MapPageProps) => {
               </div>
             )}
 
-            <ProgressBar 
-              progress={progressUnlockedCount} 
+            <ProgressBar
+              progress={progressUnlockedCount}
               total={Math.max(progressTotalSegments, 1)}
               progressTextColor={systemConfig.progressTextColor}
+              quizCorrect={quizTransparency.quizCorrectAnswers}
+              quizWrong={quizTransparency.quizWrongAnswers}
+              quizBonus={quizTransparency.quizBonusPoints}
             />
-            <div className="mb-4 rounded-lg border bg-white/90 px-4 py-3 shadow-sm">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600">
-                <span className="text-green-700">
-                  Quiz bien: <strong>{quizTransparency.quizCorrectAnswers}</strong>
-                </span>
-                <span className="text-red-700">
-                  Quiz mal: <strong>{quizTransparency.quizWrongAnswers}</strong>
-                </span>
-                <span className="text-indigo-700">
-                  Bonus quiz: <strong>+{quizTransparency.quizBonusPoints}</strong>
-                </span>
-              </div>
-            </div>
-            
-            <div className="flex justify-between items-center mb-4">
-              <div>
-                {isMapCompleted &&
-                  progressUnlockedCount === progressTotalSegments &&
-                  progressTotalSegments > 0 && (
-                  <BoxButton 
-                    className="flex items-center gap-2 font-medium"
+
+            {isMapCompleted &&
+              progressUnlockedCount === progressTotalSegments &&
+              progressTotalSegments > 0 && (
+                <div className="mb-2">
+                  <BoxButton
+                    className="flex w-full min-h-[40px] items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-bold shadow-[0_4px_18px_rgba(217,119,6,0.35)]"
                     onClick={() => setShowCompletionModal(true)}
                   >
-                    <svg 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      viewBox="0 0 24 24" 
-                      fill="currentColor" 
-                      className="h-5 w-5"
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      className="h-5 w-5 shrink-0"
                     >
-                      <path fillRule="evenodd" d="M5.166 2.621v.858c-1.035.148-2.059.33-3.071.543a.75.75 0 00-.584.859 6.753 6.753 0 006.138 5.6 6.73 6.73 0 002.743-.356l1.918-.87a.5.5 0 01.449 0l1.918.87a6.73 6.73 0 002.743.356 6.753 6.753 0 006.138-5.6.75.75 0 00-.584-.86 47.25 47.25 0 00-3.07-.543v-.858a48.322 48.322 0 00-11.782 0z" clipRule="evenodd" />
+                      <path
+                        fillRule="evenodd"
+                        d="M5.166 2.621v.858c-1.035.148-2.059.33-3.071.543a.75.75 0 00-.584.859 6.753 6.753 0 006.138 5.6 6.73 6.73 0 002.743-.356l1.918-.87a.5.5 0 01.449 0l1.918.87a6.73 6.73 0 002.743.356 6.753 6.753 0 006.138-5.6.75.75 0 00-.584-.86 47.25 47.25 0 00-3.07-.543v-.858a48.322 48.322 0 00-11.782 0z"
+                        clipRule="evenodd"
+                      />
                       <path d="M9.5 14.25l-3.22 2.092a.75.75 0 01-1.035-.229.75.75 0 01-.054-.789L7.099 11.5l-3.22-2.092a.75.75 0 01.4-1.357l3.98-.326 1.483-3.918a.75.75 0 011.437 0l1.483 3.918 3.98.326a.75.75 0 01.4 1.357L13.773 11.5l1.906 3.824a.75.75 0 01-.837 1.003L11 14.25l-1.5-.375zm4.5 9.75h-3c-4.416 0-8-3.584-8-8v-2.909l.112.063 2.094 1.371-.6 1.199A1.75 1.75 0 004.917 16 6.3 6.3 0 008.48 17.38l1.733.78.429.195-.518 3.053a1.75 1.75 0 003.462.32L14 16.5l1.265.57a6.3 6.3 0 003.539 1a1.75 1.75 0 001.21-2.89l-.493-.986 1.207-.794a1.75 1.75 0 00.625-2.31l-.516-1.24a44.84 44.84 0 00-.742-.628A1.76 1.76 0 0018.65 8.75l-2.436.607-.469-1.152a1.75 1.75 0 00-1.587-1.014h-.358A7.555 7.555 0 0012 7c-.596 0-1.176.07-1.735.2h-.691a1.75 1.75 0 00-1.594 1.065l-.413 1.011-2.145-.53a1.75 1.75 0 00-1.45.301 1.69 1.69 0 00-.618-.99h-.002L4 8.364v-1.45l.062-.028c.719-.32 1.437-.605 2.156-.855L13.933 4c2.848 0 5.67.285 8.426.847l.64.152.063.028v.242A48.476 48.476 0 0118 6v1.636l.114.062c.284.156.568.319.85.491l.262.159.176.103.06.036.042.028.027.02.011.009L20 9l-.024-.04-.043-.066-.064-.092-.086-.119-.106-.147-.127-.173-.145-.199-.141-.188L19.17 8l-.3.5c-.242.396-.46.796-.653 1.2-.155.325-.282.657-.38.997-.09.33-.149.67-.175 1.018l.334.006.743.014 1.497.045 1.952.09c-.244-4.422-3.906-7.87-8.355-7.87-4.624 0-8.372 3.748-8.372 8.372 0 4.582 3.7 8.294 8.281 8.37l.09-.012z" />
                     </svg>
                     {systemConfig.prizeButtonText}
                   </BoxButton>
-                )}
-              </div>
+                </div>
+              )}
 
-            </div>
-            
-            <div className="flex gap-2 mb-4">
-              <OutlineBoxButton
-                size="sm"
-                onClick={() => setShowInstructionsModal(true)}
-                className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
-              >
-                <HelpCircle className="h-4 w-4" />
-                <span>{systemConfig.helpButtonText}</span>
-              </OutlineBoxButton>
-              <OutlineBoxButton
-                size="sm"
-                onClick={() => setShowSiteMapModal(true)}
-                className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
-              >
-                <Map className="h-4 w-4" />
-                <span>{systemConfig.siteMapButtonText}</span>
-              </OutlineBoxButton>
-            </div>
-            
-            <MapGrid 
+            <MapGrid
               unlockedSegments={unlockedSegments}
               campaignSlug={playerCampaignSlug}
               gapSize={systemConfig.mapGapSize} // Usar el tamaño de separación configurado en el sistema
               gridSize={systemConfig.mapGridSize} // Usar el tamaño de cuadrícula configurado
+              tileAspectRatio={systemConfig.mapSegmentAspectRatio}
+              tileObjectFit={systemConfig.mapSegmentImageFit}
             />
             
           </>
@@ -1063,14 +1109,30 @@ const MapPage = ({ campaignSlug: campaignSlugFromRoute }: MapPageProps) => {
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <OutlineBoxButton
               onClick={() => setShowCompletionModal(false)}
-              className="w-full sm:w-auto order-2 sm:order-1"
+              className="w-full sm:w-auto order-3 sm:order-1"
             >
               {systemConfig.completionCloseButtonText}
             </OutlineBoxButton>
+            {systemConfig.completionCtaEnabled &&
+              systemConfig.completionCtaUrl.trim() !== '' && (
+                <a
+                  href={systemConfig.completionCtaUrl.trim()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "pixel-art relative inline-flex items-center justify-center overflow-hidden rounded-md border-0 border-[3px] border-solid border-b-amber-900 border-r-amber-900 border-l-amber-300 border-t-amber-300 box-border bg-gradient-to-b from-amber-400 to-amber-600 px-4 py-1.5 text-sm font-bold text-white shadow-[2px_2px_0px_rgba(0,0,0,0.2)] transition-all duration-150 ease-in-out",
+                    "hover:translate-y-px hover:brightness-110 hover:border-b-amber-800 hover:border-r-amber-800 hover:border-l-amber-400 hover:border-t-amber-400 hover:shadow-[1px_1px_0px_rgba(0,0,0,0.2)]",
+                    "active:translate-y-0.5 active:brightness-90 active:shadow-none active:border-b-amber-700 active:border-r-amber-700 active:border-l-amber-500 active:border-t-amber-500",
+                    "min-h-[44px] w-full sm:w-auto order-2 sm:order-2 no-underline",
+                  )}
+                >
+                  {systemConfig.completionCtaButtonText || 'Ir al premio'}
+                </a>
+              )}
             {systemConfig.completionShowSaveButton && (
               <BoxButton
                 onClick={() => window.print()}
-                className="w-full sm:w-auto order-1 sm:order-2"
+                className="w-full sm:w-auto order-1 sm:order-3"
               >
                 {systemConfig.completionSaveButtonText}
               </BoxButton>
@@ -1106,10 +1168,10 @@ const MapPage = ({ campaignSlug: campaignSlugFromRoute }: MapPageProps) => {
                 {pendingQuiz.quizOptionLabels.map((label, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center space-x-3 rounded-md border p-3 bg-white/90"
+                    className="flex items-center gap-3 rounded-xl border-2 border-amber-200/70 bg-gradient-to-r from-white to-amber-50/40 p-3.5 shadow-sm transition-colors has-[[data-state=checked]]:border-amber-500 has-[[data-state=checked]]:bg-amber-50/80 has-[[data-state=checked]]:shadow-md"
                   >
-                    <RadioGroupItem value={String(idx)} id={`map-quiz-opt-${idx}`} />
-                    <Label htmlFor={`map-quiz-opt-${idx}`} className="cursor-pointer flex-1 font-normal">
+                    <RadioGroupItem value={String(idx)} id={`map-quiz-opt-${idx}`} className="border-amber-400 text-amber-600" />
+                    <Label htmlFor={`map-quiz-opt-${idx}`} className="cursor-pointer flex-1 text-sm font-medium leading-snug text-slate-800">
                       {label}
                     </Label>
                   </div>
@@ -1117,13 +1179,14 @@ const MapPage = ({ campaignSlug: campaignSlugFromRoute }: MapPageProps) => {
               </RadioGroup>
             </div>
           )}
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <OutlineBoxButton
               type="button"
               onClick={() => {
                 setPendingQuiz(null);
                 setQuizSelectedSlot("");
               }}
+              className="min-h-[44px] w-full rounded-xl border-2 border-amber-400/55 bg-gradient-to-b from-white to-amber-50/50 px-4 font-semibold text-slate-800 shadow-sm sm:w-auto"
             >
               Cancelar
             </OutlineBoxButton>
@@ -1131,6 +1194,7 @@ const MapPage = ({ campaignSlug: campaignSlugFromRoute }: MapPageProps) => {
               type="button"
               onClick={handleQuizSubmit}
               disabled={quizSelectedSlot === "" || isLoading}
+              className="min-h-[44px] w-full rounded-xl px-5 font-bold shadow-lg sm:w-auto"
             >
               Enviar respuesta
             </BoxButton>

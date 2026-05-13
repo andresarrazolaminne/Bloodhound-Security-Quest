@@ -77,6 +77,9 @@ export interface UnlockSegmentResponse {
   challengeToken?: string;
   quizQuestionHtml?: string;
   quizOptionLabels?: string[];
+  /** Presente tras enviar respuesta de trivia con el desbloqueo ya aplicado */
+  quizAnswerCorrect?: boolean;
+  quizBonusPoints?: number;
 }
 
 export interface PrizeResponse {
