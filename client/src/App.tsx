@@ -1,8 +1,17 @@
-import { Switch, Route, Redirect, useLocation } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
+import { LegacyAdminTenantRedirect } from "@/components/LegacyAdminTenantRedirect";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { UserProvider, useUser } from "@/context/UserContext";
+import {
+  getCampaignSlugFromPath,
+  playerScopedStorageKey,
+  setActiveCampaignSlug,
+  withUiBase,
+  UI_BASE_PATH,
+  withUiCampaign,
+} from "./lib/paths";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/AuthPage";
 import MapPage from "@/pages/MapPage";
@@ -10,12 +19,11 @@ import RegistrationPage from "@/pages/RegistrationPage";
 import AdminPage from "@/pages/AdminPage";
 import AdminLoginPage from "@/pages/AdminLoginPage";
 
-import UnlockPage from "@/pages/UnlockPage";
 import QRUnlockHandler from "@/pages/QRUnlockHandler";
 import RankingPage from "@/pages/RankingPage";
-import { Loader2 } from "lucide-react";
 import AdminProtectedRoute from "@/components/AdminProtectedRoute";
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
+import { useLocation } from "wouter";
 import { login } from "@/lib/api";
 
 // Componente para redirigir usuarios ya logueados
@@ -24,7 +32,7 @@ const ProtectedLoginRoute = () => {
 
   // Si hay un usuario logueado, redirigir al mapa
   if (currentUser) {
-    return <Redirect to="/map" />;
+    return <Redirect to={withUiCampaign("/map")} />;
   }
 
   // Si no hay usuario, mostrar página de login
@@ -34,31 +42,38 @@ const ProtectedLoginRoute = () => {
 // Componente para recuperar sesión automáticamente
 const SessionRecovery = () => {
   const { currentUser, setCurrentUser } = useUser();
-  
+  const [routerPath] = useLocation();
+
+  useLayoutEffect(() => {
+    const slug = getCampaignSlugFromPath(window.location.pathname);
+    if (slug) setActiveCampaignSlug(slug);
+  }, [routerPath]);
+
   useEffect(() => {
     const recoverSession = async () => {
       // Solo intentar recuperar si no hay usuario actual
       if (!currentUser) {
         try {
-          const savedUser = localStorage.getItem('currentUser');
-          const lastDocument = localStorage.getItem('lastDocument');
-          
-          if (savedUser && lastDocument) {
-            const parsedUser = JSON.parse(savedUser);
+          const scopedUser = localStorage.getItem(playerScopedStorageKey("currentUser"));
+          const scopedDocument = localStorage.getItem(playerScopedStorageKey("lastDocument"));
+          const apiSlug =
+            getCampaignSlugFromPath(window.location.pathname)?.trim() || undefined;
+
+          if (scopedUser && scopedDocument) {
+            const parsedUser = JSON.parse(scopedUser);
             console.log('Recuperando sesión para:', parsedUser.documentNumber);
             
             // Intentar validar la sesión con el servidor
             try {
-              const response = await login(parsedUser.documentNumber);
+              const response = await login(parsedUser.documentNumber, apiSlug);
               if (response.user) {
                 setCurrentUser(response.user);
                 console.log('Sesión recuperada exitosamente');
               }
             } catch (error) {
               console.log('Error al validar sesión, limpiando datos:', error);
-              // Si falla, limpiar datos obsoletos
-              localStorage.removeItem('currentUser');
-              localStorage.removeItem('lastDocument');
+              localStorage.removeItem(playerScopedStorageKey("currentUser"));
+              localStorage.removeItem(playerScopedStorageKey("lastDocument"));
             }
           }
         } catch (error) {
@@ -68,25 +83,46 @@ const SessionRecovery = () => {
     };
     
     recoverSession();
-  }, [currentUser, setCurrentUser]);
+  }, [currentUser, setCurrentUser, routerPath]);
   
   return null; // No renderiza nada
 };
 
 function Router() {
+  const uiRoot = withUiBase("/");
+  const uiRootNoSlash = UI_BASE_PATH ? UI_BASE_PATH : "";
+  const campaignRoot = withUiBase("/:campaignSlug");
+
   return (
     <>
       <SessionRecovery />
       <Switch>
-        <Route path="/" component={ProtectedLoginRoute} />
-        <Route path="/auth" component={ProtectedLoginRoute} />
-        <Route path="/register" component={RegistrationPage} />
-        <Route path="/map" component={MapPage} />
-        <Route path="/unlock" component={QRUnlockHandler} />
-        <Route path="/ranking" component={RankingPage} />
-        <Route path="/admin-login" component={AdminLoginPage} />
-        <Route path="/admin">
+        <Route path={uiRoot} component={ProtectedLoginRoute} />
+        {uiRootNoSlash && (
+          <Route path={uiRootNoSlash} component={ProtectedLoginRoute} />
+        )}
+        <Route path={withUiBase("/admin-login")} component={AdminLoginPage} />
+        <Route path={withUiBase("/admin")}>
           <AdminProtectedRoute component={AdminPage} />
+        </Route>
+
+        <Route path={campaignRoot} component={ProtectedLoginRoute} />
+        <Route path={withUiBase("/:campaignSlug/auth")} component={ProtectedLoginRoute} />
+        <Route path={withUiBase("/:campaignSlug/register")} component={RegistrationPage} />
+        <Route path={withUiBase("/:campaignSlug/map")}>
+          {(params: { campaignSlug?: string }) => (
+            <MapPage campaignSlug={params.campaignSlug ?? ""} />
+          )}
+        </Route>
+        <Route path={withUiBase("/:campaignSlug/unlock")} component={QRUnlockHandler} />
+        <Route path={withUiBase("/:campaignSlug/ranking")} component={RankingPage} />
+        <Route path={withUiBase("/:campaignSlug/admin-login")}>
+          <Redirect to={withUiBase("/admin-login")} />
+        </Route>
+        <Route path={withUiBase("/:campaignSlug/admin")}>
+          {(params: { campaignSlug: string }) => (
+            <LegacyAdminTenantRedirect campaignSlug={params.campaignSlug} />
+          )}
         </Route>
 
         <Route component={NotFound} />

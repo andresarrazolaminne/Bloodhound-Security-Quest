@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -19,6 +19,14 @@ import {
 import { Progress } from "@/components/ui/progress";
 import RichTextEditor from "@/components/RichTextEditor";
 import HtmlContent from "@/components/HtmlContent";
+import {
+  clearAdminTenantSlug,
+  getAdminTenantSlug,
+  getPlayerUrl,
+  setAdminTenantSlug,
+  withUiBase,
+  withUiCampaign,
+} from "@/lib/paths";
 import { 
   Tabs, 
   TabsContent, 
@@ -31,18 +39,21 @@ import {
   Pencil, 
   Trash2, 
   ExternalLink, 
-  Download, 
+  Download,
+  FileSpreadsheet,
   AlertTriangle, 
   LogOut,
   CheckCircle2,
   Clock,
   AlertCircle,
   RefreshCw,
-  Users
+  Users,
+  Copy
 
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import { MapSegmentAsset, Venue, InsertVenue } from "@shared/schema";
+import { MapSegmentAsset, Venue, InsertVenue, type Campaign, normalizeMapSegmentAspectRatioInput } from "@shared/schema";
+import { deleteUploadedAsset, listUploadedAssets, uploadAsset, type UploadedAssetDTO } from "@/lib/uploadAssets";
 import QRGenerator from '@/tools/QRGenerator';
 
 import {
@@ -54,6 +65,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 
 interface MapAssetFormData {
   segmentId: number;
@@ -66,7 +87,22 @@ interface MapAssetFormData {
   trapMessage: string;
   modalContent: string;
   generateNewCode?: boolean;
+  quizEnabled: boolean;
+  quizQuestionHtml: string;
+  quizOptions: string[];
+  quizCorrectIndex: number;
+  quizPoints: number;
 }
+
+type ImageFieldKey =
+  | "backgroundImageUrl"
+  | "loginLogoImageUrl"
+  | "registrationImageUrl"
+  | "preloadImageUrl"
+  | "headerLogoImageUrl"
+  | "footerLogoUrl"
+  | "cobrandingImageUrl"
+  | "siteMapImageUrl";
 
 const AdminPage = () => {
   // Redención de premios
@@ -87,6 +123,11 @@ const AdminPage = () => {
   const [selectedAsset, setSelectedAsset] = useState<MapSegmentAsset | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [uploadedAssets, setUploadedAssets] = useState<UploadedAssetDTO[]>([]);
+  const [isLoadingUploads, setIsLoadingUploads] = useState(false);
+  const [uploadingAsset, setUploadingAsset] = useState(false);
+  const [uploadTargetField, setUploadTargetField] = useState<ImageFieldKey>("backgroundImageUrl");
+  const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(null);
   const [systemConfig, setSystemConfig] = useState({
     instructionsText: "",
     siteMapImageUrl: "",
@@ -94,10 +135,12 @@ const AdminPage = () => {
     cobrandingImageUrl: "",
     mapGapSize: "medium" as 'none' | 'x-small' | 'small' | 'medium' | 'large',
     mapGridSize: "3x3" as '3x3' | '3x2' | '2x3' | '4x2' | '2x4',
+    mapSegmentAspectRatio: "1/1",
+    mapSegmentImageFit: "cover" as "cover" | "contain",
     // Frontend customization fields
     appTitle: "",
     backgroundImageUrl: "",
-    backgroundSize: "auto" as 'auto' | 'cover' | 'contain' | '100%' | '50%',
+    backgroundSize: "auto" as 'auto' | 'cover' | 'contain' | '100%' | '50%' | '100% 100%',
     backgroundRepeat: "repeat" as 'repeat' | 'no-repeat' | 'repeat-x' | 'repeat-y',
     backgroundPosition: "center" as 'center' | 'top' | 'bottom' | 'left' | 'right' | 'top left' | 'top right' | 'bottom left' | 'bottom right',
     gradientStartColor: "#bb2558",
@@ -130,11 +173,26 @@ const AdminPage = () => {
     headerLogoImageUrl: "",
     headerLogoSize: 32,
     preloadImageUrl: "",
+    scanButtonEnabled: true,
     scanButtonText: "",
     helpButtonText: "",
     siteMapButtonText: "",
     prizeButtonText: "",
     completionTitle: "",
+    completionRewardHeadline: "¡Reto completado!",
+    completionRewardDescription: "Con el siguiente código puedes reclamar tu premio.",
+    completionCodeSectionTitle: "Código de Redención",
+    completionCodeLabel: "Código de validación",
+    completionCodeHelpText: "Muestra este código para reclamar tu premio",
+    completionCloseButtonText: "Cerrar",
+    completionSaveButtonText: "Guardar Premio",
+    completionShowBrain: true,
+    completionShowQr: true,
+    completionShowCode: true,
+    completionShowSaveButton: true,
+    completionCtaEnabled: false,
+    completionCtaButtonText: "Ir al premio",
+    completionCtaUrl: "",
     loadingText: "",
     // Mensajes de logros y trampas
     achievementUnlockedTitle: "¡Logro Desbloqueado!",
@@ -169,6 +227,8 @@ const AdminPage = () => {
     totalScore: number;
     correctCodes: number;
     trapCodes: number;
+    quizCorrectAnswers: number;
+    quizWrongAnswers: number;
     trapPoints: Array<{ id: number; userId: number; segmentId: number; pointsAwarded: number; scannedAt: string }>;
     venue: { id: number; name: string } | null;
   }>>([]);
@@ -187,26 +247,262 @@ const AdminPage = () => {
     isTrap: false,
     trapMessage: "",
     modalContent: "",
-    generateNewCode: false
+    generateNewCode: false,
+    quizEnabled: false,
+    quizQuestionHtml: "",
+    quizOptions: ["", ""],
+    quizCorrectIndex: 0,
+    quizPoints: 5,
   });
+  /** Último HTML del enunciado (React Quill); evita guardar estado desactualizado al pulsar Guardar. */
+  const quizQuestionHtmlRef = useRef<string>("");
   
   const [segmentFilter, setSegmentFilter] = useState<"all" | "normal" | "trap">("all");
+
+  const [tenants, setTenants] = useState<Campaign[]>([]);
+  const [loadingTenants, setLoadingTenants] = useState(false);
+  const [selectedTenantSlug, setSelectedTenantSlug] = useState<string | null>(() =>
+    typeof window !== "undefined" ? getAdminTenantSlug() : null,
+  );
+  const [createTenantOpen, setCreateTenantOpen] = useState(false);
+  const [newTenantSlug, setNewTenantSlug] = useState("");
+  const [newTenantName, setNewTenantName] = useState("");
+  const [creatingTenant, setCreatingTenant] = useState(false);
+  const [togglingTenantActive, setTogglingTenantActive] = useState(false);
+  const [tenantLoadError, setTenantLoadError] = useState<string | null>(null);
+  const [deleteTenantOpen, setDeleteTenantOpen] = useState(false);
+  const [deleteTenantConfirm, setDeleteTenantConfirm] = useState("");
+  const [deletingTenant, setDeletingTenant] = useState(false);
+  const [exportingRankingXlsx, setExportingRankingXlsx] = useState(false);
 
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
   // Función para cerrar sesión
   const handleLogout = () => {
-    // Eliminar la autenticación de la sesión
     sessionStorage.removeItem("adminAuthenticated");
+    sessionStorage.removeItem("adminApiToken");
+    clearAdminTenantSlug();
 
     toast({
       title: "Sesión cerrada",
       description: "Has salido del panel de administración",
     });
 
-    // Redirigir a la página de login
-    setLocation("/admin-login");
+    setLocation(withUiBase("/admin-login"));
+  };
+
+  const loadTenants = async () => {
+    setLoadingTenants(true);
+    setTenantLoadError(null);
+    try {
+      const response = await apiRequest("GET", "/api/admin/campaigns");
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        const msg =
+          "No autorizado: el código de admin no coincide con ADMIN_API_TOKEN del servidor. Revisa .env (VITE_ADMIN_API_TOKEN) o el token en el login.";
+        setTenantLoadError(msg);
+        toast({ title: "Sesión de administrador", description: msg, variant: "destructive" });
+        return;
+      }
+      if (!response.ok) {
+        const hint = typeof data.hint === "string" ? data.hint : "";
+        const message = typeof data.message === "string" ? data.message : "No se pudo cargar la lista de campañas";
+        const full = hint ? `${message} ${hint}` : message;
+        setTenantLoadError(full);
+        toast({
+          title: "No se pueden mostrar las campañas",
+          description: full.slice(0, 500),
+          variant: "destructive",
+        });
+        return;
+      }
+      setTenants(data.campaigns || []);
+    } catch {
+      const msg = "Error de red o respuesta inválida al cargar campañas.";
+      setTenantLoadError(msg);
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally {
+      setLoadingTenants(false);
+    }
+  };
+
+  const handleCreateTenant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const slug = newTenantSlug.trim().toLowerCase();
+    const name = newTenantName.trim();
+    if (!slug || !name) {
+      toast({ title: "Completa slug y nombre", variant: "destructive" });
+      return;
+    }
+    setCreatingTenant(true);
+    try {
+      const response = await apiRequest("POST", "/api/admin/campaigns", { slug, name });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || "No se pudo crear la campaña");
+      }
+      const data = await response.json();
+      toast({ title: "Campaña creada", description: data.campaign?.name || slug });
+      setCreateTenantOpen(false);
+      setNewTenantSlug("");
+      setNewTenantName("");
+      await loadTenants();
+      setSelectedTenantSlug(data.campaign.slug);
+      setAdminTenantSlug(data.campaign.slug);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "No se pudo crear",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingTenant(false);
+    }
+  };
+
+  const handleExportRankingXlsx = async () => {
+    if (!selectedTenantSlug) return;
+    setExportingRankingXlsx(true);
+    try {
+      const q = venueFilter ? `venueId=${encodeURIComponent(venueFilter)}` : "venueId=all";
+      const res = await apiRequest("GET", `/api/admin/export/ranking-xlsx?${q}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(typeof err.message === "string" ? err.message : "No se pudo generar el Excel");
+      }
+      const blob = await res.blob();
+      const head = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
+      if (head[0] !== 0x50 || head[1] !== 0x4b) {
+        const txt = await blob.text();
+        let msg = "La respuesta no es un archivo .xlsx válido.";
+        if (txt.startsWith("{")) {
+          try {
+            const j = JSON.parse(txt) as { message?: string };
+            if (typeof j.message === "string") msg = j.message;
+          } catch {
+            /* ignore */
+          }
+        } else if (txt.startsWith("<!") || txt.startsWith("<")) {
+          msg =
+            "El servidor devolvió HTML en lugar del Excel. Comprueba la URL de la API y reinicia el servidor de desarrollo.";
+        }
+        throw new Error(msg);
+      }
+      const cd = res.headers.get("Content-Disposition");
+      let name = `ranking-${selectedTenantSlug}.xlsx`;
+      const mStar = cd?.match(/filename\*=UTF-8''([^;]+)/i);
+      const mPlain = cd?.match(/filename="([^"]+)"/i);
+      if (mStar?.[1]) {
+        try {
+          name = decodeURIComponent(mStar[1].trim());
+        } catch {
+          /* keep default */
+        }
+      } else if (mPlain?.[1]) {
+        name = mPlain[1].trim();
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast({
+        title: "Excel generado",
+        description:
+          venueFilter === ""
+            ? "Una sola hoja: todos los jugadores y columnas por segmento. Filtra por sede y descarga de nuevo para exportar solo esa sede."
+            : "Una sola hoja con los jugadores de la sede seleccionada en el filtro.",
+      });
+    } catch (e) {
+      toast({
+        title: "Error al exportar",
+        description: e instanceof Error ? e.message : "Error desconocido",
+        variant: "destructive",
+      });
+    } finally {
+      setExportingRankingXlsx(false);
+    }
+  };
+
+  const handleDeleteTenant = async () => {
+    if (!selectedTenantSlug || selectedTenantSlug === "default") return;
+    if (deleteTenantConfirm.trim() !== selectedTenantSlug) {
+      toast({
+        title: "Confirmación incorrecta",
+        description: `Escribe exactamente el slug: ${selectedTenantSlug}`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setDeletingTenant(true);
+    try {
+      const slug = selectedTenantSlug;
+      // confirmSlug en query: algunos proxies/clientes no envían bien el cuerpo en DELETE.
+      const deletePath = `/api/admin/campaigns/${encodeURIComponent(slug)}?confirmSlug=${encodeURIComponent(slug)}`;
+      const response = await apiRequest("DELETE", deletePath);
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || "No se pudo eliminar la campaña");
+      }
+      const ct = response.headers.get("content-type") ?? "";
+      if (!ct.includes("application/json")) {
+        throw new Error(
+          "Respuesta inesperada (no JSON). La petición puede no estar llegando a la API; reinicia el servidor de desarrollo.",
+        );
+      }
+      const data = (await response.json()) as { success?: boolean; message?: string };
+      if (data.success !== true) {
+        throw new Error(data.message || "El servidor no confirmó la eliminación.");
+      }
+      toast({
+        title: "Campaña eliminada",
+        description: `Se eliminaron todos los datos de «${slug}».`,
+      });
+      setDeleteTenantOpen(false);
+      setDeleteTenantConfirm("");
+      clearAdminTenantSlug();
+      setSelectedTenantSlug(null);
+      await loadTenants();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Error al eliminar",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingTenant(false);
+    }
+  };
+
+  const handleToggleTenantActive = async (active: boolean) => {
+    if (!selectedTenantSlug) return;
+    setTogglingTenantActive(true);
+    try {
+      const response = await apiRequest("PATCH", `/api/admin/campaigns/${encodeURIComponent(selectedTenantSlug)}`, {
+        isActive: active,
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || "No se pudo actualizar");
+      }
+      await loadTenants();
+      toast({
+        title: active ? "Campaña activada" : "Campaña desactivada",
+        description: "Los jugadores solo acceden a campañas activas.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Error al actualizar",
+        variant: "destructive",
+      });
+    } finally {
+      setTogglingTenantActive(false);
+    }
   };
 
   // Función para cargar la configuración del sistema
@@ -226,6 +522,8 @@ const AdminPage = () => {
         cobrandingImageUrl: config.cobrandingImageUrl || "",
         mapGapSize: config.mapGapSize || "medium",
         mapGridSize: config.mapGridSize || "3x3",
+        mapSegmentAspectRatio: normalizeMapSegmentAspectRatioInput(config.mapSegmentAspectRatio ?? "1/1"),
+        mapSegmentImageFit: config.mapSegmentImageFit === "contain" ? "contain" : "cover",
         // Frontend customization fields
         appTitle: config.appTitle || "Lanzamiento 2025",
         backgroundImageUrl: config.backgroundImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png",
@@ -250,11 +548,26 @@ const AdminPage = () => {
         headerBackgroundColor: config.headerBackgroundColor || "#3b82f6",
         headerTextColor: config.headerTextColor || "#ffffff",
         progressTextColor: config.progressTextColor || "#ffffff",
+        scanButtonEnabled: config.scanButtonEnabled ?? true,
         scanButtonText: config.scanButtonText || "¡Escanea aquí!",
         helpButtonText: config.helpButtonText || "Ayuda",
         siteMapButtonText: config.siteMapButtonText || "Mapa del Sitio",
         prizeButtonText: config.prizeButtonText || "Ver Código Premio",
         completionTitle: config.completionTitle || "¡Felicidades, has completado el reto!",
+        completionRewardHeadline: config.completionRewardHeadline || "¡Reto completado!",
+        completionRewardDescription: config.completionRewardDescription || "Con el siguiente código puedes reclamar tu premio.",
+        completionCodeSectionTitle: config.completionCodeSectionTitle || "Código de Redención",
+        completionCodeLabel: config.completionCodeLabel || "Código de validación",
+        completionCodeHelpText: config.completionCodeHelpText || "Muestra este código para reclamar tu premio",
+        completionCloseButtonText: config.completionCloseButtonText || "Cerrar",
+        completionSaveButtonText: config.completionSaveButtonText || "Guardar Premio",
+        completionShowBrain: config.completionShowBrain ?? true,
+        completionShowQr: config.completionShowQr ?? true,
+        completionShowCode: config.completionShowCode ?? true,
+        completionShowSaveButton: config.completionShowSaveButton ?? true,
+        completionCtaEnabled: config.completionCtaEnabled ?? false,
+        completionCtaButtonText: config.completionCtaButtonText || "Ir al premio",
+        completionCtaUrl: config.completionCtaUrl ?? "",
         loadingText: config.loadingText || "Cargando tu mapa...",
         loginTitle: config.loginTitle || "Lanzamiento",
         loginSubtitle: config.loginSubtitle || "2025",
@@ -373,6 +686,8 @@ const AdminPage = () => {
             cobrandingImageUrl: data.config.cobrandingImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png",
             mapGapSize: data.config.mapGapSize || "medium",
             mapGridSize: data.config.mapGridSize || "3x3",
+            mapSegmentAspectRatio: normalizeMapSegmentAspectRatioInput(data.config.mapSegmentAspectRatio ?? "1/1"),
+            mapSegmentImageFit: data.config.mapSegmentImageFit === "contain" ? "contain" : "cover",
             appTitle: data.config.appTitle || "Lanzamiento 2025",
             backgroundImageUrl: data.config.backgroundImageUrl || "https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png",
             backgroundSize: data.config.backgroundSize || "auto",
@@ -383,11 +698,26 @@ const AdminPage = () => {
             gradientMidColor: data.config.gradientMidColor || "",
             gradientDirection: data.config.gradientDirection || "175deg",
             gradientType: data.config.gradientType || "linear",
+            scanButtonEnabled: data.config.scanButtonEnabled ?? true,
             scanButtonText: data.config.scanButtonText || "¡Escanea aquí!",
             helpButtonText: data.config.helpButtonText || "Ayuda",
             siteMapButtonText: data.config.siteMapButtonText || "Mapa del Sitio",
             prizeButtonText: data.config.prizeButtonText || "Ver Código Premio",
             completionTitle: data.config.completionTitle || "¡Felicidades, has completado el reto!",
+            completionRewardHeadline: data.config.completionRewardHeadline || "¡Reto completado!",
+            completionRewardDescription: data.config.completionRewardDescription || "Con el siguiente código puedes reclamar tu premio.",
+            completionCodeSectionTitle: data.config.completionCodeSectionTitle || "Código de Redención",
+            completionCodeLabel: data.config.completionCodeLabel || "Código de validación",
+            completionCodeHelpText: data.config.completionCodeHelpText || "Muestra este código para reclamar tu premio",
+            completionCloseButtonText: data.config.completionCloseButtonText || "Cerrar",
+            completionSaveButtonText: data.config.completionSaveButtonText || "Guardar Premio",
+            completionShowBrain: data.config.completionShowBrain ?? true,
+            completionShowQr: data.config.completionShowQr ?? true,
+            completionShowCode: data.config.completionShowCode ?? true,
+            completionShowSaveButton: data.config.completionShowSaveButton ?? true,
+            completionCtaEnabled: data.config.completionCtaEnabled ?? false,
+            completionCtaButtonText: data.config.completionCtaButtonText || "Ir al premio",
+            completionCtaUrl: data.config.completionCtaUrl ?? "",
             loadingText: data.config.loadingText || "Cargando tu mapa...",
             // Mensajes de logros y trampas
             achievementUnlockedTitle: data.config.achievementUnlockedTitle || "¡Logro Desbloqueado!",
@@ -437,13 +767,22 @@ const AdminPage = () => {
     }
   };
 
-  // Cargar assets de segmentos del mapa y configuración del sistema al iniciar
   useEffect(() => {
+    loadTenants();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedTenantSlug) {
+      clearAdminTenantSlug();
+      return;
+    }
+    setAdminTenantSlug(selectedTenantSlug);
     fetchMapAssets();
     fetchSystemConfig();
     fetchUserRanking();
     fetchVenues();
-  }, []);
+    fetchUploadedAssets();
+  }, [selectedTenantSlug]);
   
   // Filtrar los usuarios cuando cambia el filtro o los datos
   useEffect(() => {
@@ -473,8 +812,20 @@ const AdminPage = () => {
       setLoadingAssets(true);
       const response = await apiRequest("GET", "/api/admin/map-assets");
       const data = await response.json();
-      setMapAssets(data.assets);
+      const assets = data?.assets;
+      setMapAssets(Array.isArray(assets) ? assets : []);
+      if (!response.ok) {
+        toast({
+          title: "Error",
+          description:
+            typeof data?.message === "string"
+              ? data.message
+              : "No se pudieron cargar los segmentos del mapa",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
+      setMapAssets([]);
       toast({
         title: "Error",
         description: "Error al cargar los segmentos del mapa",
@@ -499,6 +850,45 @@ const AdminPage = () => {
       });
     } finally {
       setLoadingVenues(false);
+    }
+  };
+
+  const fetchUploadedAssets = async () => {
+    try {
+      setIsLoadingUploads(true);
+      const assets = await listUploadedAssets();
+      setUploadedAssets(assets);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Error al cargar archivos subidos",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingUploads(false);
+    }
+  };
+
+  const handleApplyUploadedAsset = (field: ImageFieldKey, publicUrl: string) => {
+    setSystemConfig((prev) => ({
+      ...prev,
+      [field]: publicUrl,
+    }));
+  };
+
+  const handleCopyUploadedAssetUrl = async (publicUrl: string) => {
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      toast({
+        title: "URL copiada",
+        description: "La URL de la imagen fue copiada al portapapeles.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo copiar la URL. Intenta manualmente.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -641,8 +1031,14 @@ const AdminPage = () => {
       isTrap: false,
       trapMessage: "",
       modalContent: "",
-      generateNewCode: true
+      generateNewCode: true,
+      quizEnabled: false,
+      quizQuestionHtml: "",
+      quizOptions: ["", ""],
+      quizCorrectIndex: 0,
+      quizPoints: 5,
     });
+    quizQuestionHtmlRef.current = "";
     setDialogOpen(true);
   };
 
@@ -650,6 +1046,8 @@ const AdminPage = () => {
   const handleEditAsset = (asset: MapSegmentAsset) => {
     setDialogMode("edit");
     setSelectedAsset(asset);
+    const qOpts = Array.isArray(asset.quizOptions) ? [...asset.quizOptions] : ["", ""];
+    while (qOpts.length < 2) qOpts.push("");
     setFormData({
       segmentId: asset.segmentId,
       imageUrl: asset.imageUrl,
@@ -658,10 +1056,19 @@ const AdminPage = () => {
       description: asset.description || "",
       securityCode: asset.securityCode || "",
       isTrap: asset.isTrap || false,
-      trapMessage: (asset as any).trapMessage || "",
-      modalContent: (asset as any).modalContent || "",
-      generateNewCode: false
+      trapMessage: asset.trapMessage || "",
+      modalContent: asset.modalContent || "",
+      generateNewCode: false,
+      quizEnabled: Boolean(asset.quizEnabled),
+      quizQuestionHtml: asset.quizQuestionHtml || "",
+      quizOptions: qOpts,
+      quizCorrectIndex:
+        typeof asset.quizCorrectIndex === "number" && asset.quizCorrectIndex >= 0
+          ? asset.quizCorrectIndex
+          : 0,
+      quizPoints: typeof asset.quizPoints === "number" ? asset.quizPoints : 5,
     });
+    quizQuestionHtmlRef.current = asset.quizQuestionHtml || "";
     setDialogOpen(true);
   };
 
@@ -670,21 +1077,83 @@ const AdminPage = () => {
     try {
       setLoadingAssets(true);
 
+      let trimmedOpts: string[] = [];
+      let mappedCorrect = -1;
+      if (formData.quizEnabled && !formData.isTrap) {
+        for (let i = 0; i < formData.quizOptions.length; i++) {
+          const t = formData.quizOptions[i]!.trim();
+          if (!t) continue;
+          if (i === formData.quizCorrectIndex) mappedCorrect = trimmedOpts.length;
+          trimmedOpts.push(t);
+        }
+        if (trimmedOpts.length < 2) {
+          toast({
+            title: "Pregunta tipo test",
+            description: "Añade al menos 2 respuestas con texto.",
+            variant: "destructive",
+          });
+          setLoadingAssets(false);
+          return;
+        }
+        if (mappedCorrect < 0) {
+          toast({
+            title: "Pregunta tipo test",
+            description: "Marca como correcta una fila que tenga texto (radio junto a la opción).",
+            variant: "destructive",
+          });
+          setLoadingAssets(false);
+          return;
+        }
+      }
+
+      const latestQuestionHtml = (
+        quizQuestionHtmlRef.current ??
+        formData.quizQuestionHtml ??
+        ""
+      ).trim();
+
+      const quizPayload =
+        formData.quizEnabled && !formData.isTrap && trimmedOpts.length >= 2 && mappedCorrect >= 0
+          ? {
+              quizEnabled: true as const,
+              quizQuestionHtml: latestQuestionHtml || null,
+              quizOptions: trimmedOpts,
+              quizCorrectIndex: mappedCorrect,
+              quizPoints: Math.max(0, Math.min(1000, formData.quizPoints)),
+            }
+          : {
+              quizEnabled: false as const,
+              quizQuestionHtml: null,
+              quizOptions: null,
+              quizCorrectIndex: null,
+              quizPoints: 5,
+            };
+
       const payload = {
-        ...formData,
+        segmentId: formData.segmentId,
+        imageUrl: formData.imageUrl,
         redirectUrl: formData.redirectUrl || null,
+        title: formData.title,
         description: formData.description || null,
-        // Si el usuario eligió generar un nuevo código, incluimos la bandera
-        // para que el servidor genere uno nuevo
-        generateNewCode: formData.generateNewCode || false
+        securityCode: formData.securityCode ?? "",
+        isTrap: formData.isTrap,
+        trapMessage: formData.trapMessage || null,
+        modalContent: formData.modalContent || null,
+        generateNewCode: formData.generateNewCode || false,
+        ...quizPayload,
       };
 
       if (dialogMode === "create") {
-        // Crear nuevo asset
-        const createResponse = await apiRequest("POST", "/api/admin/map-assets", payload);
+        const { generateNewCode: _g, ...createBody } = payload;
+        const createResponse = await apiRequest("POST", "/api/admin/map-assets", createBody);
         if (!createResponse.ok) {
           const errorData = await createResponse.json();
-          throw new Error(errorData.message || 'Error al crear el segmento');
+          const zodFirst = Array.isArray(errorData.errors) ? errorData.errors[0] : undefined;
+          const zodHint =
+            zodFirst && typeof zodFirst.message === "string"
+              ? `${zodFirst.path?.length ? zodFirst.path.join(".") + ": " : ""}${zodFirst.message}`
+              : "";
+          throw new Error(zodHint || errorData.message || "Error al crear el segmento");
         }
         toast({
           title: "Éxito",
@@ -695,7 +1164,12 @@ const AdminPage = () => {
         const updateResponse = await apiRequest("PUT", `/api/admin/map-assets/${formData.segmentId}`, payload);
         if (!updateResponse.ok) {
           const errorData = await updateResponse.json();
-          throw new Error(errorData.message || 'Error al actualizar el segmento');
+          const zodFirst = Array.isArray(errorData.errors) ? errorData.errors[0] : undefined;
+          const zodHint =
+            zodFirst && typeof zodFirst.message === "string"
+              ? `${zodFirst.path?.length ? zodFirst.path.join(".") + ": " : ""}${zodFirst.message}`
+              : "";
+          throw new Error(zodHint || errorData.message || "Error al actualizar el segmento");
         }
         toast({
           title: "Éxito",
@@ -706,7 +1180,7 @@ const AdminPage = () => {
       // Recargar la lista de assets
       fetchMapAssets();
       setDialogOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
         description: `Error al guardar el segmento: ${error.message || 'Error desconocido'}`,
@@ -802,21 +1276,224 @@ const AdminPage = () => {
     }
   };
 
+  const selectedTenant = tenants.find((t) => t.slug === selectedTenantSlug);
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="flex justify-between items-center mb-6 max-w-5xl mx-auto">
-        <h1 className="text-3xl font-bold">Panel de Administración</h1>
-        <Button 
-          variant="outline" 
-          onClick={handleLogout}
-          className="flex items-center gap-2"
+      <div className="max-w-5xl mx-auto space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-3xl font-bold">Panel de Administración</h1>
+          <Button variant="outline" onClick={handleLogout} className="flex items-center gap-2 shrink-0">
+            <LogOut className="h-4 w-4" />
+            Cerrar Sesión
+          </Button>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Campañas (tenants)</CardTitle>
+            <CardDescription>
+              Crea campañas y elige una para configurar mapa, sedes, diseño y ranking. Los datos están aislados por
+              campaña.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {tenantLoadError ? (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Problema al cargar campañas</AlertTitle>
+                <AlertDescription className="text-sm whitespace-pre-wrap">{tenantLoadError}</AlertDescription>
+              </Alert>
+            ) : null}
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+              <div className="flex-1 space-y-2 min-w-0">
+                <Label htmlFor="tenant-select">Campaña activa en el panel</Label>
+                <Select
+                  value={selectedTenantSlug ?? undefined}
+                  onValueChange={(v) => setSelectedTenantSlug(v || null)}
+                  disabled={loadingTenants}
+                >
+                  <SelectTrigger id="tenant-select" className="w-full">
+                    <SelectValue placeholder={loadingTenants ? "Cargando…" : "Selecciona una campaña…"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tenants.map((t) => (
+                      <SelectItem key={t.id} value={t.slug}>
+                        {t.name} ({t.slug})
+                        {!t.isActive ? " — inactiva" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="secondary" onClick={() => setCreateTenantOpen(true)}>
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  Nueva campaña
+                </Button>
+                {selectedTenantSlug ? (
+                  <Button type="button" variant="outline" asChild>
+                    <a
+                      href={withUiCampaign("/map", selectedTenantSlug)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Abrir app (jugador)
+                    </a>
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+            {selectedTenant ? (
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-md border bg-muted/40 px-4 py-3">
+                <p className="text-sm text-muted-foreground">
+                  Slug público: <span className="font-mono text-foreground">{selectedTenant.slug}</span>
+                  <span className="block mt-1 text-xs break-all">
+                    URL ejemplo (login): {getPlayerUrl("/auth", selectedTenant.slug)}
+                  </span>
+                </p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="tenant-active"
+                      checked={selectedTenant.isActive}
+                      disabled={togglingTenantActive}
+                      onCheckedChange={handleToggleTenantActive}
+                    />
+                    <Label htmlFor="tenant-active" className="text-sm font-normal cursor-pointer">
+                      Campaña activa
+                    </Label>
+                  </div>
+                  {selectedTenant.slug !== "default" ? (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => {
+                        setDeleteTenantConfirm("");
+                        setDeleteTenantOpen(true);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Eliminar campaña
+                    </Button>
+                  ) : (
+                    <p className="text-xs text-muted-foreground max-w-[200px]">
+                      La campaña <span className="font-mono">default</span> no se puede eliminar.
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        <Dialog
+          open={deleteTenantOpen}
+          onOpenChange={(open) => {
+            setDeleteTenantOpen(open);
+            if (!open) setDeleteTenantConfirm("");
+          }}
         >
-          <LogOut className="h-4 w-4" />
-          Cerrar Sesión
-        </Button>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Eliminar campaña</DialogTitle>
+              <DialogDescription asChild>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p>
+                    Se borrará de forma <strong className="text-destructive">permanente</strong> la campaña{" "}
+                    <span className="font-mono text-foreground">{selectedTenantSlug}</span> y todo lo asociado:
+                    usuarios, segmentos, premios, sedes, puntuaciones, configuración, activos subidos y archivos en
+                    disco (si aplica).
+                  </p>
+                  <p>Para confirmar, escribe el slug exacto abajo.</p>
+                </div>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 py-2">
+              <Label htmlFor="delete-confirm-slug">Slug a eliminar</Label>
+              <Input
+                id="delete-confirm-slug"
+                value={deleteTenantConfirm}
+                onChange={(e) => setDeleteTenantConfirm(e.target.value)}
+                placeholder={selectedTenantSlug ?? ""}
+                autoComplete="off"
+                className="font-mono"
+              />
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button type="button" variant="outline" onClick={() => setDeleteTenantOpen(false)} disabled={deletingTenant}>
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={deletingTenant || deleteTenantConfirm.trim() !== selectedTenantSlug}
+                onClick={() => void handleDeleteTenant()}
+              >
+                {deletingTenant ? "Eliminando…" : "Eliminar permanentemente"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={createTenantOpen} onOpenChange={setCreateTenantOpen}>
+          <DialogContent className="sm:max-w-md">
+            <form onSubmit={handleCreateTenant}>
+              <DialogHeader>
+                <DialogTitle>Nueva campaña</DialogTitle>
+                <DialogDescription>
+                  El slug define la URL (solo minúsculas, números y guiones). Ejemplo:{" "}
+                  <span className="font-mono">evento-2026</span>.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 py-2">
+                <div className="space-y-2">
+                  <Label htmlFor="new-slug">Slug</Label>
+                  <Input
+                    id="new-slug"
+                    value={newTenantSlug}
+                    onChange={(e) => setNewTenantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                    placeholder="mi-evento"
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-name">Nombre visible</Label>
+                  <Input
+                    id="new-name"
+                    value={newTenantName}
+                    onChange={(e) => setNewTenantName(e.target.value)}
+                    placeholder="Lanzamiento 2026"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button type="button" variant="outline" onClick={() => setCreateTenantOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={creatingTenant}>
+                  {creatingTenant ? "Creando…" : "Crear"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      <Tabs defaultValue="prizes" className="max-w-5xl mx-auto">
+      {!selectedTenantSlug ? (
+        <div className="max-w-5xl mx-auto mt-8">
+          <Card>
+            <CardContent className="py-12 text-center text-muted-foreground">
+              Selecciona una campaña arriba para usar premios, segmentos, sedes, QR, ranking y configuración.
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+      <Tabs defaultValue="prizes" className="max-w-5xl mx-auto mt-8">
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-7 mb-6">
           <TabsTrigger value="prizes" className="text-xs md:text-sm px-2 py-2">
             <div className="flex flex-col items-center gap-1">
@@ -1039,11 +1716,22 @@ const AdminPage = () => {
                     })
                     .map((asset) => (
                     <Card key={asset.id} className="overflow-hidden">
-                      <div className="relative aspect-square">
+                      <div
+                        className="relative w-full bg-gray-100"
+                        style={{
+                          aspectRatio: normalizeMapSegmentAspectRatioInput(
+                            systemConfig.mapSegmentAspectRatio,
+                          ).replace("/", " / "),
+                        }}
+                      >
                         <img 
                           src={asset.imageUrl} 
                           alt={`Segmento ${asset.segmentId}`}
-                          className="w-full h-full object-cover"
+                          className={
+                            systemConfig.mapSegmentImageFit === "contain"
+                              ? "w-full h-full object-contain"
+                              : "w-full h-full object-cover"
+                          }
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = "https://placehold.co/400x400/e2e8f0/64748b?text=Imagen+no+disponible";
                           }}
@@ -1054,6 +1742,11 @@ const AdminPage = () => {
                         {asset.isTrap && (
                           <div className="absolute top-2 left-2 bg-orange-500 text-white px-2 py-1 rounded text-xs font-semibold">
                             🎯 TRAMPA
+                          </div>
+                        )}
+                        {asset.quizEnabled && !asset.isTrap && (
+                          <div className="absolute bottom-2 left-2 bg-indigo-600 text-white px-2 py-1 rounded text-xs font-semibold">
+                            Pregunta
                           </div>
                         )}
                       </div>
@@ -1196,24 +1889,29 @@ const AdminPage = () => {
                             Ver Ranking
                           </Button>
                           
-                          {venueRankings[venue.id] && (
+                          {(() => {
+                            const ranking = venueRankings[venue.id] ?? [];
+                            // If ranking can't be loaded (e.g. backend 500), show nothing instead of crashing.
+                            if (!ranking) return null;
+                            return (
                             <div className="mt-3 p-3 bg-gray-50 rounded-md">
                               <h4 className="font-medium text-sm mb-2">Ranking de {venue.name}</h4>
                               <div className="space-y-1 max-h-32 overflow-y-auto">
-                                {venueRankings[venue.id].slice(0, 5).map((participant, index) => (
+                                {ranking.slice(0, 5).map((participant: any, index: number) => (
                                   <div key={participant.user.id} className="flex justify-between text-xs">
                                     <span>#{index + 1} {participant.user.name}</span>
                                     <span className="font-medium">{participant.completionPercentage.toFixed(1)}%</span>
                                   </div>
                                 ))}
-                                {venueRankings[venue.id].length > 5 && (
+                                {ranking.length > 5 && (
                                   <div className="text-xs text-gray-500 text-center">
-                                    +{venueRankings[venue.id].length - 5} más...
+                                    +{ranking.length - 5} más...
                                   </div>
                                 )}
                               </div>
                             </div>
-                          )}
+                            );
+                          })()}
                         </div>
                       </CardContent>
 
@@ -1252,7 +1950,7 @@ const AdminPage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
-              <QRGenerator />
+              <QRGenerator campaignSlug={selectedTenantSlug ?? undefined} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -1276,7 +1974,9 @@ const AdminPage = () => {
                     footerLogoUrl: systemConfig.footerLogoUrl,
                     cobrandingImageUrl: systemConfig.cobrandingImageUrl,
                     mapGapSize: systemConfig.mapGapSize,
-                    mapGridSize: systemConfig.mapGridSize
+                    mapGridSize: systemConfig.mapGridSize,
+                    mapSegmentAspectRatio: systemConfig.mapSegmentAspectRatio,
+                    mapSegmentImageFit: systemConfig.mapSegmentImageFit,
                   });
                   
                   toast({
@@ -1582,6 +2282,85 @@ const AdminPage = () => {
                   </p>
                 </div>
 
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Proporción de cada ficha del mapa
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {(
+                      [
+                        { label: "1:1", value: "1/1" },
+                        { label: "4:3", value: "4/3" },
+                        { label: "3:2", value: "3/2" },
+                        { label: "16:9", value: "16/9" },
+                        { label: "3:4", value: "3/4" },
+                        { label: "2:3", value: "2/3" },
+                      ] as const
+                    ).map((preset) => (
+                      <Button
+                        key={preset.value}
+                        type="button"
+                        size="sm"
+                        variant={
+                          systemConfig.mapSegmentAspectRatio === preset.value ? "default" : "outline"
+                        }
+                        onClick={() =>
+                          setSystemConfig({
+                            ...systemConfig,
+                            mapSegmentAspectRatio: preset.value,
+                          })
+                        }
+                      >
+                        {preset.label}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+                    <div className="flex-1 space-y-1">
+                      <label htmlFor="map-segment-aspect-custom" className="text-xs text-gray-500">
+                        Personalizado (ancho/alto, p. ej. 5/4)
+                      </label>
+                      <Input
+                        id="map-segment-aspect-custom"
+                        value={systemConfig.mapSegmentAspectRatio}
+                        onChange={(e) =>
+                          setSystemConfig({
+                            ...systemConfig,
+                            mapSegmentAspectRatio: e.target.value,
+                          })
+                        }
+                        placeholder="4/3"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={systemConfig.mapSegmentImageFit === "cover" ? "default" : "outline"}
+                        onClick={() =>
+                          setSystemConfig({ ...systemConfig, mapSegmentImageFit: "cover" })
+                        }
+                      >
+                        Recortar (cover)
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={systemConfig.mapSegmentImageFit === "contain" ? "default" : "outline"}
+                        onClick={() =>
+                          setSystemConfig({ ...systemConfig, mapSegmentImageFit: "contain" })
+                        }
+                      >
+                        Encajar (contain)
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Usa la misma proporción que tus imágenes de segmento; &quot;Encajar&quot; evita recortes
+                    si no coinciden del todo.
+                  </p>
+                </div>
+
                 <Button type="submit" className="w-full">
                   Guardar Configuración
                 </Button>
@@ -1666,6 +2445,25 @@ const AdminPage = () => {
                     </option>
                   ))}
                 </select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={exportingRankingXlsx || loadingRanking}
+                  onClick={() => void handleExportRankingXlsx()}
+                  className="shrink-0"
+                >
+                  {exportingRankingXlsx ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generando…
+                    </>
+                  ) : (
+                    <>
+                      <FileSpreadsheet className="mr-2 h-4 w-4" />
+                      Descargar Excel
+                    </>
+                  )}
+                </Button>
               </div>
               
               <div className="rounded-md border">
@@ -1679,6 +2477,8 @@ const AdminPage = () => {
                       <TableHead className="w-32 text-center">Puntaje</TableHead>
                       <TableHead className="w-32 text-center">Códigos Correctos</TableHead>
                       <TableHead className="w-32 text-center">Códigos Trampa</TableHead>
+                      <TableHead className="w-28 text-center">Quiz bien</TableHead>
+                      <TableHead className="w-28 text-center">Quiz mal</TableHead>
                       <TableHead className="w-32 text-center">Progreso</TableHead>
                       <TableHead className="w-32 text-center">Estado</TableHead>
                       <TableHead className="w-24 text-center">Acciones</TableHead>
@@ -1687,13 +2487,13 @@ const AdminPage = () => {
                   <TableBody>
                     {loadingRanking ? (
                       <TableRow>
-                        <TableCell colSpan={10} className="text-center py-10">
+                        <TableCell colSpan={12} className="text-center py-10">
                           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
                         </TableCell>
                       </TableRow>
                     ) : filteredRanking.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={10} className="text-center py-6 text-gray-500">
+                        <TableCell colSpan={12} className="text-center py-6 text-gray-500">
                           No hay usuarios registrados o que coincidan con el filtro
                         </TableCell>
                       </TableRow>
@@ -1732,6 +2532,18 @@ const AdminPage = () => {
                             <Badge variant="destructive" className="gap-1">
                               <AlertCircle className="h-3.5 w-3.5" />
                               {item.trapCodes}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="success" className="gap-1">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              {item.quizCorrectAnswers ?? 0}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="destructive" className="gap-1">
+                              <AlertCircle className="h-3.5 w-3.5" />
+                              {item.quizWrongAnswers ?? 0}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-center">
@@ -1866,6 +2678,27 @@ const AdminPage = () => {
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Mostrar Botón de Escaneo en Mapa
+                          </label>
+                          <div className="flex items-center space-x-2 mt-2">
+                            <input
+                              type="checkbox"
+                              id="scan-button-enabled"
+                              checked={systemConfig.scanButtonEnabled}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                scanButtonEnabled: e.target.checked
+                              })}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <label htmlFor="scan-button-enabled" className="text-sm font-medium text-gray-700">
+                              Habilitado
+                            </label>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
                           <label htmlFor="scan-button-text" className="block text-sm font-medium text-gray-700">
                             Texto del Botón de Escaneo
                           </label>
@@ -1947,6 +2780,237 @@ const AdminPage = () => {
                         <p className="text-xs text-gray-500">
                           Mensaje que se muestra durante las pantallas de carga
                         </p>
+                      </div>
+                    </div>
+
+                    {/* Modal de victoria: textos y componentes */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Modal de Victoria (Premio)</h3>
+
+                      <div className="space-y-4 bg-amber-50 p-4 rounded-lg border border-amber-100">
+                        <p className="text-sm text-amber-900">
+                          Personaliza exactamente qué verá el jugador al completar el reto: textos, botones y componentes visibles.
+                        </p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label htmlFor="completion-reward-headline" className="block text-sm font-medium text-gray-700">
+                              Título del Mensaje de Premio
+                            </label>
+                            <Input
+                              id="completion-reward-headline"
+                              value={systemConfig.completionRewardHeadline}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionRewardHeadline: e.target.value
+                              })}
+                              placeholder="¡Reto completado!"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <label htmlFor="completion-reward-description" className="block text-sm font-medium text-gray-700">
+                              Descripción del Premio
+                            </label>
+                            <Input
+                              id="completion-reward-description"
+                              value={systemConfig.completionRewardDescription}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionRewardDescription: e.target.value
+                              })}
+                              placeholder="Con el siguiente código puedes reclamar tu premio."
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <label htmlFor="completion-code-section-title" className="block text-sm font-medium text-gray-700">
+                              Título de la Tarjeta de Código
+                            </label>
+                            <Input
+                              id="completion-code-section-title"
+                              value={systemConfig.completionCodeSectionTitle}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionCodeSectionTitle: e.target.value
+                              })}
+                              placeholder="Código de Redención"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <label htmlFor="completion-code-label" className="block text-sm font-medium text-gray-700">
+                              Etiqueta del Código
+                            </label>
+                            <Input
+                              id="completion-code-label"
+                              value={systemConfig.completionCodeLabel}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionCodeLabel: e.target.value
+                              })}
+                              placeholder="Código de validación"
+                            />
+                          </div>
+
+                          <div className="space-y-2 md:col-span-2">
+                            <label htmlFor="completion-code-help-text" className="block text-sm font-medium text-gray-700">
+                              Texto de Ayuda del Código
+                            </label>
+                            <Input
+                              id="completion-code-help-text"
+                              value={systemConfig.completionCodeHelpText}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionCodeHelpText: e.target.value
+                              })}
+                              placeholder="Muestra este código para reclamar tu premio"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <label htmlFor="completion-close-button-text" className="block text-sm font-medium text-gray-700">
+                              Texto del Botón Secundario
+                            </label>
+                            <Input
+                              id="completion-close-button-text"
+                              value={systemConfig.completionCloseButtonText}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionCloseButtonText: e.target.value
+                              })}
+                              placeholder="Cerrar"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <label htmlFor="completion-save-button-text" className="block text-sm font-medium text-gray-700">
+                              Texto del Botón Principal
+                            </label>
+                            <Input
+                              id="completion-save-button-text"
+                              value={systemConfig.completionSaveButtonText}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionSaveButtonText: e.target.value
+                              })}
+                              placeholder="Guardar Premio"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-3 border-t border-amber-200 pt-4 mt-2">
+                          <p className="text-sm font-medium text-gray-800">
+                            Botón con enlace (se abre en una pestaña nueva)
+                          </p>
+                          <label className="flex items-center gap-2 text-sm text-gray-700">
+                            <input
+                              type="checkbox"
+                              checked={systemConfig.completionCtaEnabled}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionCtaEnabled: e.target.checked
+                              })}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            Mostrar botón con enlace
+                          </label>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label htmlFor="completion-cta-button-text" className="block text-sm font-medium text-gray-700">
+                                Texto del botón
+                              </label>
+                              <Input
+                                id="completion-cta-button-text"
+                                value={systemConfig.completionCtaButtonText}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  completionCtaButtonText: e.target.value
+                                })}
+                                placeholder="Ir al premio"
+                                disabled={!systemConfig.completionCtaEnabled}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label htmlFor="completion-cta-url" className="block text-sm font-medium text-gray-700">
+                                URL de destino
+                              </label>
+                              <Input
+                                id="completion-cta-url"
+                                type="url"
+                                value={systemConfig.completionCtaUrl}
+                                onChange={(e) => setSystemConfig({
+                                  ...systemConfig,
+                                  completionCtaUrl: e.target.value
+                                })}
+                                placeholder="https://ejemplo.com/premio"
+                                disabled={!systemConfig.completionCtaEnabled}
+                              />
+                              <p className="text-xs text-gray-500">
+                                Solo http o https. El botón no se muestra al jugador si la URL está vacía.
+                              </p>
+                            </div>
+                          </div>
+                          {systemConfig.completionCtaEnabled && systemConfig.completionCtaUrl.trim() === "" && (
+                            <p className="text-xs text-amber-800 bg-amber-100/80 rounded px-2 py-1.5">
+                              Activa el enlace pero indica una URL válida para que el botón aparezca en el mapa.
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                          <label className="flex items-center gap-2 text-sm text-gray-700">
+                            <input
+                              type="checkbox"
+                              checked={systemConfig.completionShowBrain}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionShowBrain: e.target.checked
+                              })}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            Mostrar icono animado (cerebro)
+                          </label>
+
+                          <label className="flex items-center gap-2 text-sm text-gray-700">
+                            <input
+                              type="checkbox"
+                              checked={systemConfig.completionShowQr}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionShowQr: e.target.checked
+                              })}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            Mostrar QR de redención
+                          </label>
+
+                          <label className="flex items-center gap-2 text-sm text-gray-700">
+                            <input
+                              type="checkbox"
+                              checked={systemConfig.completionShowCode}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionShowCode: e.target.checked
+                              })}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            Mostrar código en texto
+                          </label>
+
+                          <label className="flex items-center gap-2 text-sm text-gray-700">
+                            <input
+                              type="checkbox"
+                              checked={systemConfig.completionShowSaveButton}
+                              onChange={(e) => setSystemConfig({
+                                ...systemConfig,
+                                completionShowSaveButton: e.target.checked
+                              })}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            Mostrar botón principal (guardar/imprimir)
+                          </label>
+                        </div>
                       </div>
                     </div>
 
@@ -2046,6 +3110,155 @@ const AdminPage = () => {
 
                 <TabsContent value="images" className="space-y-6">
                   <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2 bg-purple-50 px-3 py-2 rounded-t-lg">
+                        📁 Biblioteca de Imágenes
+                      </h3>
+                      <div className="bg-purple-50 p-4 rounded-b-lg space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div className="space-y-2">
+                            <label className="block text-sm font-medium text-gray-700">Campo objetivo</label>
+                            <select
+                              value={uploadTargetField}
+                              onChange={(e) => setUploadTargetField(e.target.value as ImageFieldKey)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="backgroundImageUrl">Fondo de página</option>
+                              <option value="loginLogoImageUrl">Logo de login</option>
+                              <option value="registrationImageUrl">Imagen de registro</option>
+                              <option value="preloadImageUrl">Imagen de carga</option>
+                              <option value="headerLogoImageUrl">Logo de cabecera</option>
+                              <option value="footerLogoUrl">Logo de pie</option>
+                              <option value="cobrandingImageUrl">Imagen cobranding</option>
+                              <option value="siteMapImageUrl">Mapa del sitio</option>
+                            </select>
+                          </div>
+                          <div className="space-y-2 md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700">Subir archivo</label>
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => setSelectedUploadFile(e.target.files?.[0] ?? null)}
+                            />
+                            <p className="text-xs text-gray-500">PNG/JPG/WEBP/GIF/SVG</p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            onClick={async () => {
+                              if (!selectedUploadFile) {
+                                toast({
+                                  title: "Selecciona un archivo",
+                                  description: "Primero elige una imagen para subir.",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+                              try {
+                                setUploadingAsset(true);
+                                await uploadAsset(selectedUploadFile);
+                                setSelectedUploadFile(null);
+                                await fetchUploadedAssets();
+                                toast({
+                                  title: "Archivo subido",
+                                  description: "Listo para usar en la configuración.",
+                                });
+                              } catch (error) {
+                                toast({
+                                  title: "Error",
+                                  description: "No se pudo subir el archivo.",
+                                  variant: "destructive",
+                                });
+                              } finally {
+                                setUploadingAsset(false);
+                              }
+                            }}
+                            disabled={uploadingAsset}
+                          >
+                            {uploadingAsset ? "Subiendo..." : "Subir imagen"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => fetchUploadedAssets()}
+                            disabled={isLoadingUploads}
+                          >
+                            <RefreshCw className="h-4 w-4 mr-1" />
+                            Refrescar
+                          </Button>
+                        </div>
+
+                        {uploadedAssets.length === 0 ? (
+                          <p className="text-sm text-gray-600">
+                            {isLoadingUploads ? "Cargando archivos..." : "No hay archivos subidos todavía."}
+                          </p>
+                        ) : (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {uploadedAssets.map((asset) => (
+                              <div
+                                key={asset.id}
+                                className="border border-gray-200 rounded-lg p-2 space-y-2 bg-white"
+                              >
+                                <div className="h-24 w-full bg-gray-50 rounded overflow-hidden flex items-center justify-center">
+                                  <img
+                                    src={asset.publicUrl}
+                                    alt={asset.originalName}
+                                    className="max-h-24 w-full object-contain"
+                                  />
+                                </div>
+                                <p className="text-[10px] text-gray-600 truncate" title={asset.originalName}>
+                                  {asset.originalName}
+                                </p>
+                                <div className="flex gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="secondary"
+                                    className="h-8 px-2 text-xs flex-1"
+                                    onClick={() => handleApplyUploadedAsset(uploadTargetField, asset.publicUrl)}
+                                  >
+                                    Usar
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="h-8 px-2 text-xs"
+                                    onClick={() => handleCopyUploadedAssetUrl(asset.publicUrl)}
+                                  >
+                                    <Copy className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    className="h-8 px-2 text-xs"
+                                    onClick={async () => {
+                                      try {
+                                        await deleteUploadedAsset(asset.id);
+                                        await fetchUploadedAssets();
+                                        toast({
+                                          title: "Eliminado",
+                                          description: "El archivo fue eliminado.",
+                                        });
+                                      } catch (error) {
+                                        toast({
+                                          title: "Error",
+                                          description: "No se pudo eliminar el archivo.",
+                                          variant: "destructive",
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Background Settings */}
                     <div className="space-y-4">
                       <h3 className="text-lg font-semibold text-gray-900 border-b pb-2 bg-blue-50 px-3 py-2 rounded-t-lg">
@@ -2223,7 +3436,10 @@ const AdminPage = () => {
                               value={systemConfig.headerLogoSize}
                               onChange={(e) => setSystemConfig({
                                 ...systemConfig,
-                                headerLogoSize: parseInt(e.target.value)
+                                headerLogoSize: (() => {
+                                  const n = parseInt(e.target.value, 10);
+                                  return Number.isFinite(n) ? n : 32;
+                                })(),
                               })}
                               placeholder="32"
                             />
@@ -3161,16 +4377,121 @@ const AdminPage = () => {
                 </TabsContent>
 
                 <TabsContent value="login" className="space-y-6">
-                  <div className="text-center p-8 bg-gray-50 rounded-lg">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Configuración de Página de Login</h3>
-                    <p className="text-gray-600">La configuración de página de login estará disponible próximamente.</p>
-                  </div>
+                  <form onSubmit={handleUpdateSystemConfig} className="space-y-6">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Configuración de Página de Login</h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label htmlFor="login-title" className="block text-sm font-medium text-gray-700">
+                            Título de Login
+                          </label>
+                          <Input
+                            id="login-title"
+                            value={systemConfig.loginTitle}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              loginTitle: e.target.value
+                            })}
+                            placeholder="Lanzamiento"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label htmlFor="login-subtitle" className="block text-sm font-medium text-gray-700">
+                            Subtítulo de Login (Año)
+                          </label>
+                          <Input
+                            id="login-subtitle"
+                            value={systemConfig.loginSubtitle}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              loginSubtitle: e.target.value
+                            })}
+                            placeholder="2026"
+                          />
+                        </div>
+
+                        <div className="space-y-2 md:col-span-2">
+                          <label htmlFor="login-welcome" className="block text-sm font-medium text-gray-700">
+                            Texto de Bienvenida
+                          </label>
+                          <Input
+                            id="login-welcome"
+                            value={systemConfig.loginWelcomeText}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              loginWelcomeText: e.target.value
+                            })}
+                            placeholder="Bienvenido al reto de identificación de riesgos"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label htmlFor="login-button-text" className="block text-sm font-medium text-gray-700">
+                            Texto del Botón de Login
+                          </label>
+                          <Input
+                            id="login-button-text"
+                            value={systemConfig.loginButtonText}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              loginButtonText: e.target.value
+                            })}
+                            placeholder="Ingresar"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label htmlFor="login-document-label" className="block text-sm font-medium text-gray-700">
+                            Etiqueta Campo Documento
+                          </label>
+                          <Input
+                            id="login-document-label"
+                            value={systemConfig.loginDocumentLabel}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              loginDocumentLabel: e.target.value
+                            })}
+                            placeholder="Número de documento"
+                          />
+                        </div>
+
+                        <div className="space-y-2 md:col-span-2">
+                          <label htmlFor="login-name-label" className="block text-sm font-medium text-gray-700">
+                            Etiqueta Campo Nombre
+                          </label>
+                          <Input
+                            id="login-name-label"
+                            value={systemConfig.loginNameLabel}
+                            onChange={(e) => setSystemConfig({
+                              ...systemConfig,
+                              loginNameLabel: e.target.value
+                            })}
+                            placeholder="Nombre completo"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button type="submit" className="w-full" disabled={isLoading || updatingConfig}>
+                      {isLoading || updatingConfig ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Actualizando Login...
+                        </>
+                      ) : (
+                        "Actualizar Configuración de Login"
+                      )}
+                    </Button>
+                  </form>
                 </TabsContent>
               </Tabs>
             </CardContent>
           </Card>
         </TabsContent>
     </Tabs>
+      )}
     
     {/* Dialog para crear/editar sedes */}
     <Dialog open={venueDialogOpen} onOpenChange={setVenueDialogOpen}>
@@ -3210,7 +4531,7 @@ const AdminPage = () => {
             <Textarea
               id="venue-description"
               placeholder="Descripción opcional de la sede"
-              value={venueFormData.description}
+              value={venueFormData.description ?? ""}
               onChange={(e) => setVenueFormData({
                 ...venueFormData,
                 description: e.target.value
@@ -3226,7 +4547,7 @@ const AdminPage = () => {
             <Input
               id="venue-location"
               placeholder="Ej: Bogotá, Colombia"
-              value={venueFormData.location}
+              value={venueFormData.location ?? ""}
               onChange={(e) => setVenueFormData({
                 ...venueFormData,
                 location: e.target.value
@@ -3243,7 +4564,7 @@ const AdminPage = () => {
                 id="venue-max-participants"
                 type="number"
                 placeholder="100"
-                value={venueFormData.maxParticipants}
+                value={venueFormData.maxParticipants ?? ""}
                 onChange={(e) => setVenueFormData({
                   ...venueFormData,
                   maxParticipants: e.target.value ? parseInt(e.target.value) : undefined
@@ -3438,10 +4759,13 @@ const AdminPage = () => {
                 type="checkbox"
                 id="segment-is-trap"
                 checked={formData.isTrap}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  isTrap: e.target.checked
-                })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    isTrap: e.target.checked,
+                    ...(e.target.checked ? { quizEnabled: false } : {}),
+                  })
+                }
                 className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
               />
               <label htmlFor="segment-is-trap" className="text-sm font-medium text-gray-700">
@@ -3483,6 +4807,88 @@ const AdminPage = () => {
               rows={4}
             />
           </div>
+
+          {!formData.isTrap && (
+            <div className="space-y-3 rounded-lg border p-3 bg-slate-50/80">
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="quiz-enabled">Pregunta al escanear (una sola respuesta correcta)</Label>
+                <Switch
+                  id="quiz-enabled"
+                  checked={formData.quizEnabled}
+                  onCheckedChange={(checked) => setFormData({ ...formData, quizEnabled: checked })}
+                />
+              </div>
+              {formData.quizEnabled && (
+                <>
+                  <div className="space-y-1">
+                    <Label>Enunciado (HTML enriquecido)</Label>
+                    <RichTextEditor
+                      value={formData.quizQuestionHtml}
+                      onChange={(html) => {
+                        quizQuestionHtmlRef.current = html;
+                        setFormData({ ...formData, quizQuestionHtml: html });
+                      }}
+                      className="bg-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Opciones (marca la correcta)</Label>
+                    {formData.quizOptions.map((opt, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="quiz-correct-admin"
+                          className="h-4 w-4 shrink-0"
+                          checked={formData.quizCorrectIndex === idx}
+                          onChange={() => setFormData({ ...formData, quizCorrectIndex: idx })}
+                          aria-label={`Respuesta correcta opción ${idx + 1}`}
+                        />
+                        <Input
+                          placeholder={`Opción ${idx + 1}`}
+                          value={opt}
+                          onChange={(e) => {
+                            const next = [...formData.quizOptions];
+                            next[idx] = e.target.value;
+                            setFormData({ ...formData, quizOptions: next });
+                          }}
+                        />
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={formData.quizOptions.length >= 6}
+                      onClick={() =>
+                        setFormData({
+                          ...formData,
+                          quizOptions: [...formData.quizOptions, ""],
+                        })
+                      }
+                    >
+                      Añadir respuesta
+                    </Button>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="quiz-points">Puntos extra en ranking si acierta</Label>
+                    <Input
+                      id="quiz-points"
+                      type="number"
+                      min={0}
+                      max={1000}
+                      value={formData.quizPoints}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          quizPoints: Math.max(0, parseInt(e.target.value, 10) || 0),
+                        })
+                      }
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
         
         <DialogFooter>

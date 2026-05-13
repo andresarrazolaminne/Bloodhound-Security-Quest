@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useUser } from '@/context/UserContext';
 import { unlockSegment, login } from '@/lib/api';
+import { withUiCampaign, playerScopedStorageKey, getCampaignSlugFromPath } from '@/lib/paths';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, Loader2, MapPin } from 'lucide-react';
@@ -41,11 +42,15 @@ const UnlockPage = () => {
       if (!currentUser) {
         console.log('UnlockPage - Sin usuario, intentando auto-login...');
         
-        const lastDocument = localStorage.getItem("last_login_document");
+        const campaignSlug =
+          getCampaignSlugFromPath(window.location.pathname)?.trim() || undefined;
+        const lastDocument =
+          localStorage.getItem(playerScopedStorageKey("lastDocument")) ??
+          localStorage.getItem("last_login_document");
         if (lastDocument) {
           try {
             console.log('UnlockPage - Intentando login automático con:', lastDocument);
-            const response = await login(lastDocument);
+            const response = await login(lastDocument, campaignSlug);
             setCurrentUser(response.user);
             console.log('UnlockPage - Auto-login exitoso, reintentando desbloqueo...');
             
@@ -60,7 +65,11 @@ const UnlockPage = () => {
         }
         
         // Si no hay último documento o falló el auto-login, redirigir
-        setLocation(`/auth?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+        setLocation(
+          `${withUiCampaign('/auth')}?redirect=${encodeURIComponent(
+            window.location.pathname + window.location.search,
+          )}`,
+        );
         return;
       }
 
@@ -68,6 +77,8 @@ const UnlockPage = () => {
       setIsProcessing(true);
 
       try {
+        const campaignSlug =
+          getCampaignSlugFromPath(window.location.pathname)?.trim() || undefined;
         console.log('UnlockPage - Llamando API unlock con:', {
           documentNumber: currentUser!.documentNumber,
           segmentId: parseInt(segmentId),
@@ -77,17 +88,41 @@ const UnlockPage = () => {
         const response = await unlockSegment(
           currentUser!.documentNumber,
           parseInt(segmentId),
-          securityCode
+          securityCode,
+          campaignSlug,
         );
 
         console.log('UnlockPage - Respuesta API:', response);
 
-        addUnlockedSegment(response.segment.segmentId);
-        
+        if (
+          response.needsQuiz &&
+          response.challengeToken &&
+          Array.isArray(response.quizOptionLabels) &&
+          response.quizOptionLabels.length > 0
+        ) {
+          const slug = campaignSlug ?? "default";
+          sessionStorage.setItem(
+            `pendingSegmentQuiz:${slug}`,
+            JSON.stringify({
+              challengeToken: response.challengeToken,
+              quizQuestionHtml: response.quizQuestionHtml ?? "",
+              quizOptionLabels: response.quizOptionLabels,
+              segmentId: parseInt(segmentId, 10),
+              securityCode: securityCode ?? undefined,
+            }),
+          );
+          setLocation(withUiCampaign("/map"));
+          return;
+        }
+
+        if (response.segment) {
+          addUnlockedSegment(response.segment.segmentId);
+        }
+
         setResult({
           success: true,
           message: `¡Segmento ${segmentId} desbloqueado exitosamente!`,
-          segmentId: parseInt(segmentId)
+          segmentId: parseInt(segmentId),
         });
 
         toast({
@@ -95,9 +130,8 @@ const UnlockPage = () => {
           description: `Segmento ${segmentId} desbloqueado`,
         });
 
-        // Redirigir al mapa después de un breve delay
         setTimeout(() => {
-          setLocation('/map');
+          setLocation(withUiCampaign("/map"));
         }, 2000);
 
       } catch (error: any) {
@@ -200,7 +234,7 @@ const UnlockPage = () => {
           
           <div className="flex flex-col space-y-2">
             <Button 
-              onClick={() => setLocation('/map')} 
+              onClick={() => setLocation(withUiCampaign('/map'))}
               className="w-full"
               variant={result.success ? "default" : "outline"}
             >
@@ -209,7 +243,7 @@ const UnlockPage = () => {
             
             {!result.success && (
               <Button 
-                onClick={() => setLocation('/auth')} 
+                onClick={() => setLocation(withUiCampaign('/auth'))}
                 variant="outline"
                 className="w-full"
               >

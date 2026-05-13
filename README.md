@@ -71,3 +71,11 @@
 - `/admin-login` - Acceso administrador
 - `/admin` - Panel de administración
 - `/qr-generator` - Generador de códigos QR
+
+## Deploy AWS Lightsail (progresivo)
+
+- Dockerfile de producción: `Dockerfile`
+- Seeds temporales de uploads para primer despliegue: `docker/uploads-seed/`
+- Scripts de despliegue por fases: `scripts/lightsail/README.md`
+- Checklist de cutover DNS: `scripts/lightsail/CUTOVER_CHECKLIST.md`
+- Plan fase 2 para migrar uploads a S3: `scripts/lightsail/PHASE2_S3_PLAN.md`

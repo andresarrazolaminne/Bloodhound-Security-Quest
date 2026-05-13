@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { login, unlockSegment } from '@/lib/api';
+import { useUser } from '@/context/UserContext';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, Loader2, MapPin } from 'lucide-react';
@@ -9,11 +10,13 @@ import TrapMessageModal from '@/components/TrapMessageModal';
 import SegmentContentModal from '@/components/SegmentContentModal';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { playQRSuccessSound, playQRErrorSound } from '@/lib/sounds';
+import { withUiCampaign, playerScopedStorageKey, getCampaignSlugFromPath } from '@/lib/paths';
 
 // Handler específico para códigos QR que vienen desde URLs externas
 const QRUnlockHandler = () => {
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
+  const { setCurrentUser, addUnlockedSegment } = useUser();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(true);
   const [result, setResult] = useState<{
@@ -64,20 +67,29 @@ const QRUnlockHandler = () => {
           return;
         }
 
-        // Intentar obtener el último usuario logueado
-        const lastDocument = localStorage.getItem("lastDocument");
-        
+        const qrSlug =
+          getCampaignSlugFromPath(window.location.pathname)?.trim() || undefined;
+
+        // Intentar obtener el último usuario logueado (clave por campaña)
+        const lastDocument =
+          localStorage.getItem(playerScopedStorageKey("lastDocument")) ??
+          localStorage.getItem("lastDocument");
+
         if (!lastDocument) {
           // Si no hay usuario guardado, redirigir al login con los parámetros
           console.log('QRUnlockHandler - Sin usuario guardado, redirigiendo al login');
-          setLocation(`/auth?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+          setLocation(
+            `${withUiCampaign('/auth')}?redirect=${encodeURIComponent(
+              window.location.pathname + window.location.search,
+            )}`,
+          );
           return;
         }
 
         console.log('QRUnlockHandler - Intentando auto-login con:', lastDocument);
         
         // Auto-login
-        const loginResponse = await login(lastDocument);
+        const loginResponse = await login(lastDocument, qrSlug);
         console.log('QRUnlockHandler - Login exitoso:', loginResponse.user);
 
         // Procesar desbloqueo del segmento
@@ -85,19 +97,38 @@ const QRUnlockHandler = () => {
         const unlockResponse = await unlockSegment(
           loginResponse.user.documentNumber,
           parseInt(segmentId),
-          securityCode
+          securityCode,
+          qrSlug,
         );
 
         console.log('QRUnlockHandler - Desbloqueo exitoso:', unlockResponse);
 
-        // Guardar el usuario en localStorage para persistencia
-        localStorage.setItem('currentUser', JSON.stringify(loginResponse.user));
-        
-        // Actualizar segmentos desbloqueados en localStorage
-        const existingSegments = JSON.parse(localStorage.getItem('unlockedSegments') || '[]');
-        const uniqueSegments = Array.from(new Set([...existingSegments, parseInt(segmentId)]));
-        localStorage.setItem('unlockedSegments', JSON.stringify(uniqueSegments));
-        
+        if (
+          unlockResponse.needsQuiz &&
+          unlockResponse.challengeToken &&
+          Array.isArray(unlockResponse.quizOptionLabels) &&
+          unlockResponse.quizOptionLabels.length > 0
+        ) {
+          setCurrentUser(loginResponse.user);
+          const pendingKey = `pendingSegmentQuiz:${qrSlug ?? "default"}`;
+          sessionStorage.setItem(
+            pendingKey,
+            JSON.stringify({
+              challengeToken: unlockResponse.challengeToken,
+              quizQuestionHtml: unlockResponse.quizQuestionHtml ?? "",
+              quizOptionLabels: unlockResponse.quizOptionLabels,
+              segmentId: parseInt(segmentId, 10),
+              securityCode: securityCode ?? undefined,
+            }),
+          );
+          setLocation(withUiCampaign("/map"));
+          setIsProcessing(false);
+          return;
+        }
+
+        setCurrentUser(loginResponse.user);
+        addUnlockedSegment(parseInt(segmentId));
+
         // Manejar caso de segmento ya escaneado
         if (unlockResponse.alreadyScanned) {
           const achievementTitle = (systemConfig as any)?.config?.achievementUnlockedTitle || '¡Logro Desbloqueado!';
@@ -126,7 +157,7 @@ const QRUnlockHandler = () => {
             playQRSuccessSound(); // Reproducir sonido de éxito
             // Solo redirigir automáticamente si NO hay modal
             setTimeout(() => {
-              setLocation('/map');
+              setLocation(withUiCampaign('/map'));
             }, 3000);
           }
 
@@ -207,7 +238,7 @@ const QRUnlockHandler = () => {
             playQRSuccessSound(); // Reproducir sonido de éxito
             // Solo redirigir automáticamente si NO hay modal
             setTimeout(() => {
-              setLocation('/map');
+              setLocation(withUiCampaign('/map'));
             }, 3000);
           }
 
@@ -217,17 +248,41 @@ const QRUnlockHandler = () => {
           });
         }
 
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('QRUnlockHandler - Error:', error);
-        
+
         let errorMessage = 'Error al procesar el código QR';
-        
-        if (error.message?.includes('Segment already unlocked')) {
-          errorMessage = 'Este segmento ya fue desbloqueado anteriormente';
-        } else if (error.message?.includes('Invalid security code')) {
-          errorMessage = 'Código de seguridad inválido';
-        } else if (error.message?.includes('User not found')) {
-          errorMessage = 'Usuario no encontrado';
+
+        if (error instanceof Response) {
+          try {
+            const data = (await error.clone().json()) as { message?: string; code?: string };
+            if (data?.code === "QUIZ_WRONG_FINAL" || data?.code === "QUIZ_FAILED_FINAL") {
+              errorMessage =
+                data.message ||
+                "Respuesta incorrecta (versión antigua del servidor). Actualiza el backend o vuelve a intentar.";
+            } else if (data?.message) {
+              errorMessage = data.message;
+            } else if (error.status === 403) {
+              errorMessage =
+                "No se pudo desbloquear este segmento. Revisa el código o vuelve a intentarlo.";
+            } else if (error.status === 404) {
+              errorMessage = "Usuario o segmento no encontrado.";
+            }
+          } catch {
+            if (error.status === 403) {
+              errorMessage =
+                "No se pudo desbloquear este segmento. Si fallaste una pregunta, vuelve a escanear el QR.";
+            }
+          }
+        } else if (error && typeof error === 'object' && 'message' in error) {
+          const msg = String((error as { message: unknown }).message);
+          if (msg.includes('Segment already unlocked')) {
+            errorMessage = 'Este segmento ya fue desbloqueado anteriormente';
+          } else if (msg.includes('Invalid security code')) {
+            errorMessage = 'Código de seguridad inválido';
+          } else if (msg.includes('User not found')) {
+            errorMessage = 'Usuario no encontrado';
+          }
         }
 
         setResult({
@@ -235,7 +290,7 @@ const QRUnlockHandler = () => {
           message: errorMessage
         });
 
-        playQRErrorSound(); // Reproducir sonido de error
+        playQRErrorSound();
         toast({
           title: "Error",
           description: errorMessage,
@@ -323,7 +378,7 @@ const QRUnlockHandler = () => {
           
           <div className="flex flex-col space-y-2">
             <Button 
-              onClick={() => setLocation('/map')} 
+              onClick={() => setLocation(withUiCampaign('/map'))} 
               className="w-full"
               variant={result.success ? "default" : "outline"}
             >
@@ -332,7 +387,7 @@ const QRUnlockHandler = () => {
             
             {!result.success && (
               <Button 
-                onClick={() => setLocation('/auth')} 
+                onClick={() => setLocation(withUiCampaign('/auth'))} 
                 variant="outline"
                 className="w-full"
               >
@@ -351,7 +406,7 @@ const QRUnlockHandler = () => {
             setShowTrapModal(false);
             // Redirigir al mapa después de cerrar el modal
             setTimeout(() => {
-              setLocation('/map');
+              setLocation(withUiCampaign('/map'));
             }, 1000);
           }}
           trapMessage={result.trapMessage}
@@ -368,7 +423,7 @@ const QRUnlockHandler = () => {
             setShowSegmentModal(false);
             // Redirigir al mapa después de cerrar el modal
             setTimeout(() => {
-              setLocation('/map');
+              setLocation(withUiCampaign('/map'));
             }, 1000);
           }}
           segmentId={result.segmentId || 0}

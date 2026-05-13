@@ -1,5 +1,6 @@
-import { createContext, useState, useContext, ReactNode } from "react";
+import { createContext, useState, useContext, ReactNode, useCallback, useMemo } from "react";
 import type { User, MapSegment } from "@shared/schema";
+import { getResolvedCampaignSlug, migrateLegacyUnscopedPlayerStorage } from "@/lib/paths";
 
 interface UserContextType {
   currentUser: User | null;
@@ -21,11 +22,17 @@ interface UserContextType {
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
+const keyForCampaign = (baseKey: string) => {
+  const slug = getResolvedCampaignSlug();
+  return slug ? `${baseKey}:${slug}` : baseKey;
+};
+
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUserState] = useState<User | null>(() => {
     // Cargar usuario del localStorage al inicializar
     try {
-      const savedUser = localStorage.getItem('currentUser');
+      migrateLegacyUnscopedPlayerStorage();
+      const savedUser = localStorage.getItem(keyForCampaign('currentUser'));
       return savedUser ? JSON.parse(savedUser) : null;
     } catch (error) {
       console.error('Error loading user from localStorage:', error);
@@ -36,7 +43,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [unlockedSegments, setUnlockedSegmentsState] = useState<number[]>(() => {
     // Cargar segmentos desbloqueados del localStorage al inicializar
     try {
-      const savedSegments = localStorage.getItem('unlockedSegments');
+      const savedSegments = localStorage.getItem(keyForCampaign('unlockedSegments'));
       return savedSegments ? JSON.parse(savedSegments) : [];
     } catch (error) {
       console.error('Error loading segments from localStorage:', error);
@@ -49,39 +56,39 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [trapPoints, setTrapPoints] = useState<number>(0);
 
   // Función para establecer el usuario actual con persistencia
-  const setCurrentUser = (user: User | null) => {
+  const setCurrentUser = useCallback((user: User | null) => {
     setCurrentUserState(user);
     try {
       if (user) {
-        localStorage.setItem('currentUser', JSON.stringify(user));
-        localStorage.setItem('lastDocument', user.documentNumber);
+        localStorage.setItem(keyForCampaign('currentUser'), JSON.stringify(user));
+        localStorage.setItem(keyForCampaign('lastDocument'), user.documentNumber);
       } else {
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('lastDocument');
+        localStorage.removeItem(keyForCampaign('currentUser'));
+        localStorage.removeItem(keyForCampaign('lastDocument'));
       }
     } catch (error) {
       console.error('Error saving user to localStorage:', error);
     }
-  };
+  }, []);
 
   // Función para verificar si hay un usuario que debería estar logueado
-  const hasActiveSession = () => {
+  const hasActiveSession = useCallback(() => {
     try {
-      const savedUser = localStorage.getItem('currentUser');
-      const lastDocument = localStorage.getItem('lastDocument');
-      return savedUser && lastDocument && currentUser;
+      const savedUser = localStorage.getItem(keyForCampaign('currentUser'));
+      const lastDocument = localStorage.getItem(keyForCampaign('lastDocument'));
+      return Boolean(savedUser && lastDocument && currentUser);
     } catch (error) {
       console.error('Error checking session:', error);
       return false;
     }
-  };
+  }, [currentUser]);
 
-  const setUnlockedSegments = (segmentIds: number[], totalValidSegments?: number) => {
+  const setUnlockedSegments = useCallback((segmentIds: number[], totalValidSegments?: number) => {
     setUnlockedSegmentsState(segmentIds);
     
     // Persistir en localStorage
     try {
-      localStorage.setItem('unlockedSegments', JSON.stringify(segmentIds));
+      localStorage.setItem(keyForCampaign('unlockedSegments'), JSON.stringify(segmentIds));
     } catch (error) {
       console.error('Error saving segments to localStorage:', error);
     }
@@ -90,16 +97,16 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (totalValidSegments && segmentIds.length === totalValidSegments) {
       setIsMapCompleted(true);
     }
-  };
+  }, []);
 
-  const addUnlockedSegment = (segmentId: number, totalValidSegments?: number) => {
+  const addUnlockedSegment = useCallback((segmentId: number, totalValidSegments?: number) => {
     if (!unlockedSegments.includes(segmentId)) {
       const newUnlockedSegments = [...unlockedSegments, segmentId];
       setUnlockedSegmentsState(newUnlockedSegments);
       
       // Persistir en localStorage
       try {
-        localStorage.setItem('unlockedSegments', JSON.stringify(newUnlockedSegments));
+        localStorage.setItem(keyForCampaign('unlockedSegments'), JSON.stringify(newUnlockedSegments));
       } catch (error) {
         console.error('Error saving segments to localStorage:', error);
       }
@@ -109,48 +116,65 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         setIsMapCompleted(true);
       }
     }
-  };
+  }, [unlockedSegments]);
 
-  const addTrapPoints = (points: number) => {
+  const addTrapPoints = useCallback((points: number) => {
     setTrapPoints(prev => prev + points);
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     // Limpiar localStorage para evitar auto-login
     try {
+      localStorage.removeItem(keyForCampaign("currentUser"));
+      localStorage.removeItem(keyForCampaign("lastDocument"));
+      localStorage.removeItem(keyForCampaign("unlockedSegments"));
+      localStorage.removeItem(keyForCampaign("tempDocument"));
       localStorage.removeItem("currentUser");
       localStorage.removeItem("lastDocument");
       localStorage.removeItem("unlockedSegments");
-      localStorage.removeItem("tempDocument");
     } catch (e) {
       console.error("Error al limpiar localStorage:", e);
     }
     
     // Reiniciar estado
-    setCurrentUser(null);
+    setCurrentUserState(null);
     setUnlockedSegmentsState([]);
     setIsMapCompleted(false);
     setRedemptionCode(null);
     setTrapPoints(0);
-  };
+  }, []);
 
-  const value = {
-    currentUser,
-    unlockedSegments,
-    setCurrentUser,
-    setUnlockedSegments,
-    addUnlockedSegment,
-    isMapCompleted,
-    setIsMapCompleted,
-    redemptionCode,
-    setRedemptionCode,
-    trapPoints,
-    setTrapPoints,
-    addTrapPoints,
-    isUserLoading: false,
-    logout,
-    hasActiveSession
-  };
+  const value = useMemo(
+    () => ({
+      currentUser,
+      unlockedSegments,
+      setCurrentUser,
+      setUnlockedSegments,
+      addUnlockedSegment,
+      isMapCompleted,
+      setIsMapCompleted,
+      redemptionCode,
+      setRedemptionCode,
+      trapPoints,
+      setTrapPoints,
+      addTrapPoints,
+      isUserLoading: false,
+      logout,
+      hasActiveSession,
+    }),
+    [
+      currentUser,
+      unlockedSegments,
+      setCurrentUser,
+      setUnlockedSegments,
+      addUnlockedSegment,
+      isMapCompleted,
+      redemptionCode,
+      trapPoints,
+      logout,
+      hasActiveSession,
+    ],
+  );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 };

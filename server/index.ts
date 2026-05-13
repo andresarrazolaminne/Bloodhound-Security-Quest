@@ -1,6 +1,13 @@
+import "./env-bootstrap";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { tryAutoApplyMultitenantMigration, verifyMultitenantSchema } from "./db";
+
+/** `npm run dev` debe seguir usando Vite middleware aunque `.env` de deploy traiga NODE_ENV=production. */
+if (process.env.npm_lifecycle_event === "dev") {
+  process.env.NODE_ENV = "development";
+}
 
 const app = express();
 app.use(express.json());
@@ -10,6 +17,7 @@ app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
+  const logBodies = process.env.NODE_ENV !== "production";
 
   const originalResJson = res.json;
   res.json = function (bodyJson, ...args) {
@@ -21,7 +29,7 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
+      if (logBodies && capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
 
@@ -37,14 +45,58 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  if (process.env.NODE_ENV === "production") {
+    if (!process.env.DATABASE_URL?.trim()) {
+      log("FATAL: En producción debe definirse DATABASE_URL.");
+      process.exit(1);
+    }
+    const adminTok = process.env.ADMIN_API_TOKEN?.trim();
+    if (!adminTok || adminTok === "admin123") {
+      log(
+        "FATAL: En producción define ADMIN_API_TOKEN con un secreto fuerte (nunca el valor por defecto admin123).",
+      );
+      process.exit(1);
+    }
+    if (process.env.UPLOADS_BACKEND?.trim().toLowerCase() === "s3") {
+      if (!process.env.S3_BUCKET?.trim()) {
+        log("FATAL: UPLOADS_BACKEND=s3 requiere S3_BUCKET.");
+        process.exit(1);
+      }
+      if (!(process.env.S3_REGION || process.env.AWS_REGION)?.trim()) {
+        log("FATAL: UPLOADS_BACKEND=s3 requiere S3_REGION o AWS_REGION.");
+        process.exit(1);
+      }
+    }
+  }
+
+  // Antes de aceptar tráfico: migrar en desarrollo (NODE_ENV !== "production").
+  // app.get("env") puede ser "production" con NODE_ENV mal puesto; usamos process.env.
+  if (process.env.NODE_ENV !== "production") {
+    const migrated = await tryAutoApplyMultitenantMigration(true);
+    if (migrated) {
+      log("Migración multitenant aplicada al arrancar (modo no producción).");
+    }
+  }
+
   const server = await registerRoutes(app);
+
+  const schema = await verifyMultitenantSchema();
+  if (!schema.ok) {
+    log(`ADVERTENCIA: ${schema.detail ?? "esquema multitenant incompleto"}`);
+    log("La API devolverá 503 en rutas con tenant. Revisa DATABASE_URL o ejecuta npm run db:apply-multitenant.");
+  }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
+    if (process.env.NODE_ENV !== "production") {
+      console.error(err);
+    } else {
+      console.error("[express]", status, message);
+    }
+    if (res.headersSent) return;
     res.status(status).json({ message });
-    throw err;
   });
 
   // importantly only setup vite in development and after
@@ -59,12 +111,22 @@ app.use((req, res, next) => {
   // ALWAYS serve the app on port 5000
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = 5000;
-  server.listen({
+  const port = Number(process.env.PORT ?? 5000);
+  const host =
+    process.env.HOST?.trim() ||
+    (process.platform === "win32" ? "127.0.0.1" : "0.0.0.0");
+
+  const listenOptions: { port: number; host: string; reusePort?: boolean } = {
     port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
+    host,
+  };
+
+  // reusePort no está soportado en Windows; además 0.0.0.0 puede dar ENOTSUP en algunos entornos Win.
+  if (process.platform !== "win32") {
+    listenOptions.reusePort = true;
+  }
+
+  server.listen(listenOptions, () => {
+    log(`serving on ${host}:${port}`);
   });
 })();

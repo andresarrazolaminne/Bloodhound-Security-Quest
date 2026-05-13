@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { apiRequest } from '@/lib/queryClient';
+import { getResolvedCampaignSlug, getPlayerUrl, getUiBaseUrl } from '@/lib/paths';
 import QRCode from 'qrcode';
 import { Download } from 'lucide-react';
 
@@ -45,7 +46,8 @@ interface QRCodeData {
   rawData: string; // Contenido completo del QR
 }
 
-const QRGenerator = () => {
+const QRGenerator = ({ campaignSlug: campaignSlugProp }: { campaignSlug?: string }) => {
+  const campaignSlug = campaignSlugProp ?? getResolvedCampaignSlug() ?? "";
   const [segmentId, setSegmentId] = useState<number>(1);
   const [securityCode, setSecurityCode] = useState<string>("");
   const [qrCodes, setQrCodes] = useState<QRCodeData[]>([]);
@@ -69,8 +71,9 @@ const QRGenerator = () => {
       }
     };
     
+    if (!campaignSlug) return;
     fetchMapAssets();
-  }, []);
+  }, [campaignSlug]);
   
   useEffect(() => {
     // Obtener el código de seguridad del asset seleccionado
@@ -90,14 +93,14 @@ const QRGenerator = () => {
       let qrData: string;
       let format: string;
       
-      // Obtener la URL base de la aplicación
-      const baseUrl = window.location.origin;
-      
-      // Generar el contenido QR según el formato seleccionado
+      const baseUrl = getUiBaseUrl();
+      const unlockUrl = campaignSlug
+        ? `${getPlayerUrl("/unlock", campaignSlug)}?segment=${segmentId}&code=${securityCode}`
+        : `${baseUrl}/unlock?segment=${segmentId}&code=${securityCode}`;
+
       switch (qrFormat) {
         case "url":
-          // Formato como URL completa que puede ser escaneada por cualquier lector QR
-          qrData = `${baseUrl}/unlock?segment=${segmentId}&code=${securityCode}`;
+          qrData = unlockUrl;
           format = "URL Completa";
           break;
         case "json":
@@ -114,7 +117,7 @@ const QRGenerator = () => {
           format = "Texto";
           break;
         default:
-          qrData = `${baseUrl}/unlock?segment=${segmentId}&code=${securityCode}`;
+          qrData = unlockUrl;
           format = "URL Completa";
       }
       
@@ -160,16 +163,17 @@ const QRGenerator = () => {
         const asset = mapAssets.find(a => a.segmentId === id);
         const code = asset?.securityCode || generateSecurityCode();
         
-        // Obtener la URL base de la aplicación
-        const baseUrl = window.location.origin;
-        
-        // Generar el contenido QR según el formato seleccionado
+        const baseUrl = getUiBaseUrl();
+        const unlockUrl = campaignSlug
+          ? `${getPlayerUrl("/unlock", campaignSlug)}?segment=${id}&code=${code}`
+          : `${baseUrl}/unlock?segment=${id}&code=${code}`;
+
         let qrData: string;
         let format: string;
-        
+
         switch (qrFormat) {
           case "url":
-            qrData = `${baseUrl}/unlock?segment=${id}&code=${code}`;
+            qrData = unlockUrl;
             format = "URL Completa";
             break;
           case "json":
@@ -181,7 +185,7 @@ const QRGenerator = () => {
             format = "Texto";
             break;
           default:
-            qrData = `${baseUrl}/unlock?segment=${id}&code=${code}`;
+            qrData = unlockUrl;
             format = "URL Completa";
         }
         

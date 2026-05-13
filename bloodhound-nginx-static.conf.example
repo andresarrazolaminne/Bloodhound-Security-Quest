@@ -1,0 +1,83 @@
+# Nginx para servir frontend estático desde `/usr/share/nginx/html/bloodhound`
+# y proxy de API hacia el backend Node en `127.0.0.1:5000`.
+#
+# Suposiciones:
+# - Copias `dist/public/*` a: `/usr/share/nginx/html/bloodhound/`
+# - El frontend consume la API desde: `/bloodhound/api/...`
+# - El backend escucha en: `http://127.0.0.1:5000/api/...`
+
+map $http_upgrade $connection_upgrade {
+  default upgrade;
+  '' close;
+}
+
+server {
+  listen 80;
+  server_name tod.com.co www.tod.com.co;
+
+  location = / { return 301 /bloodhound/; }
+  location = /bloodhound { return 301 /bloodhound/; }
+
+  # API (strip del prefijo /bloodhound)
+  location ^~ /bloodhound/api/ {
+    rewrite ^/bloodhound(/.*)$ $1 break; # /bloodhound/api/x -> /api/x
+
+    # Backend Node/Express (ajusta si usas otro PORT con pm2)
+    proxy_pass http://127.0.0.1:5005;
+    proxy_http_version 1.1;
+
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    proxy_connect_timeout 60s;
+    proxy_send_timeout 60s;
+    proxy_read_timeout 300s;
+  }
+
+  # Frontend (SPA fallback)
+  location ^~ /bloodhound/ {
+    root /usr/share/nginx/html;
+    try_files $uri $uri/ /bloodhound/index.html;
+  }
+}
+
+server {
+  listen 443 ssl http2;
+  server_name tod.com.co www.tod.com.co;
+
+  # Certbot:
+  # ssl_certificate /etc/letsencrypt/live/tod.com.co/fullchain.pem;
+  # ssl_certificate_key /etc/letsencrypt/live/tod.com.co/privkey.pem;
+
+  location = / { return 301 /bloodhound/; }
+  location = /bloodhound { return 301 /bloodhound/; }
+
+  location ^~ /bloodhound/api/ {
+    rewrite ^/bloodhound(/.*)$ $1 break;
+
+    # Backend Node/Express (ajusta si usas otro PORT con pm2)
+    proxy_pass http://127.0.0.1:5005;
+    proxy_http_version 1.1;
+
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    proxy_connect_timeout 60s;
+    proxy_send_timeout 60s;
+    proxy_read_timeout 300s;
+  }
+
+  location ^~ /bloodhound/ {
+    root /usr/share/nginx/html;
+    try_files $uri $uri/ /bloodhound/index.html;
+  }
+}
+

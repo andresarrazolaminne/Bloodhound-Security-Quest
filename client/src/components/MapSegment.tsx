@@ -2,17 +2,30 @@ import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 import { ExternalLink } from "lucide-react";
-import { MapSegmentAsset } from "@shared/schema";
+import { MapSegmentAsset, normalizeMapSegmentAspectRatioInput } from "@shared/schema";
 
 interface MapSegmentProps {
   id: number;
+  campaignSlug?: string;
   imageUrl: string;
   altText: string;
   unlocked: boolean;
   className?: string;
+  /** Proporción de la ficha (p. ej. "4/3"); por defecto 1/1. */
+  tileAspectRatio?: string;
+  tileObjectFit?: "cover" | "contain";
 }
 
-const MapSegment = ({ id, imageUrl, altText, unlocked, className }: MapSegmentProps) => {
+const MapSegment = ({
+  id,
+  campaignSlug,
+  imageUrl,
+  altText,
+  unlocked,
+  className,
+  tileAspectRatio,
+  tileObjectFit = "cover",
+}: MapSegmentProps) => {
   // Estado para manejar errores de carga de imágenes
   const [imageError, setImageError] = useState(false);
   const [asset, setAsset] = useState<MapSegmentAsset | null>(null);
@@ -31,7 +44,7 @@ const MapSegment = ({ id, imageUrl, altText, unlocked, className }: MapSegmentPr
         setIsNewlyUnlocked(false);
       }, 1500);
     }
-  }, [id, unlocked]);
+  }, [id, unlocked, campaignSlug]);
   
   // Escuchar el evento personalizado de segmento desbloqueado
   useEffect(() => {
@@ -59,7 +72,11 @@ const MapSegment = ({ id, imageUrl, altText, unlocked, className }: MapSegmentPr
   const loadSegmentAsset = async () => {
     try {
       setLoading(true);
-      const response = await apiRequest("GET", `/api/admin/map-assets/${id}`);
+      const response = await apiRequest("GET", `/api/map-assets/${id}`, undefined, campaignSlug);
+      if (!response.ok) {
+        console.log(`HTTP ${response.status} al cargar asset del segmento ${id}`);
+        return;
+      }
       const data = await response.json();
       
       // Si el asset es null, significa que no hay configuración para este segmento
@@ -108,7 +125,9 @@ const MapSegment = ({ id, imageUrl, altText, unlocked, className }: MapSegmentPr
 
   // Imagen de respaldo por si falla la carga
   const fallbackImageUrl = "https://images.unsplash.com/photo-1509773896068-7fd415d91e2e?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80";
-  
+  const aspectCss = normalizeMapSegmentAspectRatioInput(tileAspectRatio);
+  const objectFitClass = tileObjectFit === "contain" ? "object-contain" : "object-cover";
+
   return (
     <div 
       className={cn(
@@ -120,7 +139,10 @@ const MapSegment = ({ id, imageUrl, altText, unlocked, className }: MapSegmentPr
       data-segment-id={id}
       onClick={handleSegmentClick}
     >
-      <div className="relative aspect-square bg-gray-100">
+      <div
+        className="relative w-full min-h-0 bg-gray-100"
+        style={{ aspectRatio: aspectCss.replace("/", " / ") }}
+      >
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
             <svg 
@@ -151,8 +173,9 @@ const MapSegment = ({ id, imageUrl, altText, unlocked, className }: MapSegmentPr
             alt={asset.title || altText}
             onError={handleImageError}
             className={cn(
-              "w-full h-full object-cover", 
-              !unlocked && "grayscale"
+              "w-full h-full",
+              objectFitClass,
+              !unlocked && "grayscale",
             )}
           />
         ) : (

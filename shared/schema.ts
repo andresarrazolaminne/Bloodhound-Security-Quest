@@ -1,16 +1,40 @@
-import { pgTable, text, serial, integer, boolean, json, timestamp } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  serial,
+  integer,
+  boolean,
+  json,
+  jsonb,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+export const campaigns = pgTable("campaigns", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
 
 // System configuration table
 export const systemConfig = pgTable("system_config", {
   id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
   instructionsText: text("instructions_text").notNull(),
   siteMapImageUrl: text("site_map_image_url").notNull(),
   footerLogoUrl: text("footer_logo_url").notNull().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png'),
   cobrandingImageUrl: text("cobranding_image_url").notNull().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png'),
   mapGapSize: text("map_gap_size").notNull().default('medium'),
   mapGridSize: text("map_grid_size").notNull().default('3x3'),
+  /** Proporción CSS de cada ficha del mapa (p. ej. 1/1, 4/3, 3/2). */
+  mapSegmentAspectRatio: text("map_segment_aspect_ratio").notNull().default('1/1'),
+  /** object-fit de la imagen en la ficha: cover (recortar) o contain (encajar). */
+  mapSegmentImageFit: text("map_segment_image_fit").notNull().default('cover'),
   // Frontend customization fields
   appTitle: text("app_title").notNull().default('Lanzamiento 2025'),
   backgroundImageUrl: text("background_image_url").notNull().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png'),
@@ -48,11 +72,26 @@ export const systemConfig = pgTable("system_config", {
   headerLogoImageUrl: text("header_logo_image_url").notNull().default(''),
   headerLogoSize: integer("header_logo_size").notNull().default(32), // Size in pixels (height)
   preloadImageUrl: text("preload_image_url").notNull().default(''),
+  scanButtonEnabled: boolean("scan_button_enabled").notNull().default(true),
   scanButtonText: text("scan_button_text").notNull().default('¡Escanea aquí!'),
   helpButtonText: text("help_button_text").notNull().default('Ayuda'),
   siteMapButtonText: text("site_map_button_text").notNull().default('Mapa del Sitio'),
   prizeButtonText: text("prize_button_text").notNull().default('Ver Código Premio'),
   completionTitle: text("completion_title").notNull().default('¡Felicidades, has completado el reto!'),
+  completionRewardHeadline: text("completion_reward_headline").notNull().default('¡Reto completado!'),
+  completionRewardDescription: text("completion_reward_description").notNull().default('Con el siguiente código puedes reclamar tu premio.'),
+  completionCodeSectionTitle: text("completion_code_section_title").notNull().default('Código de Redención'),
+  completionCodeLabel: text("completion_code_label").notNull().default('Código de validación'),
+  completionCodeHelpText: text("completion_code_help_text").notNull().default('Muestra este código para reclamar tu premio'),
+  completionCloseButtonText: text("completion_close_button_text").notNull().default('Cerrar'),
+  completionSaveButtonText: text("completion_save_button_text").notNull().default('Guardar Premio'),
+  completionShowBrain: boolean("completion_show_brain").notNull().default(true),
+  completionShowQr: boolean("completion_show_qr").notNull().default(true),
+  completionShowCode: boolean("completion_show_code").notNull().default(true),
+  completionShowSaveButton: boolean("completion_show_save_button").notNull().default(true),
+  completionCtaEnabled: boolean("completion_cta_enabled").notNull().default(false),
+  completionCtaButtonText: text("completion_cta_button_text").notNull().default('Ir al premio'),
+  completionCtaUrl: text("completion_cta_url").notNull().default(''),
   loadingText: text("loading_text").notNull().default('Cargando tu mapa...'),
   // Mensajes de logros y trampas
   achievementUnlockedTitle: text("achievement_unlocked_title").notNull().default('¡Logro Desbloqueado!'),
@@ -62,9 +101,33 @@ export const systemConfig = pgTable("system_config", {
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 });
 
+// Uploaded assets (logos, background, etc.)
+export const uploadedAssets = pgTable("uploaded_assets", {
+  id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
+  filename: text("filename").notNull(),
+  originalName: text("original_name").notNull(),
+  mime: text("mime").notNull(),
+  size: integer("size").notNull(),
+  publicUrl: text("public_url").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertUploadedAssetsSchema = createInsertSchema(uploadedAssets).pick({
+  filename: true,
+  originalName: true,
+  mime: true,
+  size: true,
+  publicUrl: true,
+});
+
+export type InsertUploadedAsset = z.infer<typeof insertUploadedAssetsSchema>;
+export type UploadedAsset = typeof uploadedAssets.$inferSelect;
+
 // Venues/Sedes table
 export const venues = pgTable("venues", {
   id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
   name: text("name").notNull(),
   description: text("description"),
   location: text("location"),
@@ -74,24 +137,52 @@ export const venues = pgTable("venues", {
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 });
 
+const MAP_GAP_ALLOWED = new Set(["none", "x-small", "small", "medium", "large"]);
+const MAP_GRID_ALLOWED = new Set(["3x3", "3x2", "2x3", "4x2", "2x4"]);
+const MAP_SEGMENT_IMAGE_FIT_ALLOWED = new Set(["cover", "contain"]);
+
+/**
+ * Normaliza "w/h" para CSS aspect-ratio: enteros 1–100; inválido → 1/1.
+ */
+export function normalizeMapSegmentAspectRatioInput(raw: unknown): string {
+  if (typeof raw !== "string") return "1/1";
+  const compact = raw.trim().replace(/\s*\/\s*/, "/");
+  const m = /^(\d{1,3})\/(\d{1,3})$/.exec(compact);
+  if (!m) return "1/1";
+  const w = Number(m[1]);
+  const h = Number(m[2]);
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w < 1 || h < 1 || w > 100 || h > 100) return "1/1";
+  return `${w}/${h}`;
+}
+
 // Schema for system configuration
 export const systemConfigSchema = z.object({
   id: z.number(),
-  instructionsText: z.string(),
-  siteMapImageUrl: z.string(),
+  campaignId: z.number(),
+  instructionsText: z.string().default(""),
+  siteMapImageUrl: z.string().default(""),
   footerLogoUrl: z.string().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Pata_de_logos_negro.png'),
   cobrandingImageUrl: z.string().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/QRCODEQUEST-IMAGENES-RETO/Cobranding_actualizado.png'),
   mapGapSize: z.enum(['none', 'x-small', 'small', 'medium', 'large']).default('medium'),
   mapGridSize: z.enum(['3x3', '3x2', '2x3', '4x2', '2x4']).default('3x3'),
+  mapSegmentAspectRatio: z
+    .string()
+    .default('1/1')
+    .transform((s) => normalizeMapSegmentAspectRatioInput(s)),
+  mapSegmentImageFit: z.enum(['cover', 'contain']).default('cover'),
   // Frontend customization fields
   appTitle: z.string().default('Lanzamiento 2025'),
   backgroundImageUrl: z.string().default('https://deuouqyoujoig.cloudfront.net/uploads/2025/grafica/Textura-fondo-pagina.png'),
-  backgroundSize: z.enum(['auto', 'cover', 'contain', '100%', '50%']).default('auto'),
+  // Incluye "100% 100%" usado en Admin (Estirar); es CSS válido para background-size.
+  backgroundSize: z
+    .enum(['auto', 'cover', 'contain', '100%', '50%', '100% 100%'])
+    .default('auto'),
   backgroundRepeat: z.enum(['repeat', 'no-repeat', 'repeat-x', 'repeat-y']).default('repeat'),
   backgroundPosition: z.enum(['center', 'top', 'bottom', 'left', 'right', 'top left', 'top right', 'bottom left', 'bottom right']).default('center'),
   gradientStartColor: z.string().default('#bb2558'),
   gradientEndColor: z.string().default('#e8cf00'),
-  gradientMidColor: z.string().optional(),
+  /** null desde JSON/BD se normaliza antes del parse; aquí aceptamos ausencia. */
+  gradientMidColor: z.string().nullish(),
   gradientDirection: z.string().default('175deg'),
   gradientType: z.enum(['linear', 'radial']).default('linear'),
   // Text colors configuration
@@ -117,13 +208,48 @@ export const systemConfigSchema = z.object({
   loginLogoImageUrl: z.string().default(''),
   registrationImageUrl: z.string().default(''),
   headerLogoImageUrl: z.string().default(''),
-  headerLogoSize: z.number().default(32),
+  headerLogoSize: z.preprocess((val) => {
+    if (val === null || val === undefined || val === "") return 32;
+    const n = typeof val === "number" ? val : Number(val);
+    if (!Number.isFinite(n)) return 32;
+    return Math.min(128, Math.max(16, Math.round(n)));
+  }, z.number()),
   preloadImageUrl: z.string().default(''),
+  scanButtonEnabled: z.boolean().default(true),
   scanButtonText: z.string().default('¡Escanea aquí!'),
   helpButtonText: z.string().default('Ayuda'),
   siteMapButtonText: z.string().default('Mapa del Sitio'),
   prizeButtonText: z.string().default('Ver Código Premio'),
   completionTitle: z.string().default('¡Felicidades, has completado el reto!'),
+  completionRewardHeadline: z.string().default('¡Reto completado!'),
+  completionRewardDescription: z.string().default('Con el siguiente código puedes reclamar tu premio.'),
+  completionCodeSectionTitle: z.string().default('Código de Redención'),
+  completionCodeLabel: z.string().default('Código de validación'),
+  completionCodeHelpText: z.string().default('Muestra este código para reclamar tu premio'),
+  completionCloseButtonText: z.string().default('Cerrar'),
+  completionSaveButtonText: z.string().default('Guardar Premio'),
+  completionShowBrain: z.boolean().default(true),
+  completionShowQr: z.boolean().default(true),
+  completionShowCode: z.boolean().default(true),
+  completionShowSaveButton: z.boolean().default(true),
+  completionCtaEnabled: z.boolean().default(false),
+  completionCtaButtonText: z.string().default('Ir al premio'),
+  completionCtaUrl: z
+    .string()
+    .default('')
+    .transform((s) => s.trim())
+    .refine(
+      (s) => {
+        if (s === '') return true;
+        try {
+          const u = new URL(s);
+          return u.protocol === 'http:' || u.protocol === 'https:';
+        } catch {
+          return false;
+        }
+      },
+      { message: 'completionCtaUrl debe estar vacía o ser una URL http(s) válida' },
+    ),
   loadingText: z.string().default('Cargando tu mapa...'),
   // Mensajes de logros y trampas
   achievementUnlockedTitle: z.string().default('¡Logro Desbloqueado!'),
@@ -135,21 +261,87 @@ export const systemConfigSchema = z.object({
 
 export type SystemConfig = z.infer<typeof systemConfigSchema>;
 
-export const insertSystemConfigSchema = systemConfigSchema.omit({ 
+const BG_SIZE_ALLOWED = new Set(["auto", "cover", "contain", "100%", "50%", "100% 100%"]);
+const BG_REPEAT_ALLOWED = new Set(["repeat", "no-repeat", "repeat-x", "repeat-y"]);
+const BG_POSITION_ALLOWED = new Set([
+  "center",
+  "top",
+  "bottom",
+  "left",
+  "right",
+  "top left",
+  "top right",
+  "bottom left",
+  "bottom right",
+]);
+const GRADIENT_TYPE_ALLOWED = new Set(["linear", "radial"]);
+
+/**
+ * Normaliza el JSON del panel admin antes de Zod: quita `null` (Zod no aplica .default() con null),
+ * y corrige enums desfasados respecto a la BD o a versiones viejas del UI.
+ */
+export function sanitizeAdminSystemConfigBody(input: unknown): unknown {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) return {};
+  const o = { ...(input as Record<string, unknown>) };
+
+  for (const key of Object.keys(o)) {
+    if (o[key] === null) delete o[key];
+  }
+
+  if (typeof o.mapGapSize === "string" && !MAP_GAP_ALLOWED.has(o.mapGapSize)) {
+    o.mapGapSize = "medium";
+  }
+  if (typeof o.mapGridSize === "string" && !MAP_GRID_ALLOWED.has(o.mapGridSize)) {
+    o.mapGridSize = "3x3";
+  }
+  if ("mapSegmentAspectRatio" in o) {
+    o.mapSegmentAspectRatio = normalizeMapSegmentAspectRatioInput(o.mapSegmentAspectRatio);
+  }
+  if (typeof o.mapSegmentImageFit === "string" && !MAP_SEGMENT_IMAGE_FIT_ALLOWED.has(o.mapSegmentImageFit)) {
+    o.mapSegmentImageFit = "cover";
+  }
+  if (typeof o.backgroundSize === "string" && !BG_SIZE_ALLOWED.has(o.backgroundSize)) {
+    o.backgroundSize = "auto";
+  }
+  if (typeof o.backgroundRepeat === "string" && !BG_REPEAT_ALLOWED.has(o.backgroundRepeat)) {
+    o.backgroundRepeat = "repeat";
+  }
+  if (typeof o.backgroundPosition === "string" && !BG_POSITION_ALLOWED.has(o.backgroundPosition)) {
+    o.backgroundPosition = "center";
+  }
+  if (typeof o.gradientType === "string" && !GRADIENT_TYPE_ALLOWED.has(o.gradientType)) {
+    o.gradientType = "linear";
+  }
+
+  return o;
+}
+
+const insertSystemConfigSchemaInner = systemConfigSchema.omit({
   id: true,
-  updatedAt: true 
+  updatedAt: true,
+  campaignId: true,
 });
+
+/** Payload de API / insert: sin id, updatedAt ni campaignId (campaignId lo fija el scope del request). */
+export const insertSystemConfigSchema = z.preprocess(
+  sanitizeAdminSystemConfigBody,
+  insertSystemConfigSchemaInner,
+);
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  documentNumber: text("document_number").notNull().unique(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
+  documentNumber: text("document_number").notNull(),
   name: text("name").notNull(),
   venueId: integer("venue_id").references(() => venues.id),
   completedAt: timestamp("completed_at"),
-});
+}, (table) => ({
+  usersCampaignDocumentUnique: uniqueIndex("users_campaign_document_unique").on(table.campaignId, table.documentNumber),
+}));
 
 export const mapSegments = pgTable("map_segments", {
   id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
   userId: integer("user_id").notNull(),
   segmentId: integer("segment_id").notNull(),
   unlocked: boolean("unlocked").default(false),
@@ -157,6 +349,7 @@ export const mapSegments = pgTable("map_segments", {
 
 export const prizes = pgTable("prizes", {
   id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
   userId: integer("user_id").notNull(),
   redeemed: boolean("redeemed").default(false),
   redemptionCode: text("redemption_code"),
@@ -166,7 +359,8 @@ export const prizes = pgTable("prizes", {
 // Tabla para gestionar las configuraciones de los segmentos del mapa
 export const mapSegmentAssets = pgTable("map_segment_assets", {
   id: serial("id").primaryKey(),
-  segmentId: integer("segment_id").notNull().unique(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
+  segmentId: integer("segment_id").notNull(),
   imageUrl: text("image_url").notNull(),
   redirectUrl: text("redirect_url"),
   title: text("title").notNull().default(""),
@@ -175,12 +369,46 @@ export const mapSegmentAssets = pgTable("map_segment_assets", {
   isTrap: boolean("is_trap").default(false), // Campo para indicar si es un QR trampa
   trapMessage: text("trap_message"), // Mensaje HTML personalizable para QR trampa
   modalContent: text("modal_content"), // Contenido HTML opcional para modal al desbloquear
+  quizEnabled: boolean("quiz_enabled").notNull().default(false),
+  quizQuestionHtml: text("quiz_question_html"),
+  quizOptions: jsonb("quiz_options").$type<string[] | null>(),
+  quizCorrectIndex: integer("quiz_correct_index"),
+  quizPoints: integer("quiz_points").notNull().default(5),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  mapSegmentCampaignSegmentUnique: uniqueIndex("map_segment_campaign_segment_unique").on(table.campaignId, table.segmentId),
+}));
+
+/** Un intento por usuario/segmento/campaña; la fila se actualiza en reintentos (fallo → acierto). */
+export const userSegmentQuizAttempts = pgTable(
+  "user_segment_quiz_attempts",
+  {
+    id: serial("id").primaryKey(),
+    campaignId: integer("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    segmentId: integer("segment_id").notNull(),
+    isCorrect: boolean("is_correct").notNull(),
+    pointsAwarded: integer("points_awarded").notNull().default(0),
+    selectedIndex: integer("selected_index"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    userSegmentQuizUnique: uniqueIndex("user_segment_quiz_campaign_user_segment_unique").on(
+      table.campaignId,
+      table.userId,
+      table.segmentId,
+    ),
+  }),
+);
 
 // Tabla para rastrear puntos falsos de usuarios
 export const trapPoints = pgTable("trap_points", {
   id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
   userId: integer("user_id").notNull(),
   segmentId: integer("segment_id").notNull(),
   pointsAwarded: integer("points_awarded").default(1), // Puntos falsos otorgados
@@ -190,6 +418,7 @@ export const trapPoints = pgTable("trap_points", {
 // New table for user scores tracking
 export const userScores = pgTable("user_scores", {
   id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
   userId: integer("user_id").notNull().references(() => users.id),
   segmentId: integer("segment_id").notNull(),
   points: integer("points").notNull(), // +10 for valid QR, -5 for trap QR
@@ -227,6 +456,11 @@ export const insertMapSegmentAssetsSchema = createInsertSchema(mapSegmentAssets)
   isTrap: true,
   trapMessage: true,
   modalContent: true,
+  quizEnabled: true,
+  quizQuestionHtml: true,
+  quizOptions: true,
+  quizCorrectIndex: true,
+  quizPoints: true,
 });
 
 export const insertTrapPointsSchema = createInsertSchema(trapPoints).pick({
@@ -253,6 +487,14 @@ export const insertVenueSchema = createInsertSchema(venues).pick({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
+export const insertCampaignSchema = createInsertSchema(campaigns).pick({
+  slug: true,
+  name: true,
+  isActive: true,
+});
+export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
+export type Campaign = typeof campaigns.$inferSelect;
+
 export type InsertVenue = z.infer<typeof insertVenueSchema>;
 export type Venue = typeof venues.$inferSelect;
 
@@ -270,3 +512,5 @@ export type TrapPoints = typeof trapPoints.$inferSelect;
 
 export type InsertUserScores = z.infer<typeof insertUserScoresSchema>;
 export type UserScores = typeof userScores.$inferSelect;
+
+export type UserSegmentQuizAttempt = typeof userSegmentQuizAttempts.$inferSelect;

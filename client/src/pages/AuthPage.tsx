@@ -7,6 +7,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/context/UserContext";
 import { login } from "@/lib/api";
 import BrainLoader from "@/components/BrainLoader";
+import { withUiCampaign, playerScopedStorageKey } from "@/lib/paths";
+import { apiRequest } from "@/lib/queryClient";
+import { readOkJson } from "@/lib/api";
 
 const AuthPage = () => {
   const [, setLocation] = useLocation();
@@ -46,14 +49,14 @@ const AuthPage = () => {
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [hasAttemptedLogin, setHasAttemptedLogin] = useState(false);
   
-  const lastDocument = localStorage.getItem('lastDocument');
+  const lastDocument = localStorage.getItem(playerScopedStorageKey("lastDocument"));
 
   useEffect(() => {
     const loadSystemConfig = async () => {
       try {
-        const response = await fetch('/api/system-config');
-        if (!response.ok) throw new Error('Failed to load config');
-        const data = await response.json();
+        const response = await apiRequest("GET", "/api/system-config");
+        if (!response.ok) throw new Error("Failed to load config");
+        const data = await readOkJson<{ config?: Record<string, unknown> }>(response);
         const config = data.config || {};
         
         // Set configuration directly without image preloading
@@ -104,13 +107,12 @@ const AuthPage = () => {
       
       if (response.user) {
         setCurrentUser(response.user);
-        localStorage.setItem('lastDocument', docNumber);
         
         // Verificar si hay una URL de redirección (para QR codes)
         if (redirectUrl) {
           setLocation(redirectUrl);
         } else {
-          setLocation('/map');
+          setLocation(withUiCampaign('/map'));
         }
         
         toast({
@@ -123,9 +125,11 @@ const AuthPage = () => {
         localStorage.setItem('tempDocument', docNumber);
         // Mantener la URL de redirección para después del registro
         if (redirectUrl) {
-          setLocation(`/register?redirect=${encodeURIComponent(redirectUrl)}`);
+          setLocation(
+            `${withUiCampaign('/register')}?redirect=${encodeURIComponent(redirectUrl)}`,
+          );
         } else {
-          setLocation('/register');
+          setLocation(withUiCampaign('/register'));
         }
       }
     } catch (error: any) {
@@ -134,9 +138,11 @@ const AuthPage = () => {
         localStorage.setItem('tempDocument', docNumber);
         // Mantener la URL de redirección para después del registro
         if (redirectUrl) {
-          setLocation(`/register?redirect=${encodeURIComponent(redirectUrl)}`);
+          setLocation(
+            `${withUiCampaign('/register')}?redirect=${encodeURIComponent(redirectUrl)}`,
+          );
         } else {
-          setLocation('/register');
+          setLocation(withUiCampaign('/register'));
         }
       } else if (error.status === 400) {
         // Error de validación - mostrar mensaje específico
@@ -189,8 +195,8 @@ const AuthPage = () => {
   };
 
   const handleChangeUser = () => {
-    localStorage.removeItem('lastDocument');
-    setLocation('/auth');
+    localStorage.removeItem(playerScopedStorageKey("lastDocument"));
+    setLocation(withUiCampaign('/auth'));
   };
 
   // Mostrar loader mientras se cargan las configuraciones

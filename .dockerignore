@@ -1,0 +1,14 @@
+.git
+.github
+.cursor
+node_modules
+dist
+coverage
+*.log
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+agent-transcripts
+terminals
+mcps

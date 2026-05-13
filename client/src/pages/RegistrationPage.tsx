@@ -7,6 +7,9 @@ import { useToast } from "@/hooks/use-toast";
 import { register } from "@/lib/api";
 import { useUser } from "@/context/UserContext";
 import BrainLoader from "@/components/BrainLoader";
+import { withUiCampaign, getCampaignSlugFromPath } from "@/lib/paths";
+import { apiRequest } from "@/lib/queryClient";
+import { readOkJson } from "@/lib/api";
 
 const RegistrationPage = () => {
   const [name, setName] = useState("");
@@ -52,25 +55,28 @@ const RegistrationPage = () => {
   useEffect(() => {
     const loadActiveVenues = async () => {
       try {
-        const response = await fetch('/api/venues/active');
+        const slug = getCampaignSlugFromPath(window.location.pathname)?.trim() || null;
+        const response = await apiRequest("GET", "/api/venues/active", undefined, slug);
         if (response.ok) {
-          const data = await response.json();
+          const data = await readOkJson<{ venues?: Array<{ id: number; name: string; location?: string }> }>(
+            response,
+          );
           setActiveVenues(data.venues || []);
         }
       } catch (error) {
-        console.error('Error loading active venues:', error);
+        console.error("Error loading active venues:", error);
       }
     };
     loadActiveVenues();
-  }, []);
+  }, [location]);
 
   // Load system configuration for consistent styling
   useEffect(() => {
     const loadSystemConfig = async () => {
       try {
-        const response = await fetch('/api/system-config?t=' + Date.now());
+        const response = await apiRequest("GET", "/api/system-config?t=" + Date.now());
         if (response.ok) {
-          const data = await response.json();
+          const data = await readOkJson<{ config?: Record<string, unknown> }>(response);
           const config = data.config || {};
           
           // Set configuration directly without image preloading
@@ -142,7 +148,8 @@ const RegistrationPage = () => {
     try {
       setIsLoading(true);
       console.log("Enviando datos:", { documentNumber, name, venueId: selectedVenueId });
-      const response = await register(documentNumber, name, selectedVenueId);
+      const campaignSlug = getCampaignSlugFromPath(window.location.pathname)?.trim() || undefined;
+      const response = await register(documentNumber, name, selectedVenueId, campaignSlug);
 
       setCurrentUser(response.user);
       
@@ -150,7 +157,7 @@ const RegistrationPage = () => {
       if (redirectUrl) {
         setLocation(redirectUrl);
       } else {
-        setLocation("/map");
+        setLocation(withUiCampaign("/map"));
       }
 
       toast({
@@ -364,7 +371,7 @@ const RegistrationPage = () => {
                 type="button"
                 variant="outline"
                 className="w-full py-6 text-base"
-                onClick={() => setLocation("/")}
+                onClick={() => setLocation(withUiCampaign("/"))}
               >
                 Volver al inicio
               </Button>
